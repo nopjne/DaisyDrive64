@@ -35,7 +35,7 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\9 2020-q2-update\\arm-none-eabi\\include",
+                "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\include",
                 "${workspaceRoot}/tests/googletest/googletest/include",
                 "${workspaceRoot}/src",
                 "${workspaceRoot}/src/sys",
@@ -60,7 +60,7 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
             },
-            "compilerPath": "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\9 2020-q2-update\\bin\\arm-none-eabi-gcc",
+            "compilerPath": "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-gcc",
             "cStandard": "c11",
             "cppStandard": "gnu++14"
         }

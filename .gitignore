@@ -131,4 +131,11 @@ vs/*.log
 tests/libDaisy_gtest
 tests/build/bin/
 examples/*/build/
-
+*.lst
+*.bin
+*.elf
+*.log
+*.hex
+*.map
+*.json
+/out/

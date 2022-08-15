@@ -283,7 +283,7 @@ C_DEFS =  \
 -DHSE_VALUE=16000000 \
 -DUSE_HAL_DRIVER \
 -DUSE_FULL_LL_DRIVER \
--DDATA_IN_D2_SRAM 
+-DDATA_IN_D2_SRAM
 # ^ added for easy startup access
 
 

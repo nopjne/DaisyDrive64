@@ -2,25 +2,29 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Tests Locally",
-            "type": "cppdbg",
+            "name": "SWD Debug",
+            "cwd": "C:/Programming/n64/daisy_mcu/",
+            "executable": "C:/Programming/n64/daisy_mcu/daisycart64/build/daisycart64.elf",
             "request": "launch",
-            "program": "${workspaceFolder}/tests/build/bin/libDaisy_gtest",
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/tests/build/bin",
-            "environment": [],
-            "externalConsole": false,
-            "logging": {
-                "engineLogging": false
-            },
-            "preLaunchTask": "build-libDaisy-tests",
-            "osx": {
-                "type": "lldb",
-                "MIMode": "lldb",
-            },
-            "windows": {
-                "MIMode": "gdb",
-            }
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "interface": "swd",
+            // This may need to be arm-none-eabi-gdb depending on your system
+            "gdbPath": "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-gdb",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32h7x.cfg"
+            ],
+            "armToolchainPath": "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin",
+            "serverpath": "C:/Programming/Game.N.Watch/openocd-code/src/openocd.exe",
+            "showDevDebugOutput" : "none",
+            //"svdFile": "C:/Programming/n64/pico-sdk/src/rp2040/hardware_regs/rp2040.svd",
+            // Work around for stopping at main on restart
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ],
+            "searchDir": [ "C:/Programming/Game.N.Watch/openocd-code/tcl" ]
         }
     ]
 }

@@ -5,6 +5,10 @@
 #include "stm32h7xx_hal.h"
 #include "sys/system.h"
 
+#ifndef _FS_EXFAT
+#error FAT FS NEEDS TO BE ENABLED
+#endif
+
 //#define MENU_ROM_FILE_NAME "menu.z64"
 #define MENU_ROM_FILE_NAME "Super Mario 64 (USA).n64"
 //#define MENU_ROM_FILE_NAME "Resident Evil 2 (USA).n64"
@@ -565,7 +569,7 @@ int main(void)
 
     // Init hardware
     //SCB_EnableDCache();
-    SCB_EnableICache();
+    //SCB_EnableICache();
     hw.Init(true);
 
 #if 0
@@ -590,7 +594,7 @@ int main(void)
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    //__HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOG_CLK_ENABLE();
     // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
@@ -620,7 +624,7 @@ int main(void)
     GPIOC->BSRR = (0x1 << 7);
 
     // test
-    HAL_EnableCompensationCell();
+    //HAL_EnableCompensationCell();
 #if 0
     HAL_EnableCompensationCell();
     //PortAPins = {0x02, GPIO_MODE_AF_PP, GPIO_PULLDOWN, GP_SPEED, GPIO_AF3_LPTIM3};

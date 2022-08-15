@@ -91,4 +91,5 @@
         "Launch Tests Locally"
     ],
     "gtest-adapter.supportLocation": true,
+    "cmake.configureOnOpen": false,
 }

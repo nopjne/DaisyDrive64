@@ -68,7 +68,7 @@ typedef char TCHAR;
 
 
 /* Type of file size variables */
-
+#define _FS_EXFAT 1
 #if _FS_EXFAT
 #if _USE_LFN == 0
 #error LFN must be enabled when enable exFAT
@@ -76,6 +76,7 @@ typedef char TCHAR;
 typedef QWORD FSIZE_t;
 #else
 typedef DWORD FSIZE_t;
+#error EXFAT NEEDS TO BE ENABLED
 #endif
 
 

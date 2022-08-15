@@ -1,21 +1,16 @@
 # Project Name
-TARGET = DaisyCart64
+TARGET = dmaex
 
 # Sources
-CPP_SOURCES = MCUMain.cpp cic_c.cpp
-C_SOURCES = stm32h7xx_it.c ccsbcs.c
+CPP_SOURCES = main.cpp stm32h7xx_it.cpp
+C_SOURCES = ../src/sys/system_stm32h7xx.c
 
-# Library Locations
 # Library Locations
 LIBDAISY_DIR = ..
 #DAISYSP_DIR = ../libDaisySP
 
 # Includes FatFS source files within project.
-DUSE_FATFS=1
-D_FS_EXFAT=1
-D_LFN_UNICODE=1
-DDEBUG=1
-#DEBUG_DEFAULT_INTERRUPT_HANDLERS=1
+#USE_FATFS = 1
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
