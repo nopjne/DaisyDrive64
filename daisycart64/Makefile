@@ -3,7 +3,7 @@ TARGET = DaisyCart64
 
 # Sources
 CPP_SOURCES = MCUMain.cpp cic_c.cpp
-C_SOURCES = stm32h7xx_it.c ccsbcs.c
+C_SOURCES = stm32h7xx_it.c ../Middlewares/Third_Party/FatFs/src/option/unicode.c
 
 # Library Locations
 # Library Locations

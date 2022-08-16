@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "daisy_seed.h"
+#define _FS_EXFAT 1
+#define _USE_LFN 3
 #include "fatfs.h"
 #include "stm32h7xx_hal.h"
 #include "sys/system.h"

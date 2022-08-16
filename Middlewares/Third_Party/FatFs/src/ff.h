@@ -17,7 +17,7 @@
 / by use of this software.
 /----------------------------------------------------------------------------*/
 
-
+#define _FS_EXFAT 1
 #ifndef _FATFS
 #define _FATFS	68300	/* Revision ID */
 
@@ -68,7 +68,6 @@ typedef char TCHAR;
 
 
 /* Type of file size variables */
-#define _FS_EXFAT 1
 #if _FS_EXFAT
 #if _USE_LFN == 0
 #error LFN must be enabled when enable exFAT
