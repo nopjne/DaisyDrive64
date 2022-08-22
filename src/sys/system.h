@@ -188,7 +188,7 @@ class System
     void   ConfigureClocks();
     void   ConfigureMpu();
     Config cfg_;
-
+  public:
     /** One TimerHandle to rule them all
      ** Maybe this whole class should be static.. */
     static TimerHandle tim_;

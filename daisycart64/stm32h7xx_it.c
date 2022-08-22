@@ -35,6 +35,7 @@
 extern DMA_HandleTypeDef DMA_Handle_Channel0;
 extern DMA_HandleTypeDef DMA_Handle_Channel1;
 void BDMA_Channel0_IRQHandler_(void);
+void BDMA_Channel1_IRQHandler_(void);
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -129,17 +130,21 @@ void PendSV_Handler(void)
   * @param  None
   * @retval None
   */
+#if 0
 void BDMA_Channel0_IRQHandler(void)
 {
+  // TODO: remove this and simplify the common handler.
   HAL_DMA_IRQHandler(&DMA_Handle_Channel0);
   BDMA_Channel0_IRQHandler_();
 }
 
 void BDMA_Channel1_IRQHandler(void)
 {
+  // TODO: remove this and simplify the common handler.
   HAL_DMA_IRQHandler(&DMA_Handle_Channel1);
-  BDMA_Channel0_IRQHandler_();
+  BDMA_Channel1_IRQHandler_();
 }
+#endif
 /**
   * @brief  This function handles DMAMUX2  interrupt request.
   * @param  None
@@ -147,12 +152,12 @@ void BDMA_Channel1_IRQHandler(void)
   */
 void DMAMUX2_OVR_IRQHandler(void)
 {
-  while(1) {
-    int a = 0;
-    a += 1;
-  } 
+  //while(1) {
+  //  int a = 0;
+  //  a += 1;
+  //} 
   HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel0);
-  HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel1);
+  //HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel1);
 }
 
 /**

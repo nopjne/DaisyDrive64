@@ -151,9 +151,10 @@ extern "C"
             if(SCB->CFSR & SCB_CFSR_IACCVIOL_Msk)
                 __asm("BKPT #0");
 
+#if 0
             // Check for bus faults
             if(SCB->CFSR & SCB_CFSR_BFARVALID_Msk)
-                __asm("BKPT #0");
+                //__asm("BKPT #0");
             if(SCB->CFSR & SCB_CFSR_LSPERR_Msk)
                 __asm("BKPT #0");
             if(SCB->CFSR & SCB_CFSR_STKERR_Msk)
@@ -166,6 +167,7 @@ extern "C"
                 __asm("BKPT #0");
             if(SCB->CFSR & SCB_CFSR_IBUSERR_Msk)
                 __asm("BKPT #0");
+#endif
 
             // Check for usage faults
             if(SCB->CFSR & SCB_CFSR_DIVBYZERO_Msk)
@@ -181,7 +183,7 @@ extern "C"
             if(SCB->CFSR & SCB_CFSR_UNDEFINSTR_Msk)
                 __asm("BKPT 0");
 
-            __asm("BKPT #0");
+            //__asm("BKPT #0");
         }
         else if(SCB->HFSR & SCB_HFSR_VECTTBL_Msk)
         {
@@ -190,9 +192,13 @@ extern "C"
             __asm("BKPT #0");
         }
 
-        __asm("BKPT #0");
-        while(1)
-            ;
+        //__asm("BKPT #0");
+        while(1) {
+            GPIOG->MODER |= ((1 << (10 * 2)) | (1 << (11 * 2)) | (1 << (9 * 2)));
+            GPIOG->ODR = 0;
+            GPIOG->BSRR = (1 << (9 + 16)) | (1 << (10 + 16)) | (1 << (11 + 16));
+            GPIOC->BSRR = (1 << 7);
+        }
     }
 }
 
@@ -219,9 +225,9 @@ void System::Init(const System::Config& config)
         ConfigureMpu();
     }
     dsy_dma_init();
-    dsy_i2c_global_init();
-    dsy_spi_global_init();
-    dsy_uart_global_init();
+    //dsy_i2c_global_init();
+    //dsy_spi_global_init();
+    //dsy_uart_global_init();
 
     // Initialize Caches
     if(config.use_dcache)
@@ -238,7 +244,7 @@ void System::Init(const System::Config& config)
     tim_.Start();
 
     // Initialize the true random number generator
-    Random::Init();
+    //Random::Init();
 }
 
 void System::DeInit()
@@ -338,7 +344,8 @@ void System::ConfigureClocks()
     {
         case Config::SysClkFreq::FREQ_480MHZ:
             __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
-            plln_val      = 280;
+            plln_val      = 281; // 560Mhz
+            //plln_val      = 240; // 480Mhz
             flash_latency = FLASH_LATENCY_4;
             break;
         case Config::SysClkFreq::FREQ_400MHZ:

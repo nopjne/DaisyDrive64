@@ -9,7 +9,7 @@ extern void *_estack;
 
 void Reset_Handler();
 void Default_Handler();
-//#define DEBUG_DEFAULT_INTERRUPT_HANDLERS
+#define DEBUG_DEFAULT_INTERRUPT_HANDLERS
 #ifdef DEBUG_DEFAULT_INTERRUPT_HANDLERS
 void __attribute__ ((weak)) NMI_Handler() 
 {

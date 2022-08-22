@@ -121,7 +121,7 @@ void DaisySeed::Init(bool boost)
 
     if(memory == System::MemoryRegion::INTERNAL_FLASH)
     {
-        dsy_gpio_init(&led);
+        //dsy_gpio_init(&led);
         dsy_gpio_init(&testpoint);
         sdram_handle.Init();
     }
