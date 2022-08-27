@@ -22,7 +22,8 @@
             // Work around for stopping at main on restart
             "postRestartCommands": [
                 "break main",
-                "continue"
+                "continue",
+                "set output-radix 16"
             ],
             "searchDir": [ "C:/Programming/Game.N.Watch/openocd-code/tcl" ]
         }

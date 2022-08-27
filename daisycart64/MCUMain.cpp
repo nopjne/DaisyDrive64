@@ -11,9 +11,6 @@
 #error FAT FS NEEDS TO BE ENABLED
 #endif
 
-LPTIM_HandleTypeDef  LptimHandle;
-#define ENABLE_LP3_TIMER() (LptimHandle.Instance->ARR = (20))
-#define DISABLE_LP3_TIMER() (LptimHandle.Instance->ARR = (500000))
 __IO   uint32_t DMA_TransferErrorFlag = 0;
 DMA_HandleTypeDef DMA_Handle_Channel0;
 DMA_HandleTypeDef DMA_Handle_Channel1;
@@ -28,9 +25,11 @@ DMA_HandleTypeDef DMA_Handle_Channel1;
 //       Length: 1281 / 0x00000501 (bytes)
 unsigned char rawData[1281] =
 {
-    //0x37, 0x80, 0x20, 0x12, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
+    //0x37, 0x80, 0x40, 0x12, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
     //0x37, 0x80, 0x40, 0x20, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
     0x37, 0x80, 0x40, 0xFF, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
+    //1 0-7 8-16  2 0-7 8-16
+    //0xFF, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, 
     0x5A, 0x63, 0xFF, 0x2B, 0x02, 0x8B, 0x26, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x55, 0x53, 0x45, 0x50, 0x20, 0x52, 0x41, 0x4D, 0x49, 0x52, 0x20, 0x4F, 0x34, 0x36, 0x20, 0x20, 
     0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x00, 0x4D, 0x53, 0x00, 0x45, 
@@ -132,14 +131,6 @@ SdmmcHandler   sd;
 FatFSInterface fsi;
 FIL            SDFile;
 
-enum AD_INTERFACE_DIRECTION {
-    AD_IN,
-    AD_OUT
-};
-
-int cic_init(void);
-int cic_run(void);
-
 void BlinkAndDie(int wait1, int wait2)
 {
     while(1) {
@@ -150,311 +141,13 @@ void BlinkAndDie(int wait1, int wait2)
     }
 }
 
-AD_INTERFACE_DIRECTION AdInterfaceDirection;
 #define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
-inline void SwitchAdInterfaceDirection(AD_INTERFACE_DIRECTION direction)
-{
-    if (direction == AD_IN) {
-        //GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-        //GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-        //HAL_GPIO_Init(GPIOA, &PortAPins);
-        //HAL_GPIO_Init(GPIOB, &PortBPins);
-        //GPIOA->MODER &= 0xFFFF000F;
-        GPIOA->MODER &= 0xFFFF0000;
-        GPIOB->MODER &= 0x0FF000FF;
-
-    } else {
-        //GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-        //GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-        //HAL_GPIO_Init(GPIOA, &PortAPins);
-        //HAL_GPIO_Init(GPIOB, &PortBPins);
-        GPIOA->MODER |= 0x00005555;
-        GPIOB->MODER |= 0x50055500;
-    }
-
-    AdInterfaceDirection = direction;
-}
-
-extern "C" void __EXTI0_IRQHandler(void)
-{
-        __IO uint32_t *regaddr;
-    uint32_t maskline;
-    uint32_t offset;
-
-    /* compute line register offset and line mask */
-    offset = ((EXTI_LINE_1 & EXTI_REG_MASK) >> EXTI_REG_SHIFT);
-    maskline = (1UL << (EXTI_LINE_1 & EXTI_PIN_MASK));
-    regaddr = (__IO uint32_t *)(&EXTI->PR1 + (0x04U * offset));
-
-    /* Clear Pending bit */
-    *regaddr =  maskline;
-}
-
-volatile uint32_t PrevB1;
-volatile uint32_t PrevA1;
 uint32_t ADInputAddress = 0;
 uint32_t PrefetchRead = 0;
 uint32_t ReadOffset = 0;
 uint32_t ReadCount = 0;
-
-
-#if 0
-extern "C" void ALEL_IRQHandler(void)
-{
-    uint32_t PIValue = (PrevA1 & 0xFF) | ((PrevB1 & 0x03F0) << 4) | (PrevB1 & 0xC000);
-    ADInputAddress = (ADInputAddress & 0xFFFF0000) | ((0x0000FFFF & PIValue));
-    if ((ADInputAddress < N64_ROM_BASE) || (ADInputAddress > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-        PrefetchRead = 0;
-    } else {
-        PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-    }
-
-    ReadOffset = 0;
-    __IO uint32_t *regaddr;
-    uint32_t maskline;
-    uint32_t offset;
-
-    /* compute line register offset and line mask */
-    offset = ((EXTI_LINE_2 & EXTI_REG_MASK) >> EXTI_REG_SHIFT);
-    maskline = (1UL << (EXTI_LINE_2 & EXTI_PIN_MASK));
-    regaddr = (__IO uint32_t *)(&EXTI->PR1 + (0x04U * offset));
-
-    /* Clear Pending bit */
-    *regaddr =  maskline;
-}
-#endif
-
-extern "C" void EXTI15_10_IRQHandler(void)
-{
-    //SCB_CleanDCache_by_Addr( (uint32_t*)PortABuffer, 32);
-    //SCB_CleanDCache_by_Addr( (uint32_t*)PortBBuffer, 32);
-    __IO uint32_t *regaddr;
-    uint32_t maskline;
-    uint32_t offset;
-    
-   // bool ALE_L_Asserted = false;
-    
-    // ALE_L - Rising and Falling.
-    if ((EXTI->PR1 & (0x1 << 12)) != 0) {
-#if 0
-        // DISABLE_LP3_TIMER();
-        // uint32_t *PortAIndex = (uint32_t*)((BDMA_Channel_TypeDef *)(DMA_Handle_Channel0.Instance))->CM0AR;
-        // uint32_t *PortBIndex = (uint32_t*)((BDMA_Channel_TypeDef *)(DMA_Handle_Channel1.Instance))->CM0AR;
-        // while(((*PortBIndex & (1 << 12)) != 0) && (PortBIndex != PortBBuffer)) {
-        //     PortBIndex -= 4;
-        //     PortAIndex -= 4;
-        // }
-        // uint32_t PrevB1x = *PortBIndex;
-        // uint32_t PrevA1x = *PortAIndex;
-        // uint32_t PIValue = (PrevA1x & 0xFF) | ((PrevB1x & 0x03F0) << 4) | (PrevB1x & 0xC000);
-#endif
-        //volatile uint32_t inputB = GPIOB->IDR;
-        // On rising read the ALE_H data.
-        //if ((inputB & (1 << 12)) != 0) {
-            //volatile uint32_t PIValue = (GPIOA->IDR & 0xFF) | ((inputB & 0x03F0) << 4) | (inputB & 0xC000);
-            uint32_t PIValue = (PrevA1 & 0xFF) | ((PrevB1 & 0x03F0) << 4) | (PrevB1 & 0xC000);
-            ADInputAddress = (ADInputAddress & 0x0000FFFF) | ((0x0000FFFF & PIValue) << 16);
-        //}
-
-        // On falling switch to read mode.... unless a write happens.
-        // TODO.
-
-        offset = ((EXTI_LINE_12 & EXTI_REG_MASK) >> EXTI_REG_SHIFT);
-        maskline = (1UL << (EXTI_LINE_12 & EXTI_PIN_MASK));
-        regaddr = (__IO uint32_t *)(&EXTI->PR1 + (0x04U * offset));
-        *regaddr =  maskline;
-        //ALE_L_Asserted = true;
-    }
-
-    // ALE_H
-    if ((EXTI->PR1 & (0x1 << 11)) != 0) {
-        //if (ALE_L_Asserted == false) {
-        //     ENABLE_LP3_TIMER();
-        //}
-// 
-        // uint32_t *PortAIndex = PortABuffer;
-        // uint32_t *PortBIndex = PortBBuffer;
-        // while((*PortBIndex & (1 << 12)) != 0) {
-        //     PortBIndex -= 4;
-        //     PortAIndex -= 4;
-        // }
-// 
-        // uint32_t PrevB1 = *PortBIndex;
-        // uint32_t PrevA1 = *PortAIndex;
-        // On falling, go read ALE_L
-        //volatile uint32_t inputB = GPIOB->IDR;
-        //volatile uint32_t PIValue = (GPIOA->IDR & 0xFF) | ((inputB & 0x03F0) << 4) | (inputB & 0xC000);
-        uint32_t PIValue = (PrevA1 & 0xFF) | ((PrevB1 & 0x03F0) << 4) | (PrevB1 & 0xC000);
-        ADInputAddress = (ADInputAddress & 0xFFFF0000) | ((0x0000FFFF & PIValue));
-        //if ((ADInputAddress < N64_ROM_BASE) || (ADInputAddress > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-        //    PrefetchRead = 0;
-        //} else {
-            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-        //}
-
-        offset = ((EXTI_LINE_11 & EXTI_REG_MASK) >> EXTI_REG_SHIFT);
-        maskline = (1UL << (EXTI_LINE_11 & EXTI_PIN_MASK));
-        regaddr = (__IO uint32_t *)(&EXTI->PR1 + (0x04U * offset));
-        *regaddr =  maskline;
-    }
-
-    //if(__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_1)) {
-    /* USER CODE BEGIN EXTI4_15_IRQn 0 */ 
-        //GPIOA->BSRR |= 1;
-        //GPIOA->BSRR |= 1 << 16;
-    //}
-    /* USER CODE END EXTI4_15_IRQn 0 */
-    //HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13); 
-    /* USER CODE BEGIN EXTI4_15_IRQn 1 */ 
-    /* USER CODE END EXTI4_15_IRQn 1 */ 
-}
-
-
-#if 0
-extern "C" void BDMA_Channel0_IRQHandler_(void)
-{
-
-    SCB_CleanDCache_by_Addr( (uint32_t*)Sram4Buffer, 8);
-    //uint32_t PIValue = (Sram4Buffer[0] & 0xFF) | ((((uint32_t*)Sram4Buffer)[1] & 0x03F0) << 4) | (((uint32_t*)Sram4Buffer)[1] & 0xC000);
-    uint32_t PIValue = (Sram4Buffer[0] & 0xFF) | ((PrevB1 & 0x03F0) << 4) | (PrevB1 & 0xC000);
-    if (0) { // ALE_L
-        ADInputAddress = (ADInputAddress & 0xFFFF0000) | ((0x0000FFFF & PIValue));
-    } else { // ALE_H
-        ADInputAddress = (ADInputAddress & 0x0000FFFF) | ((0x0000FFFF & PIValue) << 16);
-    }
-
-    if ((ADInputAddress < N64_ROM_BASE) || (ADInputAddress > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-        PrefetchRead = 0;
-    } else {
-        PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-    }
-}
-#endif
-
-/* Private function prototypes -----------------------------------------------*/
-//static void SystemClock_Config(void);
-//static void CPU_CACHE_Enable(void);
-void LPTIM_Config(void);
 static void HAL_TransferError(DMA_HandleTypeDef *hdma);
 static void Error_Handler(void);
-
-/* Private functions ---------------------------------------------------------*/
-
-#if 0
-DMA_HandleTypeDef DMA_Handle;
-/**
-  * @brief  Main program
-  * @param  None
-  * @retval None
-  */
-int BDMA_Config(void)
-{
-    GPIOC->BSRR = (0x1 << 7) << 16;
-    const uint32_t BDMA_BUFFER_SIZE = 512;
-    BYTE* abDmaDebug = (BYTE*)0x38000000; 
-    for( int i = 0; i < BDMA_BUFFER_SIZE; i += 8) {
-        abDmaDebug[i] = 0xF1;
-        abDmaDebug[i + 1] = 0x00;
-        abDmaDebug[i + 2] = 0x00;
-        abDmaDebug[i + 3] = 0x00;
-
-        abDmaDebug[i + 4] = 0x00;
-        abDmaDebug[i + 5] = 0x00;
-        abDmaDebug[i + 6] = 0x00;
-        abDmaDebug[i + 7] = 0x00;
-    }
-
-  HAL_DMA_MuxRequestGeneratorConfigTypeDef dmamux_ReqGenParams  = {0};
-
-  /*##-2- Configure the DMA ##################################################*/
-/* Enable BDMA clock */
-  __HAL_RCC_BDMA_CLK_ENABLE();
-
-  /* Configure the DMA handler for Transmission process     */
-  /* DMA mode is set to circular for an infinite DMA transfer */
-  DMA_Handle.Instance                 = BDMA_Channel0;
-
-  DMA_Handle.Init.Request             = BDMA_REQUEST_GENERATOR0;
-  DMA_Handle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
-  DMA_Handle.Init.PeriphInc           = DMA_PINC_DISABLE;
-  DMA_Handle.Init.MemInc              = DMA_MINC_ENABLE;
-  DMA_Handle.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-  DMA_Handle.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
-  DMA_Handle.Init.Mode                = DMA_CIRCULAR;
-  DMA_Handle.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
-  DMA_Handle.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
-  DMA_Handle.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
-  DMA_Handle.Init.MemBurst            = DMA_PBURST_SINGLE;
-  DMA_Handle.Init.PeriphBurst         = DMA_PBURST_SINGLE;
-
-  /* Initialize the DMA with for Transmission process */
-  HAL_StatusTypeDef dmares = HAL_OK;
-  dmares = HAL_DMA_Init(&DMA_Handle);
-    if (dmares != HAL_OK) {
-        Error_Handler();
-    }
-
-  /* Select Callbacks functions called after Transfer complete and Transfer error */
-  dmares = HAL_DMA_RegisterCallback(&DMA_Handle, HAL_DMA_XFER_CPLT_CB_ID, NULL);
-  if (dmares != HAL_OK) {
-        Error_Handler();
-    }
-  dmares = HAL_DMA_RegisterCallback(&DMA_Handle, HAL_DMA_XFER_ERROR_CB_ID, HAL_TransferError);
-if (dmares != HAL_OK) {
-        Error_Handler();
-    }
-  /* NVIC configuration for DMA transfer complete interrupt*/
-  HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
-
-  /*##-3- Configure and enable the DMAMUX Request generator  ####################*/
-  dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_LPTIM3_OUT; /* External request signal is LPTIM2 signal */
-  dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_FALLING;      /* External request signal edge is Rising  */
-  dmamux_ReqGenParams.RequestNumber = 1;                          /* 1 requests on each edge of the external request signal  */
-
-  dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle, &dmamux_ReqGenParams);
-  if (dmares != HAL_OK) {
-        Error_Handler();
-        }
-  /* NVIC configuration for DMAMUX request generator overrun errors*/
-  HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
-
-  dmares = HAL_DMAEx_EnableMuxRequestGenerator (&DMA_Handle);
-  if (dmares != HAL_OK) {
-    Error_Handler();
-  }
-  /*##-4- Configure and enable the LPTIM2 used as DMA external request generator signal #####*/
-  LPTIM_Config();
-  
-
-  /*##-5- Start the DMA transfer ################################################*/
-  /* DMA source buffer is  SRC_BUFFER_LED1_TOGGLE containing values to be written
-  to GPIOB ODR register in order to turn LED1 On/Off each time comes a request from the DMAMUX request generator */
-
-  SCB_CleanDCache_by_Addr( (uint32_t*)abDmaDebug, BDMA_BUFFER_SIZE);
-  uint32_t DstAddr = (uint32_t)&(GPIOA->ODR);
-  dmares = HAL_DMA_Start_IT(&DMA_Handle, (uint32_t)abDmaDebug, DstAddr, 2);
-  if (dmares != HAL_OK) {
-      Error_Handler();
-  }
-
-  /* Infinite loop */
-  while (1)
-  {
-    //dmares = HAL_DMA_Start_IT(&DMA_Handle, (uint32_t)abDmaDebug, (uint32_t)&GPIOA->ODR, BDMA_BUFFER_SIZE);
-    //if (dmares != HAL_OK) {
-    //    Error_Handler();
-    //}
-
-    if(DMA_TransferErrorFlag != 0)
-    {
-      Error_Handler();
-    }
-  }
-}
-#endif // Known good BDMA timer toggle GPIO pin.
-
 
 int InitializeDmaChannels(void)
 {
@@ -593,95 +286,7 @@ int InitializeDmaChannels(void)
     }
 
     return 0;
-#if 0
-    /* Infinite loop */
-    while (1)
-    {
-        PrevB1 = GPIOB->IDR;
-        PrevA1 = GPIOA->IDR;
-        
-        //dmares = HAL_DMA_Start_IT(&DMA_Handle, (uint32_t)abDmaDebug, (uint32_t)&GPIOA->ODR, BDMA_BUFFER_SIZE);
-        //if (dmares != HAL_OK) {
-        //    Error_Handler();
-        //}
-
-        //if(DMA_TransferErrorFlag != 0)
-        //{
-        //    Error_Handler();
-        //}
-    }
-#endif
 }
-#if 1
-/**
-  * @brief  Configure and start the LPTIM2 with 2sec period and 50% duty cycle.
-  * @param  None
-  * @retval None
-  */
-void LPTIM_Config(void)
-{
-
-  uint32_t periodValue;
-  uint32_t pulseValue ;
-
-
-  RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct = {0};
-
-  /* Enable the LSE clock source */
-#if 0
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  //RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  HAL_StatusTypeDef status;
-  status = HAL_RCC_OscConfig(&RCC_OscInitStruct);
-  if (status != HAL_OK) {
-    Error_Handler();
-  }
-#endif
-
-    //HAL_TIM_Base_Start  disney_dma_base;
-    //HAL_TIM_Base_Start());
-
-  /* LPTIM2 clock source set to LSE*/
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LPTIM3;
-  PeriphClkInitStruct.Lptim345ClockSelection = RCC_LPTIM345CLKSOURCE_D3PCLK1;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK) {
-    Error_Handler();
-  }
-
-  periodValue = 1;    /* Calculate the Timer  Autoreload value for 2sec period */
-  pulseValue  = 0;        /* Set the Timer  pulse value for 50% duty cycle         */
-
-  /* TIM1 Peripheral clock enable */
-  __HAL_RCC_LPTIM3_CLK_ENABLE();
-
-  LptimHandle.Instance                           = LPTIM3;
-  LptimHandle.Init.CounterSource                 = LPTIM_COUNTERSOURCE_INTERNAL;
-  LptimHandle.Init.UpdateMode                    = LPTIM_UPDATE_IMMEDIATE;
-  LptimHandle.Init.OutputPolarity                = LPTIM_OUTPUTPOLARITY_LOW;
-  LptimHandle.Init.Clock.Source                  = LPTIM_CLOCKSOURCE_APBCLOCK_LPOSC;
-  LptimHandle.Init.Clock.Prescaler               = LPTIM_PRESCALER_DIV1;
-  LptimHandle.Init.UltraLowPowerClock.Polarity   = LPTIM_ACTIVEEDGE_RISING;
-  LptimHandle.Init.UltraLowPowerClock.SampleTime = LPTIM_CLOCKSAMPLETIME_DIRECTTRANSITION;
-  LptimHandle.Init.Trigger.Source                = LPTIM_TRIGSOURCE_SOFTWARE;
-  LptimHandle.Init.Trigger.ActiveEdge            = LPTIM_ACTIVEEDGE_RISING;
-  LptimHandle.Init.Trigger.SampleTime            = LPTIM_CLOCKSAMPLETIME_DIRECTTRANSITION;
-
-  if(HAL_LPTIM_Init(&LptimHandle) != HAL_OK)
-  {
-    /* Initialization Error */
-    Error_Handler();
-  }
-
-  /* Start the timer */
-  if (HAL_LPTIM_PWM_Start(&LptimHandle, periodValue, pulseValue) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
-#endif
 
 static void HAL_TransferError(DMA_HandleTypeDef *hdma)
 {
@@ -701,83 +306,24 @@ static void Error_Handler(void)
   }
 }
 
-#if 0
-// DMA-Memory: Global Array in SRAM4, 32byte-aligned
-//__attribute__((section(".RAM_D3"))) BYTE abDmaDebug[2048];
-#define BDMA_BUFFER_SIZE 2048
-void Init_BDMA(){
-    __HAL_RCC_BDMA_CLK_ENABLE();
-    BYTE* abDmaDebug = (BYTE*)0x38000000;
-  RCC->APB4ENR |= RCC_APB4ENR_LPTIM3EN;
-  RCC->AHB4ENR |= RCC_AHB4ENR_BDMAEN;
- 
-  for( int i = 0; i < BDMA_BUFFER_SIZE; i += 2) {
-    abDmaDebug[i]= (i);
-    abDmaDebug[i + 1]= (i + 1);
-  }
- 
-  SCB_CleanDCache_by_Addr( (uint32_t*)abDmaDebug, BDMA_BUFFER_SIZE);
- 
-#define PIN_DCLK      "PA1 TL3"
-  LPTIM3->CR= LPTIM_CR_ENABLE;
-  #define MHZ_LT1_LT2_LT3_LT4_LT5  100    //MHZ_APB3
-  #define FREQU_LT3   1000000   //1MHz
-  #define LT3_ARR 100  // MHZ_LT1_LT2_LT3_LT4_LT5*1000000 / FREQU_LT3
-  LPTIM3->ARR= LT3_ARR-1;
-  LPTIM3->CMP= LT3_ARR/2;
-
-  //1=Requestgenerator 0
-  DMAMUX2_Channel0->CCR=  (1 << DMAMUX_CxCR_DMAREQ_ID_Pos);
-  //Request-Generator:
-  //12=LPTIM3_OUT (Trigger-Input)
-  DMAMUX2_RequestGenerator0->RGCR=  (12 << DMAMUX_RGxCR_SIG_ID_Pos) |
-                                    (1 << DMAMUX_RGxCR_GPOL_Pos);
- 
-  DMAMUX2_Channel0->CCR|= DMAMUX_CxCR_EGE;
-  DMAMUX2_RequestGenerator0->RGCR|= DMAMUX_RGxCR_GE;
- 
-  BDMA_Channel0->CCR= (2 << BDMA_CCR_PL_Pos) |
-                      // SIZE for GPIOG->ODR: 1 or 2 (NOT 0)
-                      (0 << BDMA_CCR_MSIZE_Pos) |   
-                      (1 << BDMA_CCR_PSIZE_Pos) |
-                      (1 << BDMA_CCR_MINC_Pos) |
-                      (0 << BDMA_CCR_PINC_Pos) |
-                      (0 << BDMA_CCR_CIRC_Pos) |
-                      (1 << BDMA_CCR_DIR_Pos);
-  //ATTENTION! Memory in SRAM4!!                      
-  BDMA_Channel0->CM0AR=(DWORD)&abDmaDebug;
-  BDMA_Channel0->CPAR= (DWORD)&GPIOA->ODR;
-}
- 
-void Fire_BDMA(){
-  LPTIM3->CR= 0;
-  BDMA_Channel0->CCR &=~(1 << BDMA_CCR_EN_Pos);
-  BDMA->IFCR= (DWORD)-1;
-  BDMA_Channel0->CNDTR = BDMA_BUFFER_SIZE;
-  BDMA_Channel0->CCR |=(1 << BDMA_CCR_EN_Pos);
-  LPTIM3->CR= LPTIM_CR_ENABLE;
-  LPTIM3->CR= LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
-}
-#endif
-
 #define ALE_L (1 << 0)
-#define READ_LINE (1 << 1)
+#define READ_LINE (1 << 12)
 #define ALE_H (1 << 11)
 
 #define ALE_H_IS_HIGH ((GPIOD->IDR & ALE_H) != 0)
 #define ALE_H_IS_LOW ((GPIOD->IDR & ALE_H) == 0)
 #define ALE_L_IS_HIGH ((GPIOC->IDR & ALE_L) != 0)
 #define ALE_L_IS_LOW ((GPIOC->IDR & ALE_L) == 0)
-#define READ_IS_HIGH ((GPIOC->IDR & READ_LINE) != 0)
-#define READ_IS_LOW ((GPIOC->IDR & READ_LINE) == 0)
+#define READ_IS_HIGH ((GPIOB->IDR & READ_LINE) != 0)
+#define READ_IS_LOW ((GPIOB->IDR & READ_LINE) == 0)
 
 
-volatile uint32_t HighB;
-volatile uint32_t HighA;
-volatile uint32_t LowB;
-volatile uint32_t LowA;
+uint32_t HighB;
+uint32_t HighA;
+uint32_t LowB;
+uint32_t LowA;
 
-#if DMA_SOLUTION
+#ifdef DMA_SOLUTION
 typedef struct
 {
   __IO uint32_t ISR;   /*!< BDMA interrupt status register */
@@ -884,24 +430,31 @@ extern "C" void EXTI1_IRQHandler(void)
     //}
 }
 
-#else
+#else // NON DMA
 
-extern "C" void EXTI1_IRQHandler(void)
+extern "C" void EXTI0_IRQHandler(void)
+{
+    EXTI->PR1 = 1;
+}
+
+
+volatile uint32_t IntCount = 0;
+volatile uint32_t OutCount = 0;
+extern "C" void EXTI15_10_IRQHandler(void)
+{
+    // FUCK THIS INTERRUPT!
+    EXTI->PR1 = 0x00001000;
+    __DSB();
+    IntCount += 1;
+}
+
+extern "C" void EXTI1_IRQHandler_wut(void)
 {
     // Clear Pending interrupt bit
-    //EXTI->PR1 = 2;
-    __IO uint32_t *regaddr;
-    uint32_t maskline;
-    uint32_t offset;
-            offset = ((EXTI_LINE_1 & EXTI_REG_MASK) >> EXTI_REG_SHIFT);
-        maskline = (1UL << (EXTI_LINE_1 & EXTI_PIN_MASK));
-        regaddr = (__IO uint32_t *)(&EXTI->PR1 + (0x04U * offset));
-        *regaddr =  maskline;
+    EXTI->PR1 = 2;
 
     GPIOA->MODER = 0xABFF5555;
     GPIOB->MODER = 0x5CB555B3;
-
-    // Get the 
 
     // Output the half word.
     uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
@@ -916,29 +469,40 @@ extern "C" void EXTI1_IRQHandler(void)
     }
 
     //GPIOA->MODER &= 0xFFFF0008;
-    LogBuffer[ReadCount] = ADInputAddress;
-    ReadCount += 1;
+    if (ReadCount < (500000)) {
+        LogBuffer[ReadCount] = ADInputAddress;
+        ReadCount += 1;
+    }
+
 
     if (ReadOffset == 512) {
         ReadOffset = 0;
     }
-        // Wait for READ high and set the mode.
-        //while ((GPIOC->IDR & 1) == 0) {}
-        //GPIOA->MODER &= 0xFFFF0000;
-        //GPIOB->MODER &= 0x0FF000FF;
-        while (READ_IS_LOW) {}
-        GPIOA->MODER = 0xABFF0000;
-        GPIOB->MODER = 0x0CB000B3;
-        //GPIOC->BSRR = 2 << 16;
+    // Wait for READ high and set the mode.
+    //while ((GPIOC->IDR & 1) == 0) {}
+    //GPIOA->MODER &= 0xFFFF0000;
+    //GPIOB->MODER &= 0x0FF000FF;
+    
+    while (((GPIOC->IDR & (READ_LINE | ALE_L)) == 0)) {}
+    __DSB();
+    GPIOA->MODER = 0xABFF0000;
+    GPIOB->MODER = 0x0CB000B3;
+    //GPIOC->BSRR = 2 << 16;
     //}
 }
 #endif
 
 void RunN64PI(void)
 {
+    IntCount = OutCount;
     while (1) {
         // Wait for ALE_L high. (spin while ALE_L low)
-        while (ALE_L_IS_LOW) {} 
+        while (ALE_L_IS_LOW) {
+            if (IntCount != OutCount) {
+                goto outputNow;
+            }
+        }
+
         // Read the high part of the address on ALE_L rising.
         HighB = GPIOB->IDR;
         HighA = GPIOA->IDR;
@@ -950,6 +514,8 @@ void RunN64PI(void)
         while (ALE_H_IS_HIGH) {}
         LowB = GPIOB->IDR;
         LowA = GPIOA->IDR;
+
+        
         //GPIOC->BSRR = 2 << 16;
         //PIValue = (GPIOA->IDR & 0xFF) | ((NowB & 0x03F0) << 4) | (NowB & 0xC000);
         // Read the low part of the address.
@@ -962,6 +528,65 @@ void RunN64PI(void)
             PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
         //}
 
+        ReadOffset = 0;
+        while (IntCount == OutCount) {}
+outputNow:
+        GPIOA->MODER = 0xABFF5555;
+        GPIOB->MODER = 0x5CB555B3;
+
+word1:
+
+        // Output the half word.
+        uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
+        uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
+
+        GPIOA->ODR = (Value & 0xFF);
+        GPIOB->ODR = OutB;
+        if ((ReadOffset & 2) == 0) {
+            LogBuffer[ReadCount] = ADInputAddress | (ReadOffset & 511);
+
+        } else {
+            LogBuffer[ReadCount] = PrefetchRead;
+        }
+
+        ReadOffset += 2;
+
+        if ((ReadOffset & 3) == 0) {
+            //if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress < (N64_ROM_BASE + (64 * 1024 * 1024)))) {
+                PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
+            //}
+        }
+
+        //GPIOA->MODER &= 0xFFFF0008;
+        if (ReadCount < ((8*1024*1024) / 4)) {
+            ReadCount += 1;
+        }
+
+        OutCount += 1;
+
+        // Wait for READ high and set the mode.
+        //while ((GPIOC->IDR & 1) == 0) {}
+        //GPIOA->MODER &= 0xFFFF0000;
+        //GPIOB->MODER &= 0x0FF000FF;
+        
+        if ((ReadOffset & 2) != 0) {
+            //volatile uint32_t wait = 33; // wait 532ns 270 * 2= 540mhz 1.8ns per cycle. 532/2/4 instructions = 66 loops.
+            //while (wait--) {}
+            //while (READ_IS_LOW) {}
+            while (IntCount == OutCount) {}
+            goto word1;
+        }
+
+        while (READ_IS_LOW) {
+            if (IntCount != OutCount) {
+                goto word1;
+            }
+        }
+
+        //__DSB();
+        GPIOA->MODER = 0xABFF0000;
+        GPIOB->MODER = 0x0CB000B3;
+
         // Prepare for output.
         //GPIOA->MODER |= 0xabff5555;
         //GPIOB->MODER |= 0x50055500;
@@ -970,16 +595,7 @@ void RunN64PI(void)
         //GPIOC->BSRR = 2;
 
         // Wait for ALE_H to go high.
-        //__WFI();
-        while (ALE_H_IS_LOW) {} // This is where the main code is when the 512 offset interrupt triggers. ADInput = 0x10001000 ReadCount = 2276
-        if (ReadOffset != 512) { // Skip when this was done by the interrupt.
-            //GPIOA->MODER &= 0xFFFF0000;
-            //GPIOB->MODER &= 0x0FF000FF;
-            //GPIOA->MODER = 0xABFF0000;
-            //GPIOB->MODER = 0x0CB000B3;
-            //GPIOC->BSRR = 2 << 16;
-        }
-        ReadOffset = 0;
+        //while (ALE_H_IS_LOW) {}
         //PrevB1 = NowB;
     }
 }
@@ -990,26 +606,6 @@ int main(void)
 
     // Init hardware
     hw.Init(true);
-
-#if 0
-    typedef struct
-    {
-    uint32_t Pin;       /*!< Specifies the GPIO pins to be configured.
-                            This parameter can be any value of @ref GPIO_pins_define */
-
-    uint32_t Mode;      /*!< Specifies the operating mode for the selected pins.
-                            This parameter can be a value of @ref GPIO_mode_define */
-
-    uint32_t Pull;      /*!< Specifies the Pull-up or Pull-Down activation for the selected pins.
-                            This parameter can be a value of @ref GPIO_pull_define */
-
-    uint32_t Speed;     /*!< Specifies the speed for the selected pins.
-                            This parameter can be a value of @ref GPIO_speed_define */
-
-    uint32_t Alternate;  /*!< Peripheral to be connected to the selected pins.
-                                This parameter can be a value of @ref GPIO_Alternate_function_selection */
-    } GPIO_InitTypeDef;
-#endif
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -1044,18 +640,6 @@ int main(void)
     HAL_GPIO_Init(GPIOG, &PortGPins);
 
     GPIOC->ODR = (0x1 << 7);
-
-    // test
-    //HAL_EnableCompensationCell();
-#if 0
-    HAL_EnableCompensationCell();
-    //PortAPins = {0x02, GPIO_MODE_AF_PP, GPIO_PULLDOWN, GP_SPEED, GPIO_AF3_LPTIM3};
-    //HAL_GPIO_Init(GPIOA, &PortAPins);
-    PortAPins = {0x01, GPIO_MODE_OUTPUT_OD, GPIO_PULLDOWN, GP_SPEED, 0};
-    GPIOA->ODR = 0xFFFFFFFF;
-    BDMA_Config();
-#endif
-    // !test
 
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
@@ -1108,8 +692,15 @@ int main(void)
     GPIOC->BSRR = (0x1 << 7) << 16;
 
     // Patch
-    memcpy(ram, rawData, 4);
+    memcpy(ram, rawData, 16);
 
+
+
+    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
+    
+
+    // Read interrupt setup.
+#ifdef DMA_SOLUTION
     GPIO_InitTypeDef GPIO_InitStruct;
 #if 0 // Do not enable ALE interrupts.
     // ALEH interrupt setup. -- 
@@ -1121,11 +712,6 @@ int main(void)
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 #endif
 
-    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
-    
-
-    // Read interrupt setup.
-#if DMA_SOLUTION
     //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&__EXTI0_IRQHandler);
     //LPTIM_Config();
     // Disable LP3 timer.
@@ -1145,27 +731,38 @@ int main(void)
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     InitializeDmaChannels();
-#else 
-    GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+#else
+    //GPIO_InitTypeDef GPIO_InitStruct;
+    //GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    //HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+    //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+    //HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+    //GPIO_InitTypeDef GPIO_InitStruct;
+
+    //while (ALE_H_IS_LOW) {}
+    //daisy::System::tim_.Stop(); // Make sure to start this timer again when reading SD.
+//
+    //GPIO_InitTypeDef GPIO_InitStruct;
+    //GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_PULLUP, GP_SPEED, 0};
+    //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    //HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+    //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+    //HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitStruct = {(1<<12), GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+    
 #endif
 
 #if 0
-    // Setup GPIO
-    (uint32_t *)GPIOA;
-    (uint32_t *)GPIOB;
-    (uint32_t *)GPIOC;
-    (uint32_t *)GPIOD;
-    (uint32_t *)GPIOE;
-    (uint32_t *)GPIOF;
-    (uint32_t *)GPIOG;
-
     constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA
     constexpr Pin D24 = Pin(PORTA, 1); // AD1
-    constexpr Pin D28 = Pin(PORTA, 2); // AD2
+    constexpr Pin D28 = Pin(PORTA, 2); // AD2  // Could be used for DMA
     constexpr Pin D16 = Pin(PORTA, 3); // AD3
     constexpr Pin D23 = Pin(PORTA, 4); // AD4
     constexpr Pin D22 = Pin(PORTA, 5); // AD5
@@ -1211,94 +808,8 @@ int main(void)
             PC8     ------> SDMMC1_D0 */
 #endif
 
+ 
 #if 0
-    typedef struct
-    {
-      __IO uint32_t MODER;    /*!< GPIO port mode register,               Address offset: 0x00      */
-      __IO uint32_t OTYPER;   /*!< GPIO port output type register,        Address offset: 0x04      */
-      __IO uint32_t OSPEEDR;  /*!< GPIO port output speed register,       Address offset: 0x08      */
-      __IO uint32_t PUPDR;    /*!< GPIO port pull-up/pull-down register,  Address offset: 0x0C      */
-      __IO uint32_t IDR;      /*!< GPIO port input data register,         Address offset: 0x10      */
-      __IO uint32_t ODR;      /*!< GPIO port output data register,        Address offset: 0x14      */
-      __IO uint32_t BSRR;     /*!< GPIO port bit set/reset,               Address offset: 0x18      */
-      __IO uint32_t LCKR;     /*!< GPIO port configuration lock register, Address offset: 0x1C      */
-      __IO uint32_t AFR[2];   /*!< GPIO alternate function registers,     Address offset: 0x20-0x24 */
-    } GPIO_TypeDef;
-    
-    /** @defgroup GPIO_speed_define  GPIO speed define
-      * @brief GPIO Output Maximum frequency
-      * @{
-      */
-    #define  GPIO_SPEED_FREQ_LOW         (0x00000000U)  /*!< Low speed     */
-    #define  GPIO_SPEED_FREQ_MEDIUM      (0x00000001U)  /*!< Medium speed  */
-    #define  GPIO_SPEED_FREQ_HIGH        (0x00000002U)  /*!< Fast speed    */
-    #define  GPIO_SPEED_FREQ_VERY_HIGH   (0x00000003U)  /*!< High speed    */
-
-    /** @defgroup GPIO_pull_define  GPIO pull define
-      * @brief GPIO Pull-Up or Pull-Down Activation
-      * @{
-      */
-    #define  GPIO_NOPULL        (0x00000000U)   /*!< No Pull-up or Pull-down activation  */
-    #define  GPIO_PULLUP        (0x00000001U)   /*!< Pull-up activation                  */
-    #define  GPIO_PULLDOWN      (0x00000002U)   /*!< Pull-down activation                */
-
-    typedef struct {
-      uint32_t Pin;       /*!< Specifies the GPIO pins to be configured.
-                               This parameter can be any value of @ref GPIO_pins_define */
-      uint32_t Mode;      /*!< Specifies the operating mode for the selected pins.
-                               This parameter can be a value of @ref GPIO_mode_define */
-      uint32_t Pull;      /*!< Specifies the Pull-up or Pull-Down activation for the selected pins.
-                               This parameter can be a value of @ref GPIO_pull_define */
-      uint32_t Speed;     /*!< Specifies the speed for the selected pins.
-                               This parameter can be a value of @ref GPIO_speed_define */
-      uint32_t Alternate;  /*!< Peripheral to be connected to the selected pins.
-                                This parameter can be a value of @ref GPIO_Alternate_function_selection */
-    } GPIO_InitTypeDef;
-
-
-
-    cic_init();
-
-    volatile uint32_t Address = 0;
-    volatile uint32_t ReadOffset = 0;
-    volatile uint32_t ALE_L_prev = 0;
-    volatile uint32_t ALE_H_prev = 0;
-    volatile uint32_t READ_INT_prev = 0;
-    SwitchAdInterfaceDirection(AD_IN);
-#endif
-
-    // Setup timer debug output.
-    //GPIO_InitStruct = {(1 << 1), GPIO_MODE_AF_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM3};
-    //GPIO_InitStruct = {(1 << 1), GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    //HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    //GPIOA->ODR = 2;
-
-    //GPIO_InitStruct = {(1 << 1), GPIO_MODE_AF_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM3};
-    //HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    //while(1) {
-    //    uint32_t PortCValue = GPIOC->IDR;
-    //    uint32_t ALE_H = (PortCValue & (1 << 1));
-    //    uint32_t ALE_H_prev;
-    //    if ((ALE_H != ALE_H_prev) && (ALE_H == 0)) {
-    //        GPIOA->BSRR |= 1;
-    //        GPIOA->BSRR |= 1 << 16;
-    //    }
-//
-    //    ALE_H_prev = ALE_H;
-    //}
-    //SwitchAdInterfaceDirection(AD_OUT);
-    //while (1) {
-    //    //uint32_t Value = 0;
-    //    GPIOA->ODR = 0xFF;
-    //    //GPIOB->ODR = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-    //    //Value = 0xFFFF;
-    //    GPIOA->ODR = 0;
-    //    //GPIOB->ODR = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-    //}
-
-    daisy::System::tim_.Stop(); // Make sure to start this timer again when reading SD.
-
     //Hack first read
     HighB = 0x100;
     HighA = 0x00;
@@ -1309,14 +820,53 @@ int main(void)
 
     while (ALE_L_IS_LOW) {} // Wait for ALE_L HIGH
     while (ALE_H_IS_HIGH) {} // Wait for ALE_H LOW
-    GPIOA->MODER |= 0x00005555;
-    GPIOB->MODER |= 0x50055500;
+
+    while (READ_IS_HIGH) {}
+    GPIOA->MODER = 0xABFF5555;
+    GPIOB->MODER = 0x5CB555B3;
+
+start_word1:
+
+    // Output the half word.
+    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
+    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
+    GPIOA->ODR = (Value & 0xFF);
+    GPIOB->ODR = OutB;
+    ReadOffset += 2;
+    if ((ReadOffset & 3) == 0) {
+        //if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress < (N64_ROM_BASE + (64 * 1024 * 1024)))) {
+            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + ReadOffset));
+        //}
+    }
+
+    //GPIOA->MODER &= 0xFFFF0008;
+    LogBuffer[ReadCount] = ADInputAddress;
+    ReadCount += 1;
+
+
+    if (ReadOffset == 512) {
+        ReadOffset = 0;
+    }
+
+    // Wait for READ high and set the mode.
+    //while ((GPIOC->IDR & 1) == 0) {}
+    //GPIOA->MODER &= 0xFFFF0000;
+    //GPIOB->MODER &= 0x0FF000FF;
+    
+    if ((ReadOffset & 3) != 0) {
+        volatile uint32_t wait = 40*10;
+        while (wait--) {}
+        goto start_word1;
+    }
+
+    while (((GPIOC->IDR & (READ_LINE)) == 0)) {}
+    GPIOA->MODER = 0xABFF0000;
+    GPIOB->MODER = 0x0CB000B3;
 
     // Interrupt should happen here.
     // Wait for ALE_H high.
     while (ALE_H_IS_LOW) {}
-    GPIOA->MODER &= 0xFFFF0000;
-    GPIOB->MODER &= 0x0FF000FF;
+#endif
     //PortAPins = {0x01, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     //HAL_GPIO_Init(GPIOA, &PortAPins);
 #if DMA_SOLUTION
@@ -1325,117 +875,5 @@ int main(void)
     }
 #else
     RunN64PI();
-#endif    
-
-#if 0
-    uint32_t ReadTemp = 0;
-    volatile uint32_t PortAPrev = 0;
-    volatile uint32_t PortBPrev = 0;
-    volatile uint32_t PortAPrev2 = 0;
-    volatile uint32_t PortBPrev2 = 0;
-    // Main loop for N64 interface
-    while (1) {
-        // Read GPIO
-        uint32_t PIValue;
-        uint32_t PortAValue = GPIOA->IDR;
-        uint32_t PortBValue = GPIOB->IDR;
-        uint32_t PortCValue = GPIOC->IDR;
-
-        // Handle CIC -- disable for now. Should be handled by the pico.
-        //cic_run();
-
-        // Check RD WR ALE_L ALE_H -- 
-        uint32_t READ_INT = (PortBValue & (1 << 1));
-        uint32_t ALE_L = (PortBValue & (1 << 12));
-        uint32_t ALE_H = (PortCValue & (1 << 1));
-
-        // DMA1, DMA2 DMAMUX, MDMA, BDMA
-#if 0
-        if (((ALE_L != ALE_L_prev) && (ALE_L != 0)) || 
-            ((ALE_H != ALE_H_prev) && (ALE_H != 0))) {
-
-            // Set AD ports to input.
-            if (AdInterfaceDirection != AD_IN) {
-                SwitchAdInterfaceDirection(AD_IN);
-            }
-        }
-#endif
-
-        // ALE_L set 
-        if ((ALE_L != ALE_L_prev) && (ALE_L == 0)) {
-            PIValue = (PortAPrev2 & 0xFF) | ((PortBValue & 0x03F0) << 4) | (PortBValue & 0xC000);
-            Address = (Address & 0xFFFF0000) | (0x0000FFFF & PIValue);
-            ReadOffset = 0;
-
-            // Prefetch.
-            if ((Address < N64_ROM_BASE) || (Address > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-                ReadTemp = 0;
-                if (Address == 0) {
-                    GPIOC->BSRR = (0x1 << 7);
-                }
-            } else {
-                ReadTemp = *((uint32_t*)(ram + (Address - N64_ROM_BASE) + ReadOffset));
-            }
-
-            if (Address == N64_ROM_BASE) {
-                ReadTemp = 0x20408037;
-            }
-        }
-
-        if ((ALE_H != ALE_H_prev) && (ALE_H == 0)) {
-            PIValue = (PortAPrev2 & 0xFF) | ((PortBPrev2 & 0x03F0) << 4) | (PortBPrev2 & 0xC000);
-            Address = (Address & 0x0000FFFF) | ((0x0000FFFF & PIValue) << 16);
-            ReadOffset = 0;
-
-            // Prefetch.
-            if ((Address < N64_ROM_BASE) || (Address > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-                ReadTemp = 0;
-                if (Address == 0) {
-                    GPIOC->BSRR = (0x1 << 7);
-                }
-            } else {
-                ReadTemp = *((uint32_t*)(ram + (Address - N64_ROM_BASE) + ReadOffset));
-            }
-        }
-
-        // Prefetch on rising edge of READ line.
-        if ((READ_INT != READ_INT_prev) && (READ_INT != 0)) {
-            if ((ReadOffset % 4) == 0) {
-                if ((Address < N64_ROM_BASE) || (Address > (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-                    ReadTemp = 0;
-                } else {
-                    ReadTemp = *((uint32_t*)(ram + (Address - N64_ROM_BASE) + ReadOffset));
-                }
-            }
-        }
-
-        if ((READ_INT != READ_INT_prev) && (READ_INT == 0)) {
-            // Check if AD direction needs to switch.
-            if (AdInterfaceDirection != AD_OUT) {
-                SwitchAdInterfaceDirection(AD_OUT);
-            }
-
-            // Output AD.
-            const uint32_t Value = (((ReadOffset & 2) != 0) ? ReadTemp : (ReadTemp >> 16));
-            GPIOA->ODR = (Value & 0xFF);
-            GPIOB->ODR = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-            ReadOffset += 2;
-        }
-
-        // EXTI0_IRQn; // Read interrupt.
-        // EXTI1_IRQn; // ALE_L interrupt.
-        // EXTI2_IRQn; // ALE_H interrupt.
-        // EXTI3_IRQn; // Write interrupt.
-        // EXTI4_IRQn; // CiC interrupt.
-        // EXTI9_5_IRQn;
-
-        ALE_L_prev = ALE_L;
-        ALE_H_prev = ALE_H;
-        READ_INT_prev = READ_INT;
-        PortAPrev2 = PortAPrev;
-        PortBPrev2 = PortBPrev; 
-        PortAPrev = PortAValue;
-        PortBPrev = PortBValue;
-    }
 #endif
 }
