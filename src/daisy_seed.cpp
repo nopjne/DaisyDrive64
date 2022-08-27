@@ -116,8 +116,8 @@ void DaisySeed::Init(bool boost)
 
     system.Init(syscfg);
 
-    if(memory != System::MemoryRegion::QSPI)
-        qspi.Init(qspi_config);
+    //if(memory != System::MemoryRegion::QSPI)
+    //    qspi.Init(qspi_config);
 
     if(memory == System::MemoryRegion::INTERNAL_FLASH)
     {
@@ -126,9 +126,9 @@ void DaisySeed::Init(bool boost)
         sdram_handle.Init();
     }
 
-    ConfigureAudio();
+    //ConfigureAudio();
 
-    callback_rate_ = AudioSampleRate() / AudioBlockSize();
+    //callback_rate_ = AudioSampleRate() / AudioBlockSize();
     // Due to the added 16kB+ of flash usage,
     // and the fact that certain breakouts use
     // both; USB won't be initialized by the
