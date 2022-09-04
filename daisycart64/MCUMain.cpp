@@ -33,6 +33,12 @@ unsigned char rawData[16] =
 //#define MENU_ROM_FILE_NAME "menu.z64"
 #define MENU_ROM_FILE_NAME "Super Mario 64 (USA).n64"
 //#define MENU_ROM_FILE_NAME "Resident Evil 2 (USA).n64"
+//#define MENU_ROM_FILE_NAME "Mario Tennis (USA).n64"
+//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (Debug Version).n64"
+//#define MENU_ROM_FILE_NAME "Killer Instinct Gold (USA).n64"
+//#define MENU_ROM_FILE_NAME "Mortal Kombat Trilogy (USA).n64"
+//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Majora's Mask (USA).n64"
+//#define MENU_ROM_FILE_NAME "Mario Kart 64 (USA).n64"
 
 #define N64_ROM_BASE 0x10000000
 using namespace daisy;
@@ -40,7 +46,8 @@ BYTE *Sram4Buffer = (BYTE*)0x38000000;
 int8_t *ram = (int8_t *)0xC0000000;
 uint32_t *LogBuffer = (uint32_t*)(ram + (8*1024*1024));
 uint32_t *PortABuffer = (uint32_t*)Sram4Buffer;
-uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 8);
+uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
+uint32_t MaxSize = 0;
 
 static DaisySeed hw;
 
@@ -58,7 +65,7 @@ void BlinkAndDie(int wait1, int wait2)
     }
 }
 
-#define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
+#define GP_SPEED GPIO_SPEED_FREQ_LOW
 volatile uint32_t ADInputAddress = 0;
 volatile uint32_t PrefetchRead = 0;
 volatile uint32_t ReadOffset = 0;
@@ -221,6 +228,7 @@ static void Error_Handler(void)
 #define ALE_L (1 << 0)
 #define READ_LINE (1 << 1)
 #define ALE_H (1 << 11)
+#define RESET_LINE (1 << 12)
 
 #define ALE_H_IS_HIGH ((GPIOD->IDR & ALE_H) != 0)
 #define ALE_H_IS_LOW ((GPIOD->IDR & ALE_H) == 0)
@@ -237,26 +245,54 @@ typedef struct
 const uint32_t StreamBaseAddress = (0x58025400UL);
 
 volatile uint32_t DMACount = 0;
-
+volatile uint32_t ALE_H_Count = 0;
+volatile uint32_t IntCount = 0;
+volatile bool Running = false;
 extern "C" void EXTI15_10_IRQHandler(void)
 {
+    if ((EXTI->PR1 & RESET_LINE) != 0) {
+        // RESET
+        EXTI->PR1 = RESET_LINE;
+        // Switch to output.
+        GPIOA->MODER = 0xABFF5555;
+        GPIOB->MODER = 0x5CB555B3;
+        GPIOA->ODR = 0;
+        GPIOB->ODR = 0;
+        GPIOB->MODER = 0x0CB000B3;
+        GPIOA->MODER = 0xABFF0000;
+        DMACount = 0;
+        IntCount = 0;
+        ALE_H_Count = 0;
+        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        Running = false;
+        return;
+    }
+
+    if ((EXTI->PR1 & 0x800) == 0) {
+        return;
+    }
+
     EXTI->PR1 = 0x00000800;
-    GPIOA->MODER = 0xABFF0000;
     GPIOB->MODER = 0x0CB000B3;
+    GPIOA->MODER = 0xABFF0000;
+    ALE_H_Count += 1;
 }
 
-volatile uint32_t IntCount = 0;
 extern "C" void EXTI1_IRQHandler(void)
 {
     EXTI->PR1 = 0x00000002;
     if ((ReadOffset & 2) == 0) {
-        LogBuffer[IntCount] = ADInputAddress | (ReadOffset & 511);
+        LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
     } else {
         LogBuffer[IntCount] = PrefetchRead;
     }
 
     if ((ReadOffset & 3) == 0) {
-        PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
+        if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + MaxSize))) {
+            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
+        } else {
+            PrefetchRead = 0;
+        }
         // Switch to output.
         GPIOA->MODER = 0xABFF5555;
         GPIOB->MODER = 0x5CB555B3;
@@ -271,22 +307,55 @@ extern "C" void EXTI1_IRQHandler(void)
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
 
-    if (ReadOffset == 512) {
-        volatile uint32_t x = 33;
+    ReadOffset += 2;
+    IntCount += 1;
+
+    if ((ReadOffset % 4) == 0) {
+        //volatile uint32_t x = 268; // Calculated to offset to ~3964ns.
+        //volatile uint32_t x = 265; // Calculated to offset to ~3964ns.
+        volatile uint32_t x = 195; // Calculated to offset to ~3964ns.
         while (x) { x--; }
+        // GPIOA->ODR = 0xFF;
+        // GPIOB->ODR = 0xFFFF;
+        GPIOA->ODR = 0x00;
+        GPIOB->ODR = 0x0000;
         GPIOA->MODER = 0xABFF0000;
         GPIOB->MODER = 0x0CB000B3;
     }
 
-    ReadOffset += 2;
-    IntCount += 1;
+    if (IntCount > 2) {
+        IntCount = 0;
+    }
+    // if (IntCount == 565966) {
+    //     LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
+    //     volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
+    //     x += 1;
+    // }
 }
 
 extern "C" void BDMA_Channel1_IRQHandler(void)
 {
+    if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
+        return;
+    }
+
+    if ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x70) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x77) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x75)) {
+        LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
+        volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
+        x += 1;
+    }
+
     ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
     const uint32_t DoOp = (DMACount += 1);
     if ((DoOp & 1) == 0) {
+        //GPIOA->MODER = 0xABFF5555;
+        //GPIOB->MODER = 0x5CB555B3;
+        //GPIOA->ODR = 0xFF;
+        //GPIOB->ODR = 0xFFFF;
+        //GPIOA->ODR = 0x00;
+        //GPIOB->ODR = 0x0000;
+        //GPIOA->MODER = 0xABFF0000;
+        //GPIOB->MODER = 0x0CB000B3;
         SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
@@ -298,9 +367,27 @@ extern "C" void BDMA_Channel1_IRQHandler(void)
 
 extern "C" void BDMA_Channel0_IRQHandler(void)
 {
+    if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
+        return;
+    }
+
+    if ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x70) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x77) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x57)) {
+        LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
+        volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
+        x += 1;
+    }
+
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
     const uint32_t DoOp = (DMACount += 1);
     if ((DoOp & 1) == 0) {
+        //GPIOA->MODER = 0xABFF5555;
+        //GPIOB->MODER = 0x5CB555B3;
+        //GPIOA->ODR = 0xFF;
+        //GPIOB->ODR = 0xFFFF;
+        //GPIOA->ODR = 0x00;
+        //GPIOB->ODR = 0x0000;
+        //GPIOA->MODER = 0xABFF0000;
+        //GPIOB->MODER = 0x0CB000B3;
         SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
@@ -310,12 +397,41 @@ extern "C" void BDMA_Channel0_IRQHandler(void)
     }
 }
 
+void InitializeInterrupts(void)
+{
+    // Disable systick interrupts. (Needs to be re-enabled for SDCard reads)
+    InitializeDmaChannels();
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+    // ALEH interrupt setup. -- 
+    // This interrupt is used to indicate that ALE_H high, and the mode needs to switch to input.
+    GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
+    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
+    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
+    GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+    // Reset line setup
+    GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
 int main(void)
 {
     size_t bytesread = 0;
 
     // Init hardware
-    hw.Init(true);
+    hw.Init(false);
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -370,7 +486,7 @@ int main(void)
             }
         }
 
-        // Open and write the test file to the SD Card. Needed when supporting write.
+        // Open a save file for the opened rom needed when supporting write for both sdata and write line.
         //if(f_open(&SDFile, MENU_ROM_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
         //    f_write(&SDFile, outbuff, len, &byteswritten);
         //    f_close(&SDFile);
@@ -393,6 +509,7 @@ int main(void)
             if (bytesread != FileInfo.fsize) {
                 BlinkAndDie(500, 500);
             }
+            MaxSize = bytesread;
             //memset(ram, 0xFF, FileInfo.fsize);
         } else {
             BlinkAndDie(100, 100);
@@ -404,39 +521,14 @@ int main(void)
     // Patch speed.
     memcpy(ram, rawData, 16);
 
-    // Read interrupt setup.
+    // Output complete timer setup. This timer needs to be setup to hit at the end of second read interrupt.
+    // This timer allows the interrupt to complete instead of hogging up the CM7, the completion time needs to be calculated based on the speed value set in the rom.
     //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&__EXTI0_IRQHandler);
     //LPTIM_Config();
     // Disable LP3 timer.
     //DISABLE_LP3_TIMER();
 
-    // Wait for reset line high.
-    while ((GPIOB->IDR & (1 << 12)) == 0) { }
-    System::Delay(2);
-    while ((GPIOB->IDR & (1 << 12)) == 0) { }
 
-    // Disable systick interrupts. (Needs to be re-enabled for SDCard reads)
-    SysTick->CTRL = 0;
-    InitializeDmaChannels();
-
-    GPIO_InitTypeDef GPIO_InitStruct;
-    // ALEH interrupt setup. -- 
-    // This interrupt is used to indicate that ALE_H high, and the mode needs to switch to input.
-    GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
-    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-
-    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
-    GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-    GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
 #if 0
     constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA
@@ -455,12 +547,12 @@ int main(void)
     constexpr Pin D14 = Pin(PORTB, 7); // AD11
     constexpr Pin D11 = Pin(PORTB, 8); // AD12
     constexpr Pin D12 = Pin(PORTB, 9); // AD13
-    constexpr Pin D0  = Pin(PORTB, 12); // N.C
+    constexpr Pin D0  = Pin(PORTB, 12); // Reset signal.
     constexpr Pin D29 = Pin(PORTB, 14); // AD14
     constexpr Pin D30 = Pin(PORTB, 15); // AD15
 
-    constexpr Pin D15 = Pin(PORTC, 0); // ALE_L -- // Read  // Could be used for DMA
-    constexpr Pin D20 = Pin(PORTC, 1); // Read -- N.C -- Cold reset needs to be hooked up..
+    constexpr Pin D15 = Pin(PORTC, 0); // ALE_L
+    constexpr Pin D20 = Pin(PORTC, 1); // Read
     constexpr Pin D21 = Pin(PORTC, 4); // S-DATA
     constexpr Pin D4  = Pin(PORTC, 8); // SD card D0
     constexpr Pin D3  = Pin(PORTC, 9); // SD card D1
@@ -487,10 +579,18 @@ int main(void)
             PC8     ------> SDMMC1_D0 */
 #endif
 
- 
+    volatile uint32_t TimerCtrl = SysTick->CTRL;
     memset(Sram4Buffer, 0, 64*4);
     SCB_CleanInvalidateDCache();
     while(1) {
-
+        // Wait for reset line high.
+        while ((GPIOB->IDR & RESET_LINE) == 0) { }
+        SysTick->CTRL = TimerCtrl;
+        System::Delay(2);
+        while ((GPIOB->IDR & RESET_LINE) == 0) { }
+        SysTick->CTRL = 0;
+        InitializeInterrupts();
+        Running = true;
+        while(Running != false) {}
     }
 }
