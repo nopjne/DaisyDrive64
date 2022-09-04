@@ -521,9 +521,6 @@ extern "C" void EXTI1_IRQHandler(void)
     IntCount += 1;
 }
 
-uint32_t SaveA[512];
-uint32_t SaveB[512];
-volatile int a = 0;
 extern "C" void BDMA_Channel1_IRQHandler(void)
 {
     ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
@@ -549,189 +546,6 @@ extern "C" void BDMA_Channel0_IRQHandler(void)
                        (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
 
         ReadOffset = 0;
-    }
-}
-
-volatile uint32_t OutCount = 0;
-//extern "C" void EXTI1_IRQHandler(void)
-//{
-//    // FUCK THIS INTERRUPT!
-//    //EXTI->PR1 = 0x00001000;
-//    EXTI->PR1 = 0x00000002;
-//    __DSB();
-//    IntCount += 1;
-//}
-
-extern "C" void EXTI1_IRQHandler_wut(void)
-{
-    // Clear Pending interrupt bit
-    EXTI->PR1 = 2;
-
-    GPIOA->MODER = 0xABFF5555;
-    GPIOB->MODER = 0x5CB555B3;
-
-    // Output the half word.
-    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
-    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-    GPIOA->ODR = (Value & 0xFF);
-    GPIOB->ODR = OutB;
-    ReadOffset += 2;
-    if ((ReadOffset & 3) == 0) {
-        //if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress < (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + ReadOffset));
-        //}
-    }
-
-    //GPIOA->MODER &= 0xFFFF0008;
-    if (ReadCount < (500000)) {
-        LogBuffer[ReadCount] = ADInputAddress;
-        ReadCount += 1;
-    }
-
-
-    if (ReadOffset == 512) {
-        ReadOffset = 0;
-    }
-    // Wait for READ high and set the mode.
-    //while ((GPIOC->IDR & 1) == 0) {}
-    //GPIOA->MODER &= 0xFFFF0000;
-    //GPIOB->MODER &= 0x0FF000FF;
-    
-    while (((GPIOC->IDR & (READ_LINE | ALE_L)) == 0)) {}
-    __DSB();
-    GPIOA->MODER = 0xABFF0000;
-    GPIOB->MODER = 0x0CB000B3;
-    //GPIOC->BSRR = 2 << 16;
-    //}
-}
-#endif
-
-void RunN64PI(void)
-{
-    __disable_irq();
-    while (ALE_H_IS_LOW) {}
-    IntCount = OutCount;
-    EXTI->PR1 = 2;
-    //DMACount = reads;
-    while (1) {
-        // Wait for ALE_L high. (spin while ALE_L low)
-        while (ALE_L_IS_LOW) {
-            //if (IntCount != OutCount) {
-            //    goto outputNow;
-            //}
-            if ((EXTI->PR1 & 2) != 0) {
-                EXTI->PR1 = 2;
-                goto outputNow;
-            }
-        }
-
-        //__disable_irq();
-        // Read the high part of the address on ALE_L rising.
-        HighB = GPIOB->IDR;
-        HighA = GPIOA->IDR;
-        //GPIOC->BSRR = 2;
-        //uint32_t PIValue = (GPIOA->IDR & 0xFF) | ((NowB & 0x03F0) << 4) | (NowB & 0xC000);
-        //ADInputAddress = (ADInputAddress & 0x0000FFFF) | ((0x0000FFFF & PIValue) << 16);
-
-        // This can be avoided if the downward edge of ALE_L is caught.
-        // Allthough Still need to wait on ALE_H-High.
-        //while(DMACount == reads) {}
-
-        // Wait for ALE_H to drop. Spin while ALE_H is high.
-        while (ALE_H_IS_HIGH) {}
-        LowB = GPIOB->IDR;
-        LowA = GPIOA->IDR;
-        //__enable_irq();
-        //B[1] = GPIOB->IDR;
-        //A[1] = GPIOA->IDR;
-        //__DSB();
-        //reads += 2;
-        //ADInputAddress = (A[1] & 0xFF) | ((B[1] & 0x03F0) << 4) | (B[1] & 0xC000) |
-        //                 (((A[0] & 0xFF) | ((B[0] & 0x03F0) << 4) | (B[0] & 0xC000)) << 16);
-
-        //GPIOC->BSRR = 2 << 16;
-        //PIValue = (GPIOA->IDR & 0xFF) | ((NowB & 0x03F0) << 4) | (NowB & 0xC000);
-        // Read the low part of the address.
-        ADInputAddress = (LowA & 0xFF) | ((LowB & 0x03F0) << 4) | (LowB & 0xC000) |
-                         (((HighA & 0xFF) | ((HighB & 0x03F0) << 4) | (HighB & 0xC000)) << 16);
-        //if ((ADInputAddress & 0xFFFF) == ((ADInputAddress >> 16) & 0xFFFF)) {
-        //    ADInputAddress = (LogBuffer[ReadCount - 1] & 0xFFFF0000) | (ADInputAddress & 0xFFFF);
-        //}
-        //if ((ADInputAddress >= N64_ROM_BASE) && ((ADInputAddress - N64_ROM_BASE) < (64 * 1024 * 1024))) {
-            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-        //}
-
-        
-        ReadOffset = 0;
-        //while (IntCount == OutCount) {}
-        
-        while ((EXTI->PR1 & 2) == 0) {}
-        EXTI->PR1 = 2;
-outputNow:
-        
-
-        GPIOA->MODER = 0xABFF5555;
-        //GPIOB->MODER = 0x5CF555B3;
-        GPIOB->MODER = 0x5CB555B3;
-        while (1) {
-            // Output the half word.
-            uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
-            uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-
-            GPIOA->ODR = (Value & 0xFF);
-            GPIOB->ODR = OutB;
-            //if ((ReadOffset & 2) == 0) {
-            //    LogBuffer[ReadCount] = ADInputAddress | (ReadOffset & 511);
-
-//            } else {
- //               LogBuffer[ReadCount] = PrefetchRead;
-  //          }
-
-            ReadOffset += 2;
-            if ((ReadOffset & 3) == 0) {
-                PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
-            }
-
-            OutCount += 1;
-            //if (ReadCount < ((8*1024*1024) / 4)) {
-            //    ReadCount += 1;
-            //}
-
-            
-            if ((ReadOffset & 2) != 0) {
-                //while (IntCount == OutCount) {}
-                while ((EXTI->PR1 & 2) == 0) {}
-                EXTI->PR1 = 2;
-                continue;
-            }
-
-            //while(DMACount != reads) {
-            //    // Something bad happened, we got a read interrupt before being able to set the mode correctly.
-            //    GPIOC->BSRR = (1 << 7);
-            //}
-
-            // Wait for READ high and set the mode.
-            while (READ_IS_LOW) {
-                if ((EXTI->PR1 & 2) != 0) {
-                    break;
-                }
-                //if (IntCount != OutCount) {
-                //    break;
-                    //continue;
-                //}
-            }
-
-            if ((EXTI->PR1 & 2) != 0) {
-                EXTI->PR1 = 2;
-                continue;
-            }
-
-            break;
-        }
-
-        GPIOA->MODER = 0xABFF0000;
-        //GPIOB->MODER = 0x0CF000B3;
-        GPIOB->MODER = 0x0CB000B3;
     }
 }
 
@@ -826,88 +640,36 @@ int main(void)
     // No led on on success.
     GPIOC->BSRR = (0x1 << 7) << 16;
 
-    // Patch
+    // Patch speed.
     memcpy(ram, rawData, 16);
-    
-
-
-    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
-    
 
     // Read interrupt setup.
-#ifdef DMA_SOLUTION
-    GPIO_InitTypeDef GPIO_InitStruct;
-#if 0 // Do not enable ALE interrupts.
-GPIOA->MODER = 0xABFF5555;
-    // ALEH interrupt setup. -- 
-    // This interrupt is used only to indicate that ALE_H has fallen during ALE_L high and that the High oder WORD needs to be updated.
-    GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-#endif
-
     //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&__EXTI0_IRQHandler);
     //LPTIM_Config();
     // Disable LP3 timer.
     //DISABLE_LP3_TIMER();
-    //InitializeDmaChannels();
 
-    GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-    NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
-    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-    
-    GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
-    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-
-    
-#else
     // Wait for reset line high.
     while ((GPIOB->IDR & (1 << 12)) == 0) { }
     System::Delay(2);
     while ((GPIOB->IDR & (1 << 12)) == 0) { }
 
+    // Disable systick interrupts. (Needs to be re-enabled for SDCard reads)
     SysTick->CTRL = 0;
     InitializeDmaChannels();
-    //GPIO_InitTypeDef GPIO_InitStruct;
-    //GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    //HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-    //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-    //HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-    //GPIO_InitTypeDef GPIO_InitStruct;
-
-    //while (ALE_H_IS_LOW) {}
-    //daisy::System::tim_.Stop(); // Make sure to start this timer again when reading SD.
-//
-    //GPIO_InitTypeDef GPIO_InitStruct;
-    //GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_PULLUP, GP_SPEED, 0};
-    //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    //HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-    //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-    //HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     GPIO_InitTypeDef GPIO_InitStruct;
     // ALEH interrupt setup. -- 
-    // This interrupt is used only to indicate that ALE_H has fallen during ALE_L high and that the High oder WORD needs to be updated.
+    // This interrupt is used to indicate that ALE_H high, and the mode needs to switch to input.
     GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
-    
+    // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
     GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    //HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-    //NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
-    //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -967,76 +729,9 @@ GPIOA->MODER = 0xABFF5555;
 #endif
 
  
-#if 0
-    //Hack first read
-    HighB = 0x100;
-    HighA = 0x00;
-    LowB = 0x0000;
-    LowA = 0x00;
-    ADInputAddress = N64_ROM_BASE;
-    PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-
-    while (ALE_L_IS_LOW) {} // Wait for ALE_L HIGH
-    while (ALE_H_IS_HIGH) {} // Wait for ALE_H LOW
-
-    while (READ_IS_HIGH) {}
-    GPIOA->MODER = 0xABFF5555;
-    GPIOB->MODER = 0x5CB555B3;
-
-start_word1:
-
-    // Output the half word.
-    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
-    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-    GPIOA->ODR = (Value & 0xFF);
-    GPIOB->ODR = OutB;
-    ReadOffset += 2;
-    if ((ReadOffset & 3) == 0) {
-        //if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress < (N64_ROM_BASE + (64 * 1024 * 1024)))) {
-            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + ReadOffset));
-        //}
-    }
-
-    //GPIOA->MODER &= 0xFFFF0008;
-    LogBuffer[ReadCount] = ADInputAddress;
-    ReadCount += 1;
-
-
-    if (ReadOffset == 512) {
-        ReadOffset = 0;
-    }
-
-    // Wait for READ high and set the mode.
-    //while ((GPIOC->IDR & 1) == 0) {}
-    //GPIOA->MODER &= 0xFFFF0000;
-    //GPIOB->MODER &= 0x0FF000FF;
-    
-    if ((ReadOffset & 3) != 0) {
-        volatile uint32_t wait = 40*10;
-        while (wait--) {}
-        goto start_word1;
-    }
-
-    while (((GPIOC->IDR & (READ_LINE)) == 0)) {}
-    GPIOA->MODER = 0xABFF0000;
-    GPIOB->MODER = 0x0CB000B3;
-
-    // Interrupt should happen here.
-    // Wait for ALE_H high.
-    while (ALE_H_IS_LOW) {}
-#endif
-    //PortAPins = {0x01, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    //HAL_GPIO_Init(GPIOA, &PortAPins);
-#if DMA_SOLUTION
-    while (1) {
-        // Main loop of nothing.
-    }
-#else
-    //RunN64PI();
     memset(Sram4Buffer, 0, 64*4);
     SCB_CleanInvalidateDCache();
     while(1) {
 
     }
-#endif
 }
