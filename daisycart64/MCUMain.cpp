@@ -263,6 +263,9 @@ extern "C" void EXTI1_IRQHandler(void)
     }
 
     // Value can be DMA-ed directly from ram.
+    // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
+    // Then PortA needs to hold the lower-upper 2bits on 10 and 11. Needs 3 DMA channels to realize.
+    // And need soldering to USB_OTG_FS_ID and USB_OTG_FS_D_-
     uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
     uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
     GPIOA->ODR = Value;
@@ -434,8 +437,6 @@ int main(void)
     HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
     NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-    
-#endif
 
 #if 0
     constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA
