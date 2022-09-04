@@ -267,7 +267,8 @@ FPU = -mfpu=fpv5-d16
 FLOAT-ABI = -mfloat-abi=hard
 
 # mcu
-MCU = -mthumb $(FLOAT-ABI) $(FPU) $(CPU)
+#MCU = -mthumb -marm $(FLOAT-ABI) $(FPU) $(CPU)
+MCU = $(FLOAT-ABI) $(FPU) $(CPU)
 
 # macros for gcc
 # AS defines

@@ -12,6 +12,7 @@
 #endif
 
 __IO   uint32_t DMA_TransferErrorFlag = 0;
+
 DMA_HandleTypeDef DMA_Handle_Channel0;
 DMA_HandleTypeDef DMA_Handle_Channel1;
 
@@ -26,8 +27,8 @@ DMA_HandleTypeDef DMA_Handle_Channel1;
 unsigned char rawData[1281] =
 {
     //0x37, 0x80, 0x40, 0x12, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
-    0x37, 0x80, 0x40, 0x20, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
-    //0x37, 0x80, 0x40, 0xFF, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
+    //0x37, 0x80, 0x40, 0x20, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
+    0x37, 0x80, 0x40, 0xFF, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
     //1 0-7 8-16  2 0-7 8-16
     //0xFF, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, 
     0x5A, 0x63, 0xFF, 0x2B, 0x02, 0x8B, 0x26, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -123,7 +124,7 @@ BYTE *Sram4Buffer = (BYTE*)0x38000000;
 int8_t *ram = (int8_t *)0xC0000000;
 uint32_t *LogBuffer = (uint32_t*)(ram + (8*1024*1024));
 uint32_t *PortABuffer = (uint32_t*)Sram4Buffer;
-uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
+uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 8);
 
 static DaisySeed hw;
 
@@ -142,10 +143,11 @@ void BlinkAndDie(int wait1, int wait2)
 }
 
 #define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
-uint32_t ADInputAddress = 0;
-uint32_t PrefetchRead = 0;
-uint32_t ReadOffset = 0;
+volatile uint32_t ADInputAddress = 0;
+volatile uint32_t PrefetchRead = 0;
+volatile uint32_t ReadOffset = 0;
 uint32_t ReadCount = 0;
+//static void HalfTransferComplete(DMA_HandleTypeDef *hdma);
 static void HAL_TransferError(DMA_HandleTypeDef *hdma);
 static void Error_Handler(void);
 
@@ -164,8 +166,8 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel0.Init.Direction           = DMA_PERIPH_TO_MEMORY;
         DMA_Handle_Channel0.Init.PeriphInc           = DMA_PINC_DISABLE;
-        DMA_Handle_Channel0.Init.MemInc              = DMA_MINC_DISABLE;
-        DMA_Handle_Channel0.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        DMA_Handle_Channel0.Init.MemInc              = DMA_MINC_ENABLE;
+        DMA_Handle_Channel0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
         DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
@@ -186,6 +188,7 @@ int InitializeDmaChannels(void)
         if (dmares != HAL_OK) {
             Error_Handler();
         }
+
         dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel0, HAL_DMA_XFER_ERROR_CB_ID, HAL_TransferError);
         if (dmares != HAL_OK) {
             Error_Handler();
@@ -196,8 +199,8 @@ int InitializeDmaChannels(void)
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 
         /*##-3- Configure and enable the DMAMUX Request generator  ####################*/
-        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0; /* External request signal is LPTIM2 signal */
-        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;      /* External request signal edge is Rising  */
+        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
         dmamux_ReqGenParams.RequestNumber = 1;                          /* 1 requests on each edge of the external request signal  */
         //dmamux_ReqGenParams.RequestNumber = 2;                          /* 1 requests on each edge of the external request signal  */
 
@@ -215,8 +218,9 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel0, (uint32_t)&(GPIOA->IDR), (uint32_t)(Sram4Buffer), 4);
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel0, (uint32_t)&(GPIOB->IDR), (uint32_t)(PortBBuffer), 2);
         //dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel0, (uint32_t)(Sram4Buffer + 8), (uint32_t)&(GPIOA->ODR), 8);
+        //dmares = HAL_DMAEx_MultiBufferStart_IT(&DMA_Handle_Channel0, (uint32_t)&(GPIOA->IDR), (uint32_t)PortABuffer, (uint32_t)(PortABuffer+128), 32);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
@@ -229,8 +233,8 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel1.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel1.Init.Direction           = DMA_PERIPH_TO_MEMORY;
         DMA_Handle_Channel1.Init.PeriphInc           = DMA_PINC_DISABLE;
-        DMA_Handle_Channel1.Init.MemInc              = DMA_MINC_DISABLE;
-        DMA_Handle_Channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        DMA_Handle_Channel1.Init.MemInc              = DMA_MINC_ENABLE;
+        DMA_Handle_Channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
         DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
@@ -262,7 +266,7 @@ int InitializeDmaChannels(void)
 
         /*##-3- Configure and enable the DMAMUX Request generator  ####################*/
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
-        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
         dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel1, &dmamux_ReqGenParams);
@@ -279,7 +283,7 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        volatile uint32_t dmares1 = HAL_DMA_Start_IT(&DMA_Handle_Channel1, (uint32_t)&(GPIOB->IDR), (uint32_t)(PortBBuffer), 4);
+        volatile uint32_t dmares1 = HAL_DMA_Start_IT(&DMA_Handle_Channel1, (uint32_t)&(GPIOA->IDR), (uint32_t)(PortABuffer), 2);
         if (dmares1 != HAL_OK) {
             Error_Handler();
         }
@@ -292,6 +296,11 @@ static void HAL_TransferError(DMA_HandleTypeDef *hdma)
 {
   DMA_TransferErrorFlag = 1;
 }
+
+//static void HalfTransferComplete(DMA_HandleTypeDef *hdma)
+//{
+//    DMA_TransferErrorFlag = 1;
+//}
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -457,38 +466,101 @@ extern "C" void EXTI0_IRQHandler(void)
     
 }
 
+extern "C" void EXTI15_10_IRQHandler(void)
+{
+    EXTI->PR1 = 0x00000800;
+    GPIOA->MODER = 0xABFF0000;
+    GPIOB->MODER = 0x0CB000B3;
+}
+
+volatile uint32_t IntCount = 0;
+extern "C" void EXTI1_IRQHandler(void)
+{
+    EXTI->PR1 = 0x00000002;
+    // if ((ReadOffset & 3) == 0) {
+    //     __DSB();
+    //     GPIOA->MODER = 0xABFF0000;
+    //     GPIOB->MODER = 0x0CB000B3;
+    //     GPIOA->ODR = 0x00;
+    //     GPIOB->ODR = 0x0000;
+    //     __DSB();
+    // }
+
+    // Prepare output setting.
+    // Load the SRAM, This should be the outro of the DMA complete, to load the next 2byte.
+    //if ((IntCount & 1) == 0) {
+        if ((ReadOffset & 3) == 0) {
+            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
+            // Switch to output.
+            GPIOA->MODER = 0xABFF5555;
+            GPIOB->MODER = 0x5CB555B3;
+        }
+
+        // Value can be DMA-ed directly from ram.
+        uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
+        uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
+        GPIOA->ODR = Value;
+        GPIOB->ODR = OutB;
+
+        if ((ReadOffset & 2) == 0) {
+            LogBuffer[IntCount] = ADInputAddress | (ReadOffset & 511);
+        } else {
+            LogBuffer[IntCount] = PrefetchRead;
+        }
+
+        if (ReadOffset == 512) {
+            volatile uint32_t x = 33;
+            while (x) { x--; }
+            GPIOA->MODER = 0xABFF0000;
+            GPIOB->MODER = 0x0CB000B3;
+        }
+
+        ReadOffset += 2;
+    //}
+
+    IntCount += 1;
+}
+
 uint32_t SaveA[512];
 uint32_t SaveB[512];
 volatile int a = 0;
 extern "C" void BDMA_Channel1_IRQHandler(void)
 {
-    ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = (2 << 4);
-    //B[0] = *((uint32_t*)(Sram4Buffer + 16));
-    //A[0] = *Sram4Buffer;
-    DMACount1 += 1;
+    ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
+    const uint32_t DoOp = (DMACount += 1);
+    if ((DoOp & 1) == 0) {
+        SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
+        // Construct ADInputAddress
+        ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+                       (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
+
+        ReadOffset = 0;
+    }
 }
 
 extern "C" void BDMA_Channel0_IRQHandler(void)
 {
-    ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = (2 << 0);
-    //B[x & 1] = *((uint32_t*)(Sram4Buffer + 16));
-    //A[x & 1] = *Sram4Buffer;
-    B[0] = *((uint32_t*)(Sram4Buffer + 16));
-    A[0] = *Sram4Buffer;
-    //DMACount += 1;
-    DMACount += 1;
+    ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
+    const uint32_t DoOp = (DMACount += 1);
+    if ((DoOp & 1) == 0) {
+        SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
+        // Construct ADInputAddress
+        ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+                       (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
+
+        ReadOffset = 0;
+    }
 }
 
-volatile uint32_t IntCount = 0;
 volatile uint32_t OutCount = 0;
-extern "C" void EXTI1_IRQHandler(void)
-{
-    // FUCK THIS INTERRUPT!
-    //EXTI->PR1 = 0x00001000;
-    EXTI->PR1 = 0x00000002;
-    __DSB();
-    IntCount += 1;
-}
+//extern "C" void EXTI1_IRQHandler(void)
+//{
+//    // FUCK THIS INTERRUPT!
+//    //EXTI->PR1 = 0x00001000;
+//    EXTI->PR1 = 0x00000002;
+//    __DSB();
+//    IntCount += 1;
+//}
 
 extern "C" void EXTI1_IRQHandler_wut(void)
 {
@@ -536,17 +608,24 @@ extern "C" void EXTI1_IRQHandler_wut(void)
 
 void RunN64PI(void)
 {
+    __disable_irq();
     while (ALE_H_IS_LOW) {}
     IntCount = OutCount;
+    EXTI->PR1 = 2;
     //DMACount = reads;
     while (1) {
         // Wait for ALE_L high. (spin while ALE_L low)
         while (ALE_L_IS_LOW) {
-            if (IntCount != OutCount) {
+            //if (IntCount != OutCount) {
+            //    goto outputNow;
+            //}
+            if ((EXTI->PR1 & 2) != 0) {
+                EXTI->PR1 = 2;
                 goto outputNow;
             }
         }
 
+        //__disable_irq();
         // Read the high part of the address on ALE_L rising.
         HighB = GPIOB->IDR;
         HighA = GPIOA->IDR;
@@ -562,7 +641,7 @@ void RunN64PI(void)
         while (ALE_H_IS_HIGH) {}
         LowB = GPIOB->IDR;
         LowA = GPIOA->IDR;
-
+        //__enable_irq();
         //B[1] = GPIOB->IDR;
         //A[1] = GPIOA->IDR;
         //__DSB();
@@ -582,9 +661,15 @@ void RunN64PI(void)
             PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
         //}
 
+        
         ReadOffset = 0;
-        while (IntCount == OutCount) {}
+        //while (IntCount == OutCount) {}
+        
+        while ((EXTI->PR1 & 2) == 0) {}
+        EXTI->PR1 = 2;
 outputNow:
+        
+
         GPIOA->MODER = 0xABFF5555;
         //GPIOB->MODER = 0x5CF555B3;
         GPIOB->MODER = 0x5CB555B3;
@@ -595,25 +680,28 @@ outputNow:
 
             GPIOA->ODR = (Value & 0xFF);
             GPIOB->ODR = OutB;
-            if ((ReadOffset & 2) == 0) {
-                LogBuffer[ReadCount] = ADInputAddress | (ReadOffset & 511);
+            //if ((ReadOffset & 2) == 0) {
+            //    LogBuffer[ReadCount] = ADInputAddress | (ReadOffset & 511);
 
-            } else {
-                LogBuffer[ReadCount] = PrefetchRead;
-            }
+//            } else {
+ //               LogBuffer[ReadCount] = PrefetchRead;
+  //          }
 
             ReadOffset += 2;
             if ((ReadOffset & 3) == 0) {
                 PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
             }
 
-            if (ReadCount < ((8*1024*1024) / 4)) {
-                ReadCount += 1;
-            }
-
             OutCount += 1;
+            //if (ReadCount < ((8*1024*1024) / 4)) {
+            //    ReadCount += 1;
+            //}
+
+            
             if ((ReadOffset & 2) != 0) {
-                while (IntCount == OutCount) {}
+                //while (IntCount == OutCount) {}
+                while ((EXTI->PR1 & 2) == 0) {}
+                EXTI->PR1 = 2;
                 continue;
             }
 
@@ -624,10 +712,20 @@ outputNow:
 
             // Wait for READ high and set the mode.
             while (READ_IS_LOW) {
-                if (IntCount != OutCount) {
-                    continue;
+                if ((EXTI->PR1 & 2) != 0) {
+                    break;
                 }
+                //if (IntCount != OutCount) {
+                //    break;
+                    //continue;
+                //}
             }
+
+            if ((EXTI->PR1 & 2) != 0) {
+                EXTI->PR1 = 2;
+                continue;
+            }
+
             break;
         }
 
@@ -730,7 +828,7 @@ int main(void)
 
     // Patch
     memcpy(ram, rawData, 16);
-    SysTick->CTRL = 0;
+    
 
 
     // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
@@ -740,6 +838,7 @@ int main(void)
 #ifdef DMA_SOLUTION
     GPIO_InitTypeDef GPIO_InitStruct;
 #if 0 // Do not enable ALE interrupts.
+GPIOA->MODER = 0xABFF5555;
     // ALEH interrupt setup. -- 
     // This interrupt is used only to indicate that ALE_H has fallen during ALE_L high and that the High oder WORD needs to be updated.
     GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
@@ -769,7 +868,13 @@ int main(void)
 
     
 #else
-    //InitializeDmaChannels();
+    // Wait for reset line high.
+    while ((GPIOB->IDR & (1 << 12)) == 0) { }
+    System::Delay(2);
+    while ((GPIOB->IDR & (1 << 12)) == 0) { }
+
+    SysTick->CTRL = 0;
+    InitializeDmaChannels();
     //GPIO_InitTypeDef GPIO_InitStruct;
     //GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -789,8 +894,17 @@ int main(void)
     //HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     GPIO_InitTypeDef GPIO_InitStruct;
-    //GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    //HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    // ALEH interrupt setup. -- 
+    // This interrupt is used only to indicate that ALE_H has fallen during ALE_L high and that the High oder WORD needs to be updated.
+    GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
+    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
+    
+    GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
     //HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
     //NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
     //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -918,6 +1032,11 @@ start_word1:
         // Main loop of nothing.
     }
 #else
-    RunN64PI();
+    //RunN64PI();
+    memset(Sram4Buffer, 0, 64*4);
+    SCB_CleanInvalidateDCache();
+    while(1) {
+
+    }
 #endif
 }
