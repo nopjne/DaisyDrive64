@@ -1,6 +1,8 @@
 # Project Name
 TARGET = DaisyCart64
 
+LDSCRIPT ?= Linkerscript.ld
+
 # Sources
 CPP_SOURCES = MCUMain.cpp cic_c.cpp
 C_SOURCES = stm32h7xx_it.c ../Middlewares/Third_Party/FatFs/src/option/unicode.c
@@ -23,4 +25,8 @@ OPTIMIZE_FLAG = -ggdb3 -O3 -marm
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-LDSCRIPT ?= ../core/STM32H750IB_flash.lds
+
+#LDFLAGS += -T$(LDSCRIPT)
+
+#LDSCRIPT ?= ../core/STM32H750IB_flash.lds
+

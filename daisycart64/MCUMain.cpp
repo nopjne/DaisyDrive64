@@ -13,38 +13,45 @@
 
 __IO   uint32_t DMA_TransferErrorFlag = 0;
 
-DMA_HandleTypeDef DMA_Handle_Channel0;
-DMA_HandleTypeDef DMA_Handle_Channel1;
-
-//  Source File: C:\test\Super Mario 64 (USA).n64
-//         Time: 8/16/2022 10:26 PM
-// Orig. Offset: 0 / 0x00000000
-//       Length: 1281 / 0x00000501 (bytes)
-unsigned char rawData[16] =
-{
-    //0x37, 0x80, 0x40, 0x12, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
-    //0x37, 0x80, 0x40, 0x20, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
-    0x37, 0x80, 0x40, 0xFF, 0x00, 0x00, 0x0F, 0x00, 0x24, 0x80, 0x00, 0x60, 0x00, 0x00, 0x44, 0x14, 
-    //1 0-7 8-16  2 0-7 8-16
-    //0xFF, 0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, 
-} ;
-
+#define OVERCLOCK 1
+#define DTCM_DATA  __attribute__((section(".dtcmram_bss")))
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel0;
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel1;
 
 //#define MENU_ROM_FILE_NAME "menu.z64"
-#define MENU_ROM_FILE_NAME "Super Mario 64 (USA).n64"
-//#define MENU_ROM_FILE_NAME "Resident Evil 2 (USA).n64"
-//#define MENU_ROM_FILE_NAME "Mario Tennis (USA).n64"
-//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (Debug Version).n64"
-//#define MENU_ROM_FILE_NAME "Killer Instinct Gold (USA).n64"
-//#define MENU_ROM_FILE_NAME "Mortal Kombat Trilogy (USA).n64"
-//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Majora's Mask (USA).n64"
-//#define MENU_ROM_FILE_NAME "Mario Kart 64 (USA).n64"
+//#define MENU_ROM_FILE_NAME "Super Mario 64 (USA).n64" // Works well.
+//#define MENU_ROM_FILE_NAME "Resident Evil 2 (USA).n64" // Does not boot may require CIC communication.
+//#define MENU_ROM_FILE_NAME "Mario Tennis (USA).n64" // Lots of audio glitches.
+//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (Debug Version).n64" // Requires CIC communication
+//#define MENU_ROM_FILE_NAME "Killer Instinct Gold (USA).n64" // Audio glitches
+//#define MENU_ROM_FILE_NAME "Mortal Kombat Trilogy (USA).n64" // Hangs at intro.
+//#define MENU_ROM_FILE_NAME "Legend of Zelda, The - Majora's Mask (USA).n64" // Requires CIC communication.
+//#define MENU_ROM_FILE_NAME "Mario Kart 64 (USA).n64" // Works mild audio glitches.
+
+const char* RomName[] = {
+    "Super Mario 64 (USA).n64",
+    "Mario Kart 64 (USA).n64",
+    "Mario Tennis (USA).n64",
+    "Killer Instinct Gold (USA).n64",
+    "Mortal Kombat Trilogy (USA).n64",
+};
 
 #define N64_ROM_BASE 0x10000000
+#define CART_DOM2_ADDR1_START     0x05000000
+#define CART_DOM2_ADDR1_END       0x05FFFFFF
+
+// N64DD IPL ROM
+#define CART_DOM1_ADDR1_START     0x06000000
+#define CART_DOM1_ADDR1_END       0x07FFFFFF
+
+// Cartridge SRAM
+#define CART_DOM2_ADDR2_START     0x08000000
+#define CART_DOM2_ADDR2_END       0x0FFFFFFF
+
 using namespace daisy;
 BYTE *Sram4Buffer = (BYTE*)0x38000000;
 int8_t *ram = (int8_t *)0xC0000000;
-uint32_t *LogBuffer = (uint32_t*)(ram + (8*1024*1024));
+uint32_t *LogBuffer = (uint32_t*)(ram + (48*1024*1024));
 uint32_t *PortABuffer = (uint32_t*)Sram4Buffer;
 uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
 uint32_t MaxSize = 0;
@@ -66,25 +73,18 @@ void BlinkAndDie(int wait1, int wait2)
 }
 
 #define GP_SPEED GPIO_SPEED_FREQ_LOW
-volatile uint32_t ADInputAddress = 0;
-volatile uint32_t PrefetchRead = 0;
-volatile uint32_t ReadOffset = 0;
-uint32_t ReadCount = 0;
-//static void HalfTransferComplete(DMA_HandleTypeDef *hdma);
+DTCM_DATA volatile uint32_t ADInputAddress = 0;
+DTCM_DATA volatile uint32_t PrefetchRead = 0;
+DTCM_DATA volatile uint32_t ReadOffset = 0;
 static void HAL_TransferError(DMA_HandleTypeDef *hdma);
 static void Error_Handler(void);
 
 int InitializeDmaChannels(void)
 {
     HAL_DMA_MuxRequestGeneratorConfigTypeDef dmamux_ReqGenParams  = {0};
-
-    /*##-2- Configure the DMA ##################################################*/
-    /* Enable BDMA clock */
     __HAL_RCC_BDMA_CLK_ENABLE();
 
-    { // Channel 0 init.
-        /* Configure the DMA handler for Transmission process     */
-        /* DMA mode is set to circular for an infinite DMA transfer */
+    {
         DMA_Handle_Channel0.Instance                 = BDMA_Channel0;
         DMA_Handle_Channel0.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel0.Init.Direction           = DMA_PERIPH_TO_MEMORY;
@@ -94,19 +94,19 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
-        DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
-        DMA_Handle_Channel0.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_HALFFULL;
+        DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
+        DMA_Handle_Channel0.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel0.Init.MemBurst            = DMA_MBURST_SINGLE;
         DMA_Handle_Channel0.Init.PeriphBurst         = DMA_PBURST_SINGLE;
 
-        /* Initialize the DMA with for Transmission process */
+        // Initialize the DMA for Transmission.
         HAL_StatusTypeDef dmares = HAL_OK;
         dmares = HAL_DMA_Init(&DMA_Handle_Channel0);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
 
-        /* Select Callbacks functions called after Transfer complete and Transfer error */
+        // Select Callbacks functions called after Transfer complete and Transfer error.
         dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel0, HAL_DMA_XFER_CPLT_CB_ID, NULL);
         if (dmares != HAL_OK) {
             Error_Handler();
@@ -117,21 +117,21 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-                /* NVIC configuration for DMA transfer complete interrupt*/
+        // NVIC configuration for DMA transfer complete interrupt.
         HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 
-        /*##-3- Configure and enable the DMAMUX Request generator  ####################*/
+        // Configure and enable the DMAMUX Request generator.
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
-        dmamux_ReqGenParams.RequestNumber = 1;                          /* 1 requests on each edge of the external request signal  */
+        dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel0, &dmamux_ReqGenParams);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
 
-        /* NVIC configuration for DMAMUX request generator overrun errors*/
+        // NVIC configuration for DMAMUX request generator overrun errors
         HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
 
@@ -146,9 +146,7 @@ int InitializeDmaChannels(void)
         }
     }
 
-    { // Channel 1 init.
-        /* Configure the DMA handler for Transmission process     */
-        /* DMA mode is set to circular for an infinite DMA transfer */
+    {
         DMA_Handle_Channel1.Instance                 = BDMA_Channel1;
         DMA_Handle_Channel1.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel1.Init.Direction           = DMA_PERIPH_TO_MEMORY;
@@ -158,19 +156,19 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
-        DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
-        DMA_Handle_Channel1.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_HALFFULL;
+        DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
+        DMA_Handle_Channel1.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel1.Init.MemBurst            = DMA_MBURST_SINGLE;
         DMA_Handle_Channel1.Init.PeriphBurst         = DMA_PBURST_SINGLE;
 
-        /* Initialize the DMA with for Transmission process */
+        // Call into the HAL DMA init, this is not a hot path so hal is uzed.
         HAL_StatusTypeDef dmares = HAL_OK;
         dmares = HAL_DMA_Init(&DMA_Handle_Channel1);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
 
-        /* Select Callbacks functions called after Transfer complete and Transfer error */
+        // Select Callbacks functions called after Transfer complete and Transfer error
         dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel1, HAL_DMA_XFER_CPLT_CB_ID, NULL);
         if (dmares != HAL_OK) {
             Error_Handler();
@@ -180,11 +178,11 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        /* NVIC configuration for DMA transfer complete interrupt*/
+        // NVIC configuration for DMA transfer complete interrupt.
         HAL_NVIC_SetPriority(BDMA_Channel1_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
 
-        /*##-3- Configure and enable the DMAMUX Request generator  ####################*/
+        // Configure and enable the DMAMUX Request generator.
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
         dmamux_ReqGenParams.RequestNumber = 1;
@@ -194,7 +192,7 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        /* NVIC configuration for DMAMUX request generator overrun errors*/
+        // NVIC configuration for DMAMUX request generator overrun errors.
         HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
 
@@ -203,8 +201,8 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        volatile uint32_t dmares1 = HAL_DMA_Start_IT(&DMA_Handle_Channel1, (uint32_t)&(GPIOA->IDR), (uint32_t)(PortABuffer), 2);
-        if (dmares1 != HAL_OK) {
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel1, (uint32_t)&(GPIOA->IDR), (uint32_t)(PortABuffer), 2);
+        if (dmares != HAL_OK) {
             Error_Handler();
         }
     }
@@ -244,11 +242,15 @@ typedef struct
 } BDMA_Base_Registers;
 const uint32_t StreamBaseAddress = (0x58025400UL);
 
-volatile uint32_t DMACount = 0;
-volatile uint32_t ALE_H_Count = 0;
-volatile uint32_t IntCount = 0;
-volatile bool Running = false;
-extern "C" void EXTI15_10_IRQHandler(void)
+DTCM_DATA volatile uint32_t DMACount = 0;
+DTCM_DATA volatile uint32_t ALE_H_Count = 0;
+DTCM_DATA volatile uint32_t IntCount = 0;
+DTCM_DATA volatile bool Running = false;
+
+#define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
+extern "C"
+ITCM_FUNCTION
+void EXTI15_10_IRQHandler(void)
 {
     if ((EXTI->PR1 & RESET_LINE) != 0) {
         // RESET
@@ -263,24 +265,31 @@ extern "C" void EXTI15_10_IRQHandler(void)
         DMACount = 0;
         IntCount = 0;
         ALE_H_Count = 0;
-        HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+        ADInputAddress = 0;
         Running = false;
+        //HAL_NVIC_SystemReset();
         return;
     }
 
-    if ((EXTI->PR1 & 0x800) == 0) {
+    if ((EXTI->PR1 & ALE_H) == 0) {
         return;
     }
 
-    EXTI->PR1 = 0x00000800;
+    EXTI->PR1 = ALE_H;
     GPIOB->MODER = 0x0CB000B3;
     GPIOA->MODER = 0xABFF0000;
     ALE_H_Count += 1;
 }
 
-extern "C" void EXTI1_IRQHandler(void)
+extern "C"
+ITCM_FUNCTION
+void EXTI1_IRQHandler(void)
 {
-    EXTI->PR1 = 0x00000002;
+    EXTI->PR1 = READ_LINE;
+    if (Running == false) {
+        return;
+    }
+
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
     } else {
@@ -291,14 +300,27 @@ extern "C" void EXTI1_IRQHandler(void)
         if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + MaxSize))) {
             PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
         } else {
-            PrefetchRead = 0;
+            if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+                PrefetchRead = 0;
+            } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
+                PrefetchRead = 0;
+            } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
+                PrefetchRead = 0;
+            } else if ( (ADInputAddress <= MaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
+                // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
+                // Glitches and static can still be seen/heard while playing.
+                PrefetchRead = *((uint32_t*)(ram + ADInputAddress + (ReadOffset & 511)));
+            } else {
+                PrefetchRead = 0;
+            }
         }
         // Switch to output.
+        // TODO: Can this be done through DMA entirely?
         GPIOA->MODER = 0xABFF5555;
         GPIOB->MODER = 0x5CB555B3;
     }
 
-    // Value can be DMA-ed directly from ram.
+    // TODO: Value can be DMA-ed directly from ram.
     // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
     // Then PortA needs to hold the lower-upper 2bits on 10 and 11. Needs 3 DMA channels to realize.
     // And need soldering to USB_OTG_FS_ID and USB_OTG_FS_D_-
@@ -311,9 +333,12 @@ extern "C" void EXTI1_IRQHandler(void)
     IntCount += 1;
 
     if ((ReadOffset % 4) == 0) {
-        //volatile uint32_t x = 268; // Calculated to offset to ~3964ns.
-        //volatile uint32_t x = 265; // Calculated to offset to ~3964ns.
-        volatile uint32_t x = 195; // Calculated to offset to ~3964ns.
+#if OVERCLOCK
+        volatile uint32_t x = 268; // Calculated to offset to ~3964ns. At 540Mhz core (270mhz PLL)
+#else
+        volatile uint32_t x = 196;
+#endif
+
         while (x) { x--; }
         // GPIOA->ODR = 0xFF;
         // GPIOB->ODR = 0xFFFF;
@@ -326,14 +351,19 @@ extern "C" void EXTI1_IRQHandler(void)
     if (IntCount > 2) {
         IntCount = 0;
     }
-    // if (IntCount == 565966) {
-    //     LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
-    //     volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
-    //     x += 1;
-    // }
+
+#if 0 // Debugging
+    if (IntCount == 565966) {
+         LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
+         volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
+         x += 1;
+    }
+#endif
 }
 
-extern "C" void BDMA_Channel1_IRQHandler(void)
+extern "C"
+ITCM_FUNCTION
+void BDMA_Channel1_IRQHandler(void)
 {
     if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
         return;
@@ -348,14 +378,6 @@ extern "C" void BDMA_Channel1_IRQHandler(void)
     ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
     const uint32_t DoOp = (DMACount += 1);
     if ((DoOp & 1) == 0) {
-        //GPIOA->MODER = 0xABFF5555;
-        //GPIOB->MODER = 0x5CB555B3;
-        //GPIOA->ODR = 0xFF;
-        //GPIOB->ODR = 0xFFFF;
-        //GPIOA->ODR = 0x00;
-        //GPIOB->ODR = 0x0000;
-        //GPIOA->MODER = 0xABFF0000;
-        //GPIOB->MODER = 0x0CB000B3;
         SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
@@ -365,7 +387,9 @@ extern "C" void BDMA_Channel1_IRQHandler(void)
     }
 }
 
-extern "C" void BDMA_Channel0_IRQHandler(void)
+extern "C"
+ITCM_FUNCTION
+void BDMA_Channel0_IRQHandler(void)
 {
     if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
         return;
@@ -380,14 +404,6 @@ extern "C" void BDMA_Channel0_IRQHandler(void)
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
     const uint32_t DoOp = (DMACount += 1);
     if ((DoOp & 1) == 0) {
-        //GPIOA->MODER = 0xABFF5555;
-        //GPIOB->MODER = 0x5CB555B3;
-        //GPIOA->ODR = 0xFF;
-        //GPIOB->ODR = 0xFFFF;
-        //GPIOA->ODR = 0x00;
-        //GPIOB->ODR = 0x0000;
-        //GPIOA->MODER = 0xABFF0000;
-        //GPIOB->MODER = 0x0CB000B3;
         SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
@@ -426,47 +442,11 @@ void InitializeInterrupts(void)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-int main(void)
+void LoadRom(const char* Name)
 {
-    size_t bytesread = 0;
-
-    // Init hardware
-    hw.Init(false);
-
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
-    // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
-    GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOA, &PortAPins);
-    HAL_GPIO_Init(GPIOB, &PortBPins);
-    
-    PortAPins = {0xFF, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    PortBPins = {0xC3F0, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOA, &PortAPins);
-    HAL_GPIO_Init(GPIOB, &PortBPins);
-
-    PortBPins = {(1 << 1) | (1 << 12), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOB, &PortBPins);
-
-    GPIO_InitTypeDef PortCPins = {(1 << 0) | (1 << 1), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &PortCPins);
-
-    PortCPins = {(1 << 7), GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &PortCPins);
-
-    GPIO_InitTypeDef PortDPins = {(1 << 11), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOD, &PortDPins);
-
-    GPIO_InitTypeDef PortGPins = {(1 << 10) | (1 << 11), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    PortGPins.Pin |= (1 << 9);
-    HAL_GPIO_Init(GPIOG, &PortGPins);
-
     GPIOC->ODR = (0x1 << 7);
 
+    size_t bytesread = 0;
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
     sd_cfg.speed = SdmmcHandler::Speed::STANDARD;
@@ -486,16 +466,18 @@ int main(void)
             }
         }
 
-        // Open a save file for the opened rom needed when supporting write for both sdata and write line.
-        //if(f_open(&SDFile, MENU_ROM_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-        //    f_write(&SDFile, outbuff, len, &byteswritten);
-        //    f_close(&SDFile);
-        //}
+        // TODO: Open a save file for the opened rom needed when supporting write for both sdata and write line.
+#if 0
+        if(f_open(&SDFile, MENU_ROM_FILE_NAME, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+            f_write(&SDFile, outbuff, len, &byteswritten);
+            f_close(&SDFile);
+        }
+#endif
 
         // Read the menu rom from the SD Card.
-        if(f_open(&SDFile, MENU_ROM_FILE_NAME, FA_READ) == FR_OK) {
+        if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
             FILINFO FileInfo;
-            FRESULT result = f_stat(MENU_ROM_FILE_NAME, &FileInfo);
+            FRESULT result = f_stat(Name, &FileInfo);
             if (result != FR_OK) {
                 BlinkAndDie(100, 500);
             }
@@ -519,16 +501,75 @@ int main(void)
     GPIOC->BSRR = (0x1 << 7) << 16;
 
     // Patch speed.
-    memcpy(ram, rawData, 16);
+    *(ram + 3) =  0xFF;
+}
 
-    // Output complete timer setup. This timer needs to be setup to hit at the end of second read interrupt.
-    // This timer allows the interrupt to complete instead of hogging up the CM7, the completion time needs to be calculated based on the speed value set in the rom.
+
+extern "C" const unsigned char __dtcmram_bss_start__;
+extern "C" const unsigned char __dtcmram_bss_end__;
+extern "C" const unsigned char dtcm_data;
+
+extern "C" const unsigned char itcm_text_start;
+extern "C" const unsigned char itcm_text_end;
+extern "C" const unsigned char itcm_data;
+
+int main(void)
+{
+    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
+    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
+    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+
+    // Init hardware
+#if OVERCLOCK
+    hw.Init(true);
+#else
+    hw.Init(false);
+#endif
+
+    volatile uint32_t TimerCtrl = SysTick->CTRL;
+
+
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+    __HAL_RCC_GPIOG_CLK_ENABLE();
+    // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
+    GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
+    GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOA, &PortAPins);
+    HAL_GPIO_Init(GPIOB, &PortBPins);
+
+    PortAPins = {0xFF, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    PortBPins = {0xC3F0, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOA, &PortAPins);
+    HAL_GPIO_Init(GPIOB, &PortBPins);
+
+    PortBPins = {(1 << 1) | (1 << 12), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOB, &PortBPins);
+
+    GPIO_InitTypeDef PortCPins = {(1 << 0) | (1 << 1), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &PortCPins);
+
+    PortCPins = {(1 << 7), GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &PortCPins);
+
+    GPIO_InitTypeDef PortDPins = {(1 << 11), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOD, &PortDPins);
+
+    GPIO_InitTypeDef PortGPins = {(1 << 10) | (1 << 11), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    PortGPins.Pin |= (1 << 9);
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+
+    LoadRom(RomName[0]);
+
+    // TODO: "Output complete" timer setup. This timer needs to be setup to hit at the end of second read interrupt.
+    // This timer allows the interrupt to complete instead of hogging up the CM7, the completion time needs to 
+    // be calculated based on the speed value set in the rom.
     //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&__EXTI0_IRQHandler);
     //LPTIM_Config();
     // Disable LP3 timer.
     //DISABLE_LP3_TIMER();
-
-
 
 #if 0
     constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA
@@ -579,18 +620,33 @@ int main(void)
             PC8     ------> SDMMC1_D0 */
 #endif
 
-    volatile uint32_t TimerCtrl = SysTick->CTRL;
     memset(Sram4Buffer, 0, 64*4);
     SCB_CleanInvalidateDCache();
+
+    // Wait for reset line high.
+    while ((GPIOB->IDR & RESET_LINE) == 0) { }
+    SysTick->CTRL = TimerCtrl;
+    System::Delay(2);
+    EXTI->PR1 = RESET_LINE;
+    while ((GPIOB->IDR & RESET_LINE) == 0) { }
+    SysTick->CTRL = 0;
+    InitializeInterrupts();
+
+    uint32_t RomIndex = 1;
     while(1) {
-        // Wait for reset line high.
-        while ((GPIOB->IDR & RESET_LINE) == 0) { }
-        SysTick->CTRL = TimerCtrl;
-        System::Delay(2);
-        while ((GPIOB->IDR & RESET_LINE) == 0) { }
-        SysTick->CTRL = 0;
-        InitializeInterrupts();
+        while ((GPIOB->IDR & RESET_LINE) == 0) {
+            GPIOA->ODR = 0;
+            GPIOB->ODR = 0;
+            GPIOB->MODER = 0x0CB000B3;
+            GPIOA->MODER = 0xABFF0000;
+            DMACount = 0;
+            IntCount = 0;
+            ALE_H_Count = 0;
+            ADInputAddress = 0;
+        }
+
         Running = true;
         while(Running != false) {}
+        LoadRom(RomName[(RomIndex++) % (sizeof(RomName)/sizeof(RomName[0]))]);
     }
 }

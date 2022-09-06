@@ -353,7 +353,7 @@ void System::ConfigureClocks()
         case Config::SysClkFreq::FREQ_400MHZ:
         default:
             __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-            plln_val      = 200;
+            plln_val      = 201;
             flash_latency = FLASH_LATENCY_2;
             break;
     }
