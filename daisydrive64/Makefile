@@ -1,10 +1,10 @@
 # Project Name
-TARGET = DaisyCart64
+TARGET = DaisyDrive64
 
 LDSCRIPT ?= Linkerscript.ld
 
 # Sources
-CPP_SOURCES = MCUMain.cpp cic_c.cpp
+CPP_SOURCES = daisydrive64main.cpp cic_c.cpp n64pi.cpp n64si.cpp
 C_SOURCES = stm32h7xx_it.c ../Middlewares/Third_Party/FatFs/src/option/unicode.c
 
 # Library Locations
