@@ -119,6 +119,8 @@ typedef struct
                                                     Note: This parameter is used only for encoder feature so is used only
                                                     for LPTIM1 instance.
                                                     This parameter can be a value of @ref LPTIM_Input2_Source */
+
+  uint32_t                     Ext;
 } LPTIM_InitTypeDef;
 
 /**

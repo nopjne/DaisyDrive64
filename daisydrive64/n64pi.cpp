@@ -2,16 +2,31 @@
 #include "stm32h7xx_hal.h"
 #include "sys/system.h"
 #include "stm32h7xx_hal_dma.h"
+#include "stm32h7xx_ll_tim.h"
+#include "stm32h7xx_ll_bus.h"
 #include "n64common.h"
 #include "daisydrive64.h"
 
 DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel0;
 DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel1;
+DTCM_DATA HRTIM_HandleTypeDef hhrtim;
+DTCM_DATA DMA_HandleTypeDef hdma_hrtim1_m;
+DTCM_DATA DMA_HandleTypeDef hdma_dma_generator0;
+DTCM_DATA DMA_HandleTypeDef hdma_dma_generator1;
 
-BYTE *Sram4Buffer = (BYTE*)0x38000000;
-uint32_t *LogBuffer = (uint32_t*)(ram + (48*1024*1024));
-uint32_t *PortABuffer = (uint32_t*)Sram4Buffer;
-uint32_t *PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
+LPTIM_HandleTypeDef LptimHandle = {0};
+
+BYTE *const Sram4Buffer = (BYTE*)0x38000000;
+uint32_t *const LogBuffer = (uint32_t*)(ram + (48 * 1024 * 1024));
+uint32_t *const PortABuffer = (uint32_t*)Sram4Buffer;
+uint32_t *const PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
+
+// The DMA out buffer should have space for 512 byte.
+// Currently the BBuffer needs to be filled in by the CM7. Rewiring PortA and B would allow it to be entirely DMA.
+// Latency because of the cache invalidate, needs to be taken into consideration too.
+uint32_t *const DMAOutABuffer = (uint32_t*)(Sram4Buffer + 32);
+uint32_t *const DMAOutBBuffer = (uint32_t*)(Sram4Buffer + 32 + 8);
+
 
 DTCM_DATA volatile uint32_t ADInputAddress = 0;
 DTCM_DATA volatile uint32_t PrefetchRead = 0;
@@ -171,7 +186,216 @@ int InitializeDmaChannels(void)
         }
     }
 
+    // TODO: Setup the data READ DMA.
+    //  The end of the ALE capture should trigger the start of RAM to SRAM copy for a set of 512byte.
+    //      Distributed in the following way:
+    //          PortA [0] 0x00FF | 0x000000FF > PortA[0]
+    //          PortB [0] 0x00F0 | 0x0000FF00 > PortB[0] (upper 4 bit kept)
+    //          PortB [1] 0xC300 | 0x0000FF00 > PortB[1] (0xC3 bit kept)
+    //  The DMA to SRAM currently happens on the main core, as it requires shifting up values.
+    //    A rewire may help here by wiring the 0xF0 bits of Port B to bit [12 .. 15]
+    //    A rewire may help here by wiring the 0xF0 and wiring            [12 .. 15]
+    //  EXTI0 triggers BDMA SRAM to GPIO for 2 byte on every Hi -> Lo transition.
+    //  A decrementing timer is kicked on every Hi->Lo transition which coinsides with RD Pulse Width.
+    //    Potentially attempt to use OD instead of PP.
+    //  
+
     return 0;
+}
+
+
+void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    HAL_DMA_MuxSyncConfigTypeDef pSyncConfig;
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+    if (hhrtim->Instance == HRTIM1)
+    {
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_HRTIM1;
+        PeriphClkInitStruct.Hrtim1ClockSelection = RCC_HRTIM1CLK_TIMCLK;
+        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+        {
+            Error_Handler();
+        }
+
+        /* Peripheral clock enable */
+        __HAL_RCC_HRTIM1_CLK_ENABLE();
+
+        __HAL_RCC_GPIOG_CLK_ENABLE();
+        /**HRTIM GPIO Configuration
+        PG11     ------> HRTIM_EEV4
+        */
+        GPIO_InitStruct.Pin = GPIO_PIN_11;
+        GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF2_HRTIM1;
+        HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+        /* HRTIM1 DMA Init */
+        /* HRTIM1_M Init */
+        hdma_hrtim1_m.Instance = DMA1_Stream0;
+        hdma_hrtim1_m.Init.Request = DMA_REQUEST_HRTIM_MASTER;
+        hdma_hrtim1_m.Init.Direction = DMA_PERIPH_TO_MEMORY;
+        hdma_hrtim1_m.Init.PeriphInc = DMA_PINC_DISABLE;
+        hdma_hrtim1_m.Init.MemInc = DMA_MINC_ENABLE;
+        hdma_hrtim1_m.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+        hdma_hrtim1_m.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+        hdma_hrtim1_m.Init.Mode = DMA_CIRCULAR;
+        hdma_hrtim1_m.Init.Priority = DMA_PRIORITY_LOW;
+        hdma_hrtim1_m.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+        if (HAL_DMA_Init(&hdma_hrtim1_m) != HAL_OK)
+        {
+            Error_Handler();
+        }
+
+        pSyncConfig.SyncSignalID = HAL_DMAMUX1_SYNC_EXTI0;
+        pSyncConfig.SyncPolarity = HAL_DMAMUX_SYNC_NO_EVENT;
+        pSyncConfig.SyncEnable = DISABLE;
+        pSyncConfig.EventEnable = ENABLE;
+        pSyncConfig.RequestNumber = 1;
+        if (HAL_DMAEx_ConfigMuxSync(&hdma_hrtim1_m, &pSyncConfig) != HAL_OK)
+        {
+            Error_Handler();
+        }
+
+        __HAL_LINKDMA(hhrtim,hdmaMaster,hdma_hrtim1_m);
+    }
+}
+
+static void MX_HRTIM_Init(void)
+{
+    HRTIM_EventCfgTypeDef pEventCfg = {0};
+    HRTIM_TimeBaseCfgTypeDef pTimeBaseCfg = {0};
+    HRTIM_TimerCfgTypeDef pTimerCfg = {0};
+
+    /* USER CODE BEGIN HRTIM_Init 1 */
+
+    /* USER CODE END HRTIM_Init 1 */
+    hhrtim.Instance = HRTIM1;
+    hhrtim.Init.HRTIMInterruptResquests = HRTIM_IT_NONE;
+    hhrtim.Init.SyncOptions = HRTIM_SYNCOPTION_NONE;
+    if (HAL_HRTIM_Init(&hhrtim) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    if (HAL_HRTIM_EventPrescalerConfig(&hhrtim, HRTIM_EVENTPRESCALER_DIV1) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    pEventCfg.Source = HRTIM_EVENTSRC_1;
+    pEventCfg.Polarity = HRTIM_EVENTPOLARITY_HIGH;
+    pEventCfg.Sensitivity = HRTIM_EVENTSENSITIVITY_BOTHEDGES;
+    pEventCfg.FastMode = HRTIM_EVENTFASTMODE_ENABLE;
+    if (HAL_HRTIM_EventConfig(&hhrtim, HRTIM_EVENT_4, &pEventCfg) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    pTimeBaseCfg.Period = 0x0003;
+    pTimeBaseCfg.RepetitionCounter = 0x00;
+    pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_DIV1;
+    pTimeBaseCfg.Mode = HRTIM_MODE_SINGLESHOT_RETRIGGERABLE;
+    if (HAL_HRTIM_TimeBaseConfig(&hhrtim, HRTIM_TIMERINDEX_MASTER, &pTimeBaseCfg) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_NONE;
+    pTimerCfg.DMARequests = HRTIM_MASTER_DMA_MREP;
+    pTimerCfg.DMASrcAddress = 0x0000;
+    pTimerCfg.DMADstAddress = 0x0000;
+    pTimerCfg.DMASize = 0x1;
+    pTimerCfg.HalfModeEnable = HRTIM_HALFMODE_DISABLED;
+    pTimerCfg.StartOnSync = HRTIM_SYNCSTART_DISABLED;
+    pTimerCfg.ResetOnSync = HRTIM_SYNCRESET_DISABLED;
+    pTimerCfg.DACSynchro = HRTIM_DACSYNC_NONE;
+    pTimerCfg.PreloadEnable = HRTIM_PRELOAD_DISABLED;
+    pTimerCfg.UpdateGating = HRTIM_UPDATEGATING_INDEPENDENT;
+    pTimerCfg.BurstMode = HRTIM_TIMERBURSTMODE_MAINTAINCLOCK;
+    pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_DISABLED;
+    if (HAL_HRTIM_WaveformTimerConfig(&hhrtim, HRTIM_TIMERINDEX_MASTER, &pTimerCfg) != HAL_OK)
+    {
+    Error_Handler();
+    }
+}
+
+static void MX_DMA_Init(void)
+{
+
+    /* Local variables */
+    HAL_DMA_MuxRequestGeneratorConfigTypeDef pRequestGeneratorConfig = {0};
+
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    /* Configure DMA request hdma_dma_generator0 on DMA1_Stream1 */
+    hdma_dma_generator0.Instance = DMA1_Stream1;
+    hdma_dma_generator0.Init.Request = DMA_REQUEST_GENERATOR0;
+    hdma_dma_generator0.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_dma_generator0.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_dma_generator0.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_dma_generator0.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_dma_generator0.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_dma_generator0.Init.Mode = DMA_NORMAL;
+    hdma_dma_generator0.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_dma_generator0.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_dma_generator0) != HAL_OK)
+    {
+        Error_Handler( );
+    }
+
+    /* Configure the DMAMUX request generator for the selected DMA stream */
+    pRequestGeneratorConfig.SignalID = HAL_DMAMUX1_REQ_GEN_DMAMUX1_CH0_EVT;
+    pRequestGeneratorConfig.Polarity = HAL_DMAMUX_REQ_GEN_RISING;
+    pRequestGeneratorConfig.RequestNumber = 1;
+    if (HAL_DMAEx_ConfigMuxRequestGenerator(&hdma_dma_generator0, &pRequestGeneratorConfig) != HAL_OK)
+    {
+        Error_Handler( );
+    }
+
+    /* Configure DMA request hdma_dma_generator1 on DMA1_Stream2 */
+    hdma_dma_generator1.Instance = DMA1_Stream2;
+    hdma_dma_generator1.Init.Request = DMA_REQUEST_GENERATOR1;
+    hdma_dma_generator1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_dma_generator1.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_dma_generator1.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_dma_generator1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_dma_generator1.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_dma_generator1.Init.Mode = DMA_NORMAL;
+    hdma_dma_generator1.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_dma_generator1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_dma_generator1) != HAL_OK)
+    {
+        Error_Handler( );
+    }
+
+    /* Configure the DMAMUX request generator for the selected DMA stream */
+    pRequestGeneratorConfig.SignalID = HAL_DMAMUX1_REQ_GEN_DMAMUX1_CH0_EVT;
+    pRequestGeneratorConfig.Polarity = HAL_DMAMUX_REQ_GEN_RISING;
+    pRequestGeneratorConfig.RequestNumber = 1;
+    if (HAL_DMAEx_ConfigMuxRequestGenerator(&hdma_dma_generator1, &pRequestGeneratorConfig) != HAL_OK)
+    {
+        Error_Handler( );
+    }
+
+    /* DMA interrupt init */
+    /* DMA1_Stream0_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+
+    /* DMAMUX1_OVR_IRQn interrupt configuration */
+    //HAL_NVIC_SetPriority(DMAMUX1_OVR_IRQn, 0, 0);
+    //HAL_NVIC_EnableIRQ(DMAMUX1_OVR_IRQn);
+}
+
+
+void InitializeTimersPI(void)
+{
+    //MX_HRTIM_Init();
+    //MX_DMA_Init();
 }
 
 extern "C"
@@ -179,7 +403,7 @@ ITCM_FUNCTION
 void EXTI15_10_IRQHandler(void)
 {
     if ((EXTI->PR1 & RESET_LINE) != 0) {
-        // RESET
+        // Unset interrupt.
         EXTI->PR1 = RESET_LINE;
         // Switch to output.
         GPIOA->MODER = 0xABFF5555;
@@ -193,7 +417,8 @@ void EXTI15_10_IRQHandler(void)
         ALE_H_Count = 0;
         ADInputAddress = 0;
         Running = false;
-        //HAL_NVIC_SystemReset();
+
+        // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
         return;
     }
 
@@ -274,7 +499,7 @@ void EXTI1_IRQHandler(void)
 #elif (READ_DELAY_NS == 500)
         volatile uint32_t x = 26;
 #else
-    uint32_t x = 0;
+        const uint32_t x = 0;
 #endif
 #else
         volatile uint32_t x = 196;
@@ -303,15 +528,15 @@ void EXTI1_IRQHandler(void)
 #endif
 }
 
-inline void ConstructAddress(void)
+inline ITCM_FUNCTION void ConstructAddress(void)
 {
     SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
     if ((PortBBuffer[0] & ALE_H) == 0) {
         // Construct ADInputAddress
-        ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
-                        (ADInputAddress & 0xFFFF0000);
+        ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+                         (ADInputAddress & 0xFFFF0000);
     } else {
-        ADInputAddress = (PortABuffer[1] & 0xFF) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+        ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
                         (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
     }
 

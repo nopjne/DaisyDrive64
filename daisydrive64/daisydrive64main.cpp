@@ -15,6 +15,12 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 
+//#define TESTROM 1
+#ifdef TESTROM
+const char* RomName[] = {
+    "testrom.z64",
+};
+#else
 const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
     "Mario Kart 64 (USA).n64", // Works
@@ -33,6 +39,7 @@ const char* RomName[] = {
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
 };
+#endif
 
 const BYTE EEPROMTypeArray[] = {
     EEPROM_4K,
@@ -86,6 +93,17 @@ void InitializeInterrupts(void)
     GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+#ifdef TEST
+    GPIO_InitStruct = {(1 << 12), GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM2};
+    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    
+    GPIO_InitStruct = {(1 << 10), GPIO_MODE_AF_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM2};
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    GPIOB->BSRR = (1 << 10);
+    GPIOD->BSRR = (1 << 11) << 16;
+    GPIOD->BSRR = (1 << 12);
+#endif
+
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
     HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
@@ -95,6 +113,12 @@ void InitializeInterrupts(void)
     // Reset line setup
     GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+#ifdef TEST
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 10, 0);
+    NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+#endif
 }
 
 void SaveEEPRom(const char* Name)
@@ -181,7 +205,7 @@ void LoadRom(const char* Name)
             f_close(&SDFile);
         }
 
-        // TODO: Open the FLASH ram file for the requested rom. (Need to decide where this will live when 64MB roms are loaded)
+        // TODO: Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 125KB)
 
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
@@ -204,6 +228,15 @@ void LoadRom(const char* Name)
             }
 
             RomMaxSize = bytesread;
+
+            // If extension is z64, byte swap.
+            // TODO: Setup DMA to do this, could use FIFO to speed things up.
+            uint32_t NameLength = strlen(Name);
+            if (Name[NameLength - 3] == 'z') {
+                for (uint32_t i = 0; i < RomMaxSize; i += 2) {
+                    *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
+                }
+            }
 
         } else {
             BlinkAndDie(100, 100);
@@ -282,7 +315,7 @@ int main(void)
     PortBPins = {WRITE_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOB, &PortBPins);
 
-    GPIO_InitTypeDef PortCPins = {(ALE_L | READ_LINE), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    GPIO_InitTypeDef PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
     PortCPins = {S_DAT_LINE, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
@@ -292,8 +325,11 @@ int main(void)
     PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
-    GPIO_InitTypeDef PortDPins = {RESET_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOD, &PortDPins);
+    GPIO_InitTypeDef ResetLinePin = {RESET_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOD, &ResetLinePin);
+
+    GPIO_InitTypeDef ALE_L_Pin = {ALE_L, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &ALE_L_Pin);
 
     GPIO_InitTypeDef PortGPins = {(N64_NMI | CIC_CLK), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     PortGPins.Pin |= CIC_D1; // For now make this an input pin. It actually needs to be an OUT_OD pin.
@@ -314,18 +350,19 @@ int main(void)
     SCB_CleanInvalidateDCache();
 
     // Wait for reset line high.
-    while ((GPIOD->IDR & RESET_LINE) == 0) { }
+    while (RESET_IS_LOW) { }
     SysTick->CTRL = TimerCtrl;
     System::Delay(2);
     EXTI->PR1 = RESET_LINE;
-    while ((GPIOD->IDR & RESET_LINE) == 0) { }
+    while (RESET_IS_LOW) { }
     SysTick->CTRL = 0;
 
     InitializeInterrupts();
+    InitializeTimersPI();
 
     uint32_t RomIndex = 0;
     while(1) {
-        while ((GPIOD->IDR & RESET_LINE) == 0) {
+        while (RESET_IS_LOW) {
             DaisyDriveN64Reset();
         }
 
@@ -334,9 +371,9 @@ int main(void)
             RunEEPROMEmulator();
         }
 
-        SaveEEPRom(RomName[RomIndex % (sizeof(RomName)/sizeof(RomName[0]))]);
+        SaveEEPRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
         RomIndex += 1;
-        LoadRom(RomName[RomIndex % (sizeof(RomName)/sizeof(RomName[0]))]);
-        EEPROMType = EEPROMTypeArray[RomIndex % (sizeof(RomName)/sizeof(RomName[0]))];
+        LoadRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        EEPROMType = EEPROMTypeArray[WRAP_ROM_INDEX(RomIndex)];
     }
 }

@@ -283,7 +283,7 @@ HAL_StatusTypeDef HAL_LPTIM_Init(LPTIM_HandleTypeDef *hlptim)
               hlptim->Init.Clock.Prescaler |
               hlptim->Init.OutputPolarity  |
               hlptim->Init.UpdateMode      |
-              hlptim->Init.CounterSource);
+              hlptim->Init.CounterSource) | hlptim->Init.Ext;
 
   if (((hlptim->Init.Clock.Source) == LPTIM_CLOCKSOURCE_ULPTIM) || ((hlptim->Init.CounterSource) == LPTIM_COUNTERSOURCE_EXTERNAL))
   {

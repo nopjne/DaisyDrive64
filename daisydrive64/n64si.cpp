@@ -9,8 +9,10 @@
 #define SI_INFO  0x00 // Tx:1 Rx:3
 #define EEPROM_READ 0x04 // Tx:2 Rx:8
 #define EEPROM_STORE  0x05 // Tx:10 Rx:1 
+#define LOG_EEPROM_BYTES 1
 
-BYTE *EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
+BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
+volatile DTCM_DATA uint32_t OldTimeStamp;
 DTCM_DATA uint32_t EepLogIdx = 0;
 
 #define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
@@ -19,20 +21,19 @@ DTCM_DATA uint32_t EepLogIdx = 0;
 // 1  = 0,1,1,1
 // DS = 0,0,1,1
 // CS = 0,1,1 
-bool ITCM_FUNCTION SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
+inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
 {
     volatile uint32_t TimeStamp;
-    volatile uint32_t OldTimeStamp;
     uint32_t TransferTime = 540; // 540 * 1000 * 1000 / 1000 * 1000 = 1us.
     volatile BYTE BitCount = 0;
     *Out = 0;
 
     // wait for sdat low
-    while (((GPIOC->IDR & (S_DAT_LINE)) != 0)) {}
+    while ((Block != false) && ((GPIOC->IDR & (S_DAT_LINE)) != 0)) {}
 
     TimeStamp = DWT->CYCCNT;
     OldTimeStamp = TimeStamp;
-    while ((Running != false) && (BitCount < 8)) {
+    while ((Running != false) && (BitCount < (8 * ExpectedBytes))) {
         // Wait for 2us.
         while (((TimeStamp - OldTimeStamp) < (TransferTime * 2))) {
             TimeStamp = DWT->CYCCNT;
@@ -41,24 +42,26 @@ bool ITCM_FUNCTION SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
         *Out <<= 1;
         *Out |= ((GPIOC->IDR & (S_DAT_LINE)) != 0) ? 1 : 0;
         BitCount += 1;
-        if ((BitCount % 8) == 0) {
-#ifdef LOG_EEPROM_BYTES
-            EepromInputLog[EepLogIdx++ % (1024*1024)] = *Out;
-#endif
-            Out += 1;
+        if (BitCount == (8 * ExpectedBytes)) {
+            OldTimeStamp = TimeStamp;
+            return true;
         }
 
-        if (BitCount == (8 * ExpectedBytes)) {
-            return true;
+        if ((BitCount % 8) == 0) {
+#ifdef LOG_EEPROM_BYTES
+            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = *Out;
+#endif
+            Out += 1;
+            *Out = 0;
         }
 
         // Wait for next bit.
         uint32_t timeout = 300;
-        while (((GPIOC->IDR & (S_DAT_LINE)) == 0) && (timeout--)) {}
+        while ((timeout--) && ((GPIOC->IDR & (S_DAT_LINE)) == 0)) {}
 
         if (timeout != 0) {
             timeout = 300;
-            while (((GPIOC->IDR & (S_DAT_LINE)) != 0) && (timeout--)) {}
+            while ((timeout--) && ((GPIOC->IDR & (S_DAT_LINE)) != 0)) {}
         }
 
         if (timeout == 0) {
@@ -69,28 +72,26 @@ bool ITCM_FUNCTION SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
     }
 
 #ifdef LOG_EEPROM_BYTES
-    EepromInputLog[EepLogIdx++ % (1024*1024)] = *Out;
+    EepromInputLog[EepLogIdx++ % (1024 * 1024)] = *Out;
 #endif
 
     return true;
 }
 
-bool ITCM_FUNCTION SIGetConsoleTerminator(void)
+inline bool SIGetConsoleTerminator(void)
 {
     volatile uint32_t TimeStamp;
-    volatile uint32_t OldTimeStamp;
-    const uint32_t TransferTime = 540; // 540 * 1000 * 1000 / 1000 * 1000 = 1us.
+    const uint32_t TransferTime = 500; // 540 * 1000 * 1000 / 1000 * 1000 = 1us.
     // Skip the terminator for now.
     TimeStamp = OldTimeStamp = DWT->CYCCNT;
-    while ((Running != false) && ((TimeStamp - OldTimeStamp) < (TransferTime * 3))) {
+    while ((Running != false) && ((TimeStamp - OldTimeStamp) < (TransferTime * 4))) {
         TimeStamp = DWT->CYCCNT;
     }
 
     return true;
 }
 
-volatile uint32_t OldTimeStamp;
-bool ITCM_FUNCTION SIPutDeviceTerminator(void)
+inline bool SIPutDeviceTerminator(void)
 {
     const BYTE SIDeviceTerminator = 0xC;
     volatile uint32_t TimeStamp;
@@ -113,7 +114,7 @@ bool ITCM_FUNCTION SIPutDeviceTerminator(void)
     return true;
 }
 
-bool ITCM_FUNCTION SIPutByte(BYTE In)
+inline bool SIPutByte(BYTE In)
 {
     const BYTE SIZero = 0x8;
     const BYTE SIOne = 0xE;
@@ -185,11 +186,9 @@ void ITCM_FUNCTION RunEEPROMEmulator(void)
         BYTE AddressByte;
         SIGetBytes(&AddressByte, 1, true);
         uint32_t Address = AddressByte * 8;
-        for (int i = 0; i < 8; i += 1) {
-            SIGetBytes(&(EEPROMStore[Address + i]), 8, true);
-        }
-
+        SIGetBytes(&(EEPROMStore[Address]), 8, true);
         SIGetConsoleTerminator();
+
         OldTimeStamp = DWT->CYCCNT;
         SIPutByte(0x00); // Output not busy, coz we fast.
         SIPutDeviceTerminator();
