@@ -71,6 +71,10 @@ void Error_Handler()
 extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
 {
     // Clear the interrupt bit.
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->CR) &= ~DMA_SxCR_EN;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) &= ~DMA_SxCR_EN;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
+    __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
 }
 
 void InitializeTimersSI(void)
@@ -164,6 +168,12 @@ void InitializeTimersSI(void)
         Error_Handler();
     }
 
+    // Configure the DMA for output.
+    HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->PAR) = (uint32_t)&(htim3.Instance->CCR4);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->M0AR) = (uint32_t)&(SI_DMAOutputBuffer[0]);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->CR) &= ~DMA_SxCR_EN;
+
     hdma_tim3_input_capture_configure.Instance = DMA1_Stream7;
     hdma_tim3_input_capture_configure.Init.Request = DMA_REQUEST_TIM3_CH3;
     hdma_tim3_input_capture_configure.Init.Direction = DMA_MEMORY_TO_PERIPH;
@@ -182,14 +192,31 @@ void InitializeTimersSI(void)
         Error_Handler();
     }
 
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    sConfigOC.OCMode = TIM_OCMODE_TIMING;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+    sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
+    sConfigOC.Pulse = 0xFFFF;
+    if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    //if (HAL_DMA_Start_IT(&hdma_tim3_input_capture_configure, (uint32_t)&(Tim3InputSetting[0]), (uint32_t)&(htim3.Instance->DMAR), 18) != HAL_OK) {
+    //    Error_Handler();
+    //}
+
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->PAR) = (uint32_t)&(htim3.Instance->DMAR);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->M0AR) = (uint32_t)&(Tim3InputSetting[0]);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) &= ~DMA_SxCR_EN;
+
+    // Enable the timer and DMA.
     __HAL_RCC_DMA1_CLK_ENABLE();
     __HAL_LINKDMA(&htim3, hdma[TIM_DMA_ID_CC4], hdma_tim3_ch4);
     HAL_TIM_IC_Start_DMA(&htim3, TIM_CHANNEL_4, (uint32_t*)&(SDataBuffer[0]), SI_RINGBUFFER_LENGTH);
 
-    // Disable all DMA interrupts for the channel.
     HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Stream7_IRQn);
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
     // Configure a timer to timeout on SI output completion and put TIM3 back in input mode.
@@ -410,6 +437,13 @@ inline bool SIGetConsoleTerminator(void)
 }
 
 volatile uint32_t Start;
+typedef struct
+{
+  __IO uint32_t ISR;   /*!< DMA interrupt status register */
+  __IO uint32_t Reserved0;
+  __IO uint32_t IFCR;  /*!< DMA interrupt flag clear register */
+} DMA_Base_Registers;
+
 inline bool SIPutDeviceTerminator(void)
 {
     // Add the device terminator
@@ -420,8 +454,10 @@ inline bool SIPutDeviceTerminator(void)
     SI_DMAOutputLength += 1;
 
     // Stop input mode.
-    HAL_TIM_IC_Stop_DMA(&htim3, TIM_CHANNEL_4);
+    __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
     htim3.Instance->CR1 = 0;
+
     // Program the TIM3 timer into output compare mode and setup DMA
     //     SI_DMAOutputBuffer, SI_DMAOutputLength
     TIM_OC_InitTypeDef sConfigOC = {0};
@@ -429,44 +465,31 @@ inline bool SIPutDeviceTerminator(void)
     sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
     sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
-    sConfigOC.Pulse = 1;
+    sConfigOC.Pulse = 0;
+    // TODO: Convert the configuration to a few instructions.
     if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler();
     }
     SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&(SI_DMAOutputBuffer[0]), SI_DMAOutputLength * sizeof(uint16_t));
-    
-    if (HAL_DMA_Start_IT(&hdma_tim3_ch4_out, (uint32_t)&(SI_DMAOutputBuffer[0]), (uint32_t)&(htim3.Instance->CCR4), SI_DMAOutputLength) == HAL_OK) {
-        __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
-        TIM_CCxChannelCmd(htim3.Instance, TIM_CHANNEL_4, TIM_CCx_ENABLE);
 
-    } else {
-        Error_Handler();
-    }
-
-    // TODO: Find out why TIM3 state is getting corrupted.
-    sConfigOC = {0};
-    sConfigOC.OCMode = TIM_OCMODE_TIMING;
-    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-    sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
-    sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
-    sConfigOC.Pulse = Start;
-    if (HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-    {
-        Error_Handler();
-    }
+    // Program the output dma to start.
+    ((DMA_Base_Registers *)(hdma_tim3_ch4_out.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4_out.StreamIndex & 0x1FU);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->NDTR) = SI_DMAOutputLength;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->CR) |= DMA_SxCR_EN;
+    __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
+    htim3.Instance->CCER |= (uint32_t)(TIM_CCx_ENABLE << (TIM_CHANNEL_4 & 0x1FU));
 
     // Program channel 3 DMA to trigger transmit completion.
-    if (HAL_DMA_Start_IT(&hdma_tim3_input_capture_configure, (uint32_t)&(Tim3InputSetting[0]), (uint32_t)&(htim3.Instance->DMAR), 18) == HAL_OK)
-    {
-        htim3.Instance->DCR = TIM_DMABURSTLENGTH_18TRANSFERS | TIM_DMABASE_CR1;
-        __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC3);
+    htim3.Instance->CCR3 = Start;
+    ((DMA_Base_Registers *)(hdma_tim3_input_capture_configure.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_input_capture_configure.StreamIndex & 0x1FU);
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->NDTR) = 18;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) |= DMA_SxCR_EN;
+    htim3.Instance->DCR = TIM_DMABURSTLENGTH_18TRANSFERS | TIM_DMABASE_CR1;
+    __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC3);
 
-    } else {
-        Error_Handler();
-    }
-
-    htim3.Instance->CNT = 0;
+    htim3.Instance->CNT = htim3.Instance->ARR;
+    htim3.Instance->CCMR2 = 0x3000;
     htim3.Instance->CR1 = 1;
 
     // When time timer fires, the DMA will reset the TIM3 timer back into input mode.
@@ -479,7 +502,7 @@ inline bool SIPutByte(BYTE In)
     // Construct the DMA output buffer
     // SI_DMAOutputBuffer, SI_DMAOutputLength;
     if (SI_DMAOutputLength == 0) {
-        Start = htim3.Instance->CNT;
+        Start = 0;
     }
 
     for (uint32_t i = 0; i < 8; i += 1) {
@@ -576,6 +599,6 @@ void SITest()
         SIPutDeviceTerminator();
 
         // wait on completion of DMA
-        while (((DMA_Stream_TypeDef*)hdma_tim3_ch4_out.Instance)->NDTR) {}
+        while (((DMA_Stream_TypeDef*)hdma_tim3_input_capture_configure.Instance)->NDTR) {}
     }
 }
