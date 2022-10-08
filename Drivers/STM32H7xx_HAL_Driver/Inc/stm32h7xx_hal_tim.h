@@ -154,8 +154,7 @@ typedef struct
   uint32_t ICPrescaler;  /*!< Specifies the Input Capture Prescaler.
                               This parameter can be a value of @ref TIM_Input_Capture_Prescaler */
 
-  uint32_t ICFilter;     /*!< Specifies the input capture filter.
-                              This parameter can be a number between Min_Data = 0x0 and Max_Data = 0xF */
+  uint32_t ICFilter;     /*!< Specifies the input capture filter. */
 } TIM_IC_InitTypeDef;
 
 /**

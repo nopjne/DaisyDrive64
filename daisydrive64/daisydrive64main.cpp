@@ -15,7 +15,7 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 
-//#define TESTROM 1
+#define TESTROM 1
 #ifdef TESTROM
 const char* RomName[] = {
     "testrom.z64",
@@ -23,13 +23,14 @@ const char* RomName[] = {
 #else
 const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
+    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
     "Mario Tennis (USA).n64", // Works - lots of audio glitches.
     "Killer Instinct Gold (USA).n64", // Works - lots of audio glitches
     //"Mortal Kombat Trilogy (USA).n64", // Gets in menu freezes on player selection screen.
     //"Resident Evil 2 (USA).n64",  // Does not boot.
-    //"007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
+    
     //"007 - The World Is Not Enough (USA).n64",  // Does not boot.
     //"Mario Golf (USA).n64", // Does not boot.
     //"Mario Tennis 64 (Japan).n64", // Works - audio glitches.
@@ -46,6 +47,7 @@ const BYTE EEPROMTypeArray[] = {
     EEPROM_4K,
     EEPROM_4K,
     EEPROM_16K,
+    EEPROM_4K,
     EEPROM_16K,
     EEPROM_16K,
     //EEPROM_16K,
@@ -257,17 +259,23 @@ void LoadRom(const char* Name)
 #endif
 }
 
+extern uint32_t LastTransferCount;
 inline void DaisyDriveN64Reset(void)
 {
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
     GPIOA->ODR = 0;
     GPIOB->ODR = 0;
-    GPIOB->MODER = 0x0CF000B3;
-    GPIOA->MODER = 0xABFF0000;
+    SET_PI_INPUT_MODE;
+#else
+    GPIOA->ODR = 0xFF;
+    GPIOB->ODR = 0xC3F0;
+#endif
     DMACount = 0;
     IntCount = 0;
     ALE_H_Count = 0;
     ADInputAddress = 0;
     EepLogIdx = 0;
+    LastTransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
 }
 
 extern "C" const unsigned char __dtcmram_bss_start__;
@@ -277,6 +285,8 @@ extern "C" const unsigned char dtcm_data;
 extern "C" const unsigned char itcm_text_start;
 extern "C" const unsigned char itcm_text_end;
 extern "C" const unsigned char itcm_data;
+
+void SITest();
 
 int main(void)
 {
@@ -302,6 +312,7 @@ int main(void)
 
     // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
     // Ideally port A or port B should be entirely dedicated to the PI interface.
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
     GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOA, &PortAPins);
@@ -311,6 +322,15 @@ int main(void)
     PortBPins = {0xC3F0, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOA, &PortAPins);
     HAL_GPIO_Init(GPIOB, &PortBPins);
+#else
+    GPIO_InitTypeDef PortAPins = {0xFF, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
+    GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOA, &PortAPins);
+    HAL_GPIO_Init(GPIOB, &PortBPins);
+    
+    GPIOA->ODR = 0xFF;
+    GPIOB->ODR = 0xC3F0;
+#endif
 
     PortBPins = {WRITE_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOB, &PortBPins);
@@ -347,7 +367,9 @@ int main(void)
     //DISABLE_LP3_TIMER();
 
     memset(Sram4Buffer, 0, 64 * 4);
+    memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
+    SITest();
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
@@ -359,6 +381,7 @@ int main(void)
 
     InitializeInterrupts();
     InitializeTimersPI();
+    InitializeTimersSI();
 
     uint32_t RomIndex = 0;
     while(1) {

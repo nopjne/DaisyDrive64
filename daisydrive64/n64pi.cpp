@@ -60,6 +60,8 @@ static void Error_Handler(void)
 
 int InitializeDmaChannels(void)
 {
+    //return 0;
+
     HAL_DMA_MuxRequestGeneratorConfigTypeDef dmamux_ReqGenParams  = {0};
     __HAL_RCC_BDMA_CLK_ENABLE();
 
@@ -242,8 +244,9 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
         hdma_hrtim1_m.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
         hdma_hrtim1_m.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
         hdma_hrtim1_m.Init.Mode = DMA_CIRCULAR;
-        hdma_hrtim1_m.Init.Priority = DMA_PRIORITY_LOW;
-        hdma_hrtim1_m.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+        hdma_hrtim1_m.Init.Priority = DMA_PRIORITY_HIGH;
+        hdma_hrtim1_m.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+        hdma_hrtim1_m.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         if (HAL_DMA_Init(&hdma_hrtim1_m) != HAL_OK)
         {
             Error_Handler();
@@ -259,7 +262,7 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
             Error_Handler();
         }
 
-        __HAL_LINKDMA(hhrtim,hdmaMaster,hdma_hrtim1_m);
+        __HAL_LINKDMA(hhrtim, hdmaMaster, hdma_hrtim1_m);
     }
 }
 
@@ -305,9 +308,9 @@ static void MX_HRTIM_Init(void)
 
     pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_NONE;
     pTimerCfg.DMARequests = HRTIM_MASTER_DMA_MREP;
-    pTimerCfg.DMASrcAddress = 0x0000;
-    pTimerCfg.DMADstAddress = 0x0000;
-    pTimerCfg.DMASize = 0x1;
+    pTimerCfg.DMASrcAddress = (uint32_t)&(GPIOB->IDR);
+    pTimerCfg.DMADstAddress = (uint32_t)(PortBBuffer);
+    pTimerCfg.DMASize = 0x4;
     pTimerCfg.HalfModeEnable = HRTIM_HALFMODE_DISABLED;
     pTimerCfg.StartOnSync = HRTIM_SYNCSTART_DISABLED;
     pTimerCfg.ResetOnSync = HRTIM_SYNCRESET_DISABLED;
@@ -318,8 +321,33 @@ static void MX_HRTIM_Init(void)
     pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_DISABLED;
     if (HAL_HRTIM_WaveformTimerConfig(&hhrtim, HRTIM_TIMERINDEX_MASTER, &pTimerCfg) != HAL_OK)
     {
-    Error_Handler();
+        Error_Handler();
     }
+
+    // New code.. from HRTIM external event example.
+    HRTIM_OutputCfgTypeDef sConfig_output_config;
+    sConfig_output_config.Polarity = HRTIM_OUTPUTPOLARITY_HIGH;
+    sConfig_output_config.SetSource = HRTIM_OUTPUTSET_EEV_4;
+    sConfig_output_config.ResetSource = HRTIM_OUTPUTRESET_EEV_4;
+    sConfig_output_config.IdleMode = HRTIM_OUTPUTIDLEMODE_NONE;
+    sConfig_output_config.IdleLevel = HRTIM_OUTPUTIDLELEVEL_INACTIVE;
+    sConfig_output_config.FaultLevel = HRTIM_OUTPUTFAULTLEVEL_NONE;
+    sConfig_output_config.ChopperModeEnable = HRTIM_OUTPUTCHOPPERMODE_DISABLED;
+    sConfig_output_config.BurstModeEntryDelayed = HRTIM_OUTPUTBURSTMODEENTRY_REGULAR;
+
+    HAL_HRTIM_WaveformOutputConfig(&hhrtim, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA1, &sConfig_output_config);
+
+    HAL_HRTIM_WaveformOutputConfig(&hhrtim, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA2, &sConfig_output_config);
+
+    /*##-3- External Event configuration ########################################################*/
+    HRTIM_EventCfgTypeDef sConfig_event;
+    sConfig_event.Source = HRTIM_EVENTSRC_1;
+    sConfig_event.Polarity = HRTIM_EVENTPOLARITY_HIGH;
+    sConfig_event.Sensitivity = HRTIM_EVENTSENSITIVITY_BOTHEDGES;
+    sConfig_event.Filter = HRTIM_EVENTFILTER_NONE;
+    sConfig_event.FastMode = HRTIM_EVENTFASTMODE_DISABLE;
+                
+    HAL_HRTIM_EventConfig(&hhrtim, HRTIM_EVENT_8, &sConfig_event);
 }
 
 static void MX_DMA_Init(void)
@@ -337,11 +365,12 @@ static void MX_DMA_Init(void)
     hdma_dma_generator0.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_dma_generator0.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_dma_generator0.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_dma_generator0.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_dma_generator0.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_dma_generator0.Init.Mode = DMA_NORMAL;
-    hdma_dma_generator0.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_dma_generator0.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    hdma_dma_generator0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_dma_generator0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_dma_generator0.Init.Mode = DMA_CIRCULAR;
+    hdma_dma_generator0.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_dma_generator0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+    hdma_dma_generator0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
     if (HAL_DMA_Init(&hdma_dma_generator0) != HAL_OK)
     {
         Error_Handler( );
@@ -364,9 +393,10 @@ static void MX_DMA_Init(void)
     hdma_dma_generator1.Init.MemInc = DMA_MINC_ENABLE;
     hdma_dma_generator1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_dma_generator1.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_dma_generator1.Init.Mode = DMA_NORMAL;
-    hdma_dma_generator1.Init.Priority = DMA_PRIORITY_LOW;
-    hdma_dma_generator1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    hdma_dma_generator1.Init.Mode = DMA_CIRCULAR;
+    hdma_dma_generator1.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_dma_generator1.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+    hdma_dma_generator1.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL;
     if (HAL_DMA_Init(&hdma_dma_generator1) != HAL_OK)
     {
         Error_Handler( );
@@ -389,8 +419,41 @@ static void MX_DMA_Init(void)
     /* DMAMUX1_OVR_IRQn interrupt configuration */
     //HAL_NVIC_SetPriority(DMAMUX1_OVR_IRQn, 0, 0);
     //HAL_NVIC_EnableIRQ(DMAMUX1_OVR_IRQn);
-}
 
+    HAL_StatusTypeDef dmares = HAL_OK;
+#if 0
+    // Select Callbacks functions called after Transfer complete and Transfer error
+    dmares = HAL_DMA_RegisterCallback(&hdma_dma_generator1, HAL_DMA_XFER_CPLT_CB_ID, NULL);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+
+    dmares = HAL_DMA_RegisterCallback(&hdma_dma_generator1, HAL_DMA_XFER_ERROR_CB_ID, HAL_TransferError);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+#endif
+
+    dmares = HAL_DMAEx_EnableMuxRequestGenerator(&hdma_dma_generator1);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+
+    dmares = HAL_DMAEx_EnableMuxRequestGenerator(&hdma_dma_generator0);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+
+    dmares = HAL_DMA_Start_IT(&hdma_dma_generator1, (uint32_t)&(GPIOB->IDR), (uint32_t)(PortBBuffer), 2);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+
+    dmares = HAL_DMA_Start_IT(&hdma_dma_generator0, (uint32_t)&(GPIOA->IDR), (uint32_t)(PortABuffer), 2);
+    if (dmares != HAL_OK) {
+        Error_Handler();
+    }
+}
 
 void InitializeTimersPI(void)
 {
@@ -405,13 +468,19 @@ void EXTI15_10_IRQHandler(void)
     if ((EXTI->PR1 & RESET_LINE) != 0) {
         // Unset interrupt.
         EXTI->PR1 = RESET_LINE;
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
         // Switch to output.
-        GPIOA->MODER = 0xABFF5555;
-        GPIOB->MODER = 0x5CF555B3;
+        SET_PI_OUTPUT_MODE
         GPIOA->ODR = 0;
         GPIOB->ODR = 0;
-        GPIOB->MODER = 0x0CF000B3;
-        GPIOA->MODER = 0xABFF0000;
+        // Switch to Input.
+        SET_PI_INPUT_MODE
+#else
+        // Switch to Input.
+        GPIOA->ODR = 0xFF;
+        GPIOB->ODR = 0xC3F0;
+#endif
+
         DMACount = 0;
         IntCount = 0;
         ALE_H_Count = 0;
@@ -427,8 +496,15 @@ void EXTI15_10_IRQHandler(void)
     }
 
     EXTI->PR1 = ALE_H;
-    GPIOB->MODER = 0x0CF000B3;
-    GPIOA->MODER = 0xABFF0000;
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
+    // Switch to Input.
+    SET_PI_INPUT_MODE;
+#else
+    // Switch to Input.
+    GPIOA->ODR = 0xFF;
+    GPIOB->ODR = 0xC3F0;
+#endif
+    
     ALE_H_Count += 1;
 }
 
@@ -470,10 +546,11 @@ void EXTI1_IRQHandler(void)
                 PrefetchRead = 0;
             }
         }
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
         // Switch to output.
         // TODO: Can this be done through DMA entirely?
-        GPIOA->MODER = 0xABFF5555;
-        GPIOB->MODER = 0x5CF555B3;
+        SET_PI_OUTPUT_MODE
+#endif
     }
 
     // TODO: Value can be DMA-ed directly from ram.
@@ -506,12 +583,17 @@ void EXTI1_IRQHandler(void)
 #endif
 
         while (x) { x--; }
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
         // GPIOA->ODR = 0xFF;
         // GPIOB->ODR = 0xFFFF;
         GPIOA->ODR = 0x00;
         GPIOB->ODR = 0x0000;
-        GPIOA->MODER = 0xABFF0000;
-        GPIOB->MODER = 0x0CF000B3;
+        SET_PI_INPUT_MODE;
+#else
+        // Switch to Input.
+        GPIOA->ODR = 0xFF;
+        GPIOB->ODR = 0xC3F0;
+#endif
     }
 
     //if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
