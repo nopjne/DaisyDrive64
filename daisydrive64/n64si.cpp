@@ -85,13 +85,27 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     htim3.Instance->CR1 = 0;
-    ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
-    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
-    __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
+
     htim3.Instance->DIER = 0x1000; // DIER
     htim3.Instance->SR = 0xf, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
+#if 1
+    TIM_IC_InitTypeDef sConfigIC = {0};
+    sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+    sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+    sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+    sConfigIC.ICFilter = 2;
+    if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+#endif
+    ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
+    (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->CR) &= (uint32_t)(~DMA_SxCR_DBM);
+    (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->NDTR) = SI_RINGBUFFER_LENGTH;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
+    __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
     htim3.Instance->CCER = 0xb000;
     htim3.Instance->CR1 = 1;
     intcount += 1;
@@ -400,14 +414,16 @@ inline BYTE GetSingleByte(uint32_t Offset)
 {
     BYTE Result = 0;
     uint32_t Index = 0;
-    SCB_InvalidateDCache_by_Addr((uint32_t*)&(SDataBuffer[0]), SI_RINGBUFFER_LENGTH * sizeof(uint16_t));
     while (Index < 16) {
         Result <<= 1;
         Result |= (SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index + 1] - SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index]) < 4;
         Index += 2;
-        if ((SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index + 1] - SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index]) > 8) {
-            while(1) {}
+#if 0
+        if (intcount >= 1) {
+            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index + 1];
+            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index];
         }
+#endif
     }
 
     return Result;
@@ -439,6 +455,12 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
 
 #ifdef LOG_EEPROM_BYTES
         EepromInputLog[EepLogIdx++ % (1024 * 1024)] = *Out;
+#if 0
+        if (intcount >= 1) {
+            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = TransferCount;
+            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = LastTransferCount;
+        }
+#endif
 #endif
         ByteCount += 1;
         if (ByteCount < ExpectedBytes) {
@@ -479,7 +501,7 @@ inline bool SIPutDeviceTerminator(void)
     // Reset input capture
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
-    ((DMA_Stream_TypeDef*)0x40020088)->NDTR = SI_RINGBUFFER_LENGTH;
+    ((DMA_Stream_TypeDef*)hdma_tim3_ch4.Instance)->NDTR = SI_RINGBUFFER_LENGTH;
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
     // Program the TIM3 timer into output compare mode and setup DMA
@@ -507,14 +529,14 @@ inline bool SIPutDeviceTerminator(void)
     // Program channel 3 DMA to trigger transmit completion.
     htim3.Instance->CCR3 = Start;
     ((DMA_Base_Registers *)(hdma_tim3_input_capture_configure.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_input_capture_configure.StreamIndex & 0x1FU);
-    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->NDTR) = 1;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->NDTR) = 18;
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) |= DMA_SxCR_EN | DMA_SxCR_TCIE;
-    htim3.Instance->DCR = TIM_DMABURSTLENGTH_1TRANSFER | TIM_DMABASE_CR1;
+    htim3.Instance->DCR = TIM_DMABURSTLENGTH_18TRANSFERS | TIM_DMABASE_CR1;
     __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC3);
 
     // Enable the output timer.
     htim3.Instance->CNT = 0;
-    //htim3.Instance->CCMR2 = 0x3000;
+    htim3.Instance->CCMR2 = 0x3000;
     htim3.Instance->CR1 = 1;
 
     // Reset output recording.
@@ -619,6 +641,14 @@ void SITest()
     InitializeTimersSI();
     while (1) {
         SIPutByte(0x00);
+        SIPutByte(0xFF);
+        SIPutByte(0x00);
+        SIPutDeviceTerminator();
+
+        // wait on completion of DMA
+        while (((DMA_Stream_TypeDef*)hdma_tim3_input_capture_configure.Instance)->NDTR) {}
+
+        SIPutByte(0xAB);
         SIPutByte(0xFF);
         SIPutByte(0x00);
         SIPutDeviceTerminator();

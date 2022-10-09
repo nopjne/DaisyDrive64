@@ -369,6 +369,7 @@ int main(void)
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
+    //SITest();
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
