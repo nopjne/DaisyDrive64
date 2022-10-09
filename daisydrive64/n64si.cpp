@@ -14,15 +14,16 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
-
 DTCM_DATA uint32_t EepLogIdx = 0;
+BYTE EEPROMStore[2048]; // 16KiBit
+BYTE EEPROMType = 0x80;
 
 #if (SI_USE_DMA != 0)
 DTCM_DATA TIM_HandleTypeDef htim3;
 DTCM_DATA DMA_HandleTypeDef hdma_tim3_ch4;
 DTCM_DATA DMA_HandleTypeDef hdma_tim3_ch4_out;
 DTCM_DATA DMA_HandleTypeDef hdma_tim3_input_capture_configure;
-SRAM1_DATA uint16_t SI_DMAOutputBuffer[160];
+SRAM1_DATA uint16_t SI_DMAOutputBuffer[SI_RINGBUFFER_LENGTH];
 DTCM_DATA uint32_t SI_DMAOutputLength;
 SRAM1_DATA uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 volatile DTCM_DATA uint32_t LastTransferCount;
@@ -100,9 +101,34 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     {
         Error_Handler();
     }
-#endif
+
+    // /* Disable the Channel 4: Reset the CC4E Bit */
+    // TIMx->CCER &= ~TIM_CCER_CC4E;
+    // tmpccmr2 = TIMx->CCMR2;
+    // tmpccer = TIMx->CCER;
+// 
+    // /* Select the Input */
+    // tmpccmr2 &= ~TIM_CCMR2_CC4S;
+    // tmpccmr2 |= (TIM_ICSelection << 8U);
+// 
+    // /* Set the filter */
+    // tmpccmr2 &= ~TIM_CCMR2_IC4F;
+    // tmpccmr2 |= ((TIM_ICFilter << 12U) & TIM_CCMR2_IC4F);
+// 
+    // /* Select the Polarity and set the CC4E Bit */
+    // tmpccer &= ~(TIM_CCER_CC4P | TIM_CCER_CC4NP);
+    // tmpccer |= ((TIM_ICPolarity << 12U) & (TIM_CCER_CC4P | TIM_CCER_CC4NP));
+// 
+    // /* Write to TIMx CCMR2 and CCER registers */
+    // TIMx->CCMR2 = tmpccmr2;
+    // TIMx->CCER = tmpccer ;
+// 
+    // htim->Instance->CCMR2 &= ~TIM_CCMR2_IC4PSC;
+// 
+    // /* Set the IC4PSC value */
+    // htim->Instance->CCMR2 |= (sConfig->ICPrescaler << 8U);
+#endif 
     ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
-    (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->CR) &= (uint32_t)(~DMA_SxCR_DBM);
     (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->NDTR) = SI_RINGBUFFER_LENGTH;
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
     __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
@@ -434,6 +460,10 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
     volatile BYTE ByteCount = 0;
     *Out = 0;
 
+    // Wait for input capture to be enabled.
+    while ((Running != false) && (((((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) & 1) == 0)) {}
+
+    // Read the current capture pointer.
     TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
     while ((Running != false) && (ByteCount < ExpectedBytes)) {
         // Wait for data in buffer, there need to be 16 captures before a single byte of data is available.
@@ -501,6 +531,7 @@ inline bool SIPutDeviceTerminator(void)
     // Reset input capture
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
+    ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
     ((DMA_Stream_TypeDef*)hdma_tim3_ch4.Instance)->NDTR = SI_RINGBUFFER_LENGTH;
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
@@ -517,7 +548,7 @@ inline bool SIPutDeviceTerminator(void)
     {
         Error_Handler();
     }
-    SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&(SI_DMAOutputBuffer[0]), SI_DMAOutputLength * sizeof(uint16_t));
+    //SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&(SI_DMAOutputBuffer[0]), SI_DMAOutputLength * sizeof(uint16_t));
 
     // Program the output dma to start.
     ((DMA_Base_Registers *)(hdma_tim3_ch4_out.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4_out.StreamIndex & 0x1FU);
@@ -576,8 +607,6 @@ inline bool SIPutByte(BYTE In)
 }
 #endif
 
-BYTE EEPROMStore[2048]; // 16KiBit
-BYTE EEPROMType = 0x80;
 void ITCM_FUNCTION RunEEPROMEmulator(void)
 {
     BYTE Command = 0;

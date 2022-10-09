@@ -21,6 +21,9 @@ uint32_t *const LogBuffer = (uint32_t*)(ram + (48 * 1024 * 1024));
 uint32_t *const PortABuffer = (uint32_t*)Sram4Buffer;
 uint32_t *const PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
 
+// TODO: Define storage for 1Mb FRAM (131,072 bytes)
+
+
 // The DMA out buffer should have space for 512 byte.
 // Currently the BBuffer needs to be filled in by the CM7. Rewiring PortA and B would allow it to be entirely DMA.
 // Latency because of the cache invalidate, needs to be taken into consideration too.

@@ -15,7 +15,7 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 
-#define TESTROM 1
+//#define TESTROM 1
 #ifdef TESTROM
 const char* RomName[] = {
     "testrom.z64",
@@ -23,6 +23,7 @@ const char* RomName[] = {
 #else
 const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
+    "Mario Kart 64 (USA).n64",
     "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works

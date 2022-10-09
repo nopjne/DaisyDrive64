@@ -59,7 +59,7 @@ void ITCM_FUNCTION RunEEPROMEmulator(void);
 
 extern DTCM_DATA volatile bool Running;
 
-#define SI_RINGBUFFER_LENGTH 160
+#define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
