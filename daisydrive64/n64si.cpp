@@ -10,7 +10,7 @@
 #define SI_INFO  0x00 // Tx:1 Rx:3
 #define EEPROM_READ 0x04 // Tx:2 Rx:8
 #define EEPROM_STORE  0x05 // Tx:10 Rx:1 
-#define LOG_EEPROM_BYTES 1
+//#define LOG_EEPROM_BYTES 1
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
@@ -76,6 +76,68 @@ void Error_Handler()
     GPIOC->BSRR = (1 << 7);
     while (1) {}
 }
+
+void ITCM_FUNCTION SI_Enable(void)
+{
+    if ((htim3.Instance->CR1 & 1) == 0) {
+        (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
+        __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
+        htim3.Instance->CCER = 0xb000;
+        htim3.Instance->CR1 = 1;
+    }
+}
+
+void ITCM_FUNCTION SI_Reset(void) 
+{
+    __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
+    htim3.Instance->CR1 = 0;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
+    htim3.Instance->DIER = 0x1000; // DIER
+    htim3.Instance->SR = 0xf, // SR
+    htim3.Instance->ARR = 65535;
+    htim3.Instance->CCMR2 = 0x2100;
+#if 1
+    TIM_IC_InitTypeDef sConfigIC = {0};
+    sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
+    sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+    sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+    sConfigIC.ICFilter = 2;
+    if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    // /* Disable the Channel 4: Reset the CC4E Bit */
+    // TIMx->CCER &= ~TIM_CCER_CC4E;
+    // tmpccmr2 = TIMx->CCMR2;
+    // tmpccer = TIMx->CCER;
+// 
+    // /* Select the Input */
+    // tmpccmr2 &= ~TIM_CCMR2_CC4S;
+    // tmpccmr2 |= (TIM_ICSelection << 8U);
+// 
+    // /* Set the filter */
+    // tmpccmr2 &= ~TIM_CCMR2_IC4F;
+    // tmpccmr2 |= ((TIM_ICFilter << 12U) & TIM_CCMR2_IC4F);
+// 
+    // /* Select the Polarity and set the CC4E Bit */
+    // tmpccer &= ~(TIM_CCER_CC4P | TIM_CCER_CC4NP);
+    // tmpccer |= ((TIM_ICPolarity << 12U) & (TIM_CCER_CC4P | TIM_CCER_CC4NP));
+// 
+    // /* Write to TIMx CCMR2 and CCER registers */
+    // TIMx->CCMR2 = tmpccmr2;
+    // TIMx->CCER = tmpccer ;
+// 
+    // htim->Instance->CCMR2 &= ~TIM_CCMR2_IC4PSC;
+// 
+    // /* Set the IC4PSC value */
+    // htim->Instance->CCMR2 |= (sConfig->ICPrescaler << 8U);
+#endif 
+    ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
+    LastTransferCount = SI_RINGBUFFER_LENGTH;
+    (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->NDTR) = SI_RINGBUFFER_LENGTH;
+}
+
 volatile int intcount = 0;
 extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
 {
@@ -129,6 +191,7 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     // htim->Instance->CCMR2 |= (sConfig->ICPrescaler << 8U);
 #endif 
     ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
+    LastTransferCount = SI_RINGBUFFER_LENGTH;
     (((DMA_Stream_TypeDef *)hdma_tim3_ch4.Instance)->NDTR) = SI_RINGBUFFER_LENGTH;
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
     __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
@@ -209,6 +272,7 @@ void InitializeTimersSI(void)
     {
         Error_Handler();
     }
+    NVIC_SetVector(DMA1_Stream5_IRQn, (uint32_t)&DMA1_Stream7_IRQHandler);
 
     hdma_tim3_ch4_out.Instance = DMA1_Stream6;
     hdma_tim3_ch4_out.Init.Request = DMA_REQUEST_TIM3_CH4;
@@ -229,6 +293,7 @@ void InitializeTimersSI(void)
     }
 
     // Configure the DMA for output.
+    NVIC_SetVector(DMA1_Stream6_IRQn, (uint32_t)&DMA1_Stream7_IRQHandler);
     HAL_NVIC_DisableIRQ(DMA1_Stream6_IRQn);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->PAR) = (uint32_t)&(htim3.Instance->CCR4);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4_out.Instance))->M0AR) = (uint32_t)&(SI_DMAOutputBuffer[0]);
@@ -263,9 +328,9 @@ void InitializeTimersSI(void)
         Error_Handler();
     }
 
-    HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
-    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 4, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 15, 0);
     NVIC_SetVector(DMA1_Stream7_IRQn, (uint32_t)&DMA1_Stream7_IRQHandler);
+    HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->PAR) = (uint32_t)&(htim3.Instance->DMAR);
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->M0AR) = (uint32_t)&(Tim3InputSetting[0]);
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) &= ~DMA_SxCR_EN;
@@ -275,6 +340,7 @@ void InitializeTimersSI(void)
     __HAL_LINKDMA(&htim3, hdma[TIM_DMA_ID_CC4], hdma_tim3_ch4);
     HAL_TIM_IC_Start_DMA(&htim3, TIM_CHANNEL_4, (uint32_t*)&(SDataBuffer[0]), SI_RINGBUFFER_LENGTH);
 
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 15, 15);
     HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn);
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
@@ -444,19 +510,13 @@ inline BYTE GetSingleByte(uint32_t Offset)
         Result <<= 1;
         Result |= (SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index + 1] - SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index]) < 4;
         Index += 2;
-#if 0
-        if (intcount >= 1) {
-            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index + 1];
-            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = SDataBuffer[(Offset % SI_RINGBUFFER_LENGTH) + Index];
-        }
-#endif
     }
 
     return Result;
 }
 inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
 {
-    volatile uint32_t TransferCount;
+    volatile uint32_t TransferCount = LastTransferCount;
     volatile BYTE ByteCount = 0;
     *Out = 0;
 
@@ -464,11 +524,15 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
     while ((Running != false) && (((((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) & 1) == 0)) {}
 
     // Read the current capture pointer.
-    TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
+    //TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
     while ((Running != false) && (ByteCount < ExpectedBytes)) {
         // Wait for data in buffer, there need to be 16 captures before a single byte of data is available.
         while ((Block != false) && ((LastTransferCount - TransferCount) < 16) && (Running != false)) {
-            TransferCount = ((DMA_Stream_TypeDef*) 0x40020088)->NDTR;
+            //TransferCount = ((DMA_Stream_TypeDef*) 0x40020088)->NDTR;
+        }
+
+        if (Running == false) {
+            return false;
         }
 
         // Ignore the ARR ticks.
@@ -485,12 +549,6 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
 
 #ifdef LOG_EEPROM_BYTES
         EepromInputLog[EepLogIdx++ % (1024 * 1024)] = *Out;
-#if 0
-        if (intcount >= 1) {
-            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = TransferCount;
-            EepromInputLog[EepLogIdx++ % (1024 * 1024)] = LastTransferCount;
-        }
-#endif
 #endif
         ByteCount += 1;
         if (ByteCount < ExpectedBytes) {
@@ -560,9 +618,9 @@ inline bool SIPutDeviceTerminator(void)
     // Program channel 3 DMA to trigger transmit completion.
     htim3.Instance->CCR3 = Start;
     ((DMA_Base_Registers *)(hdma_tim3_input_capture_configure.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_input_capture_configure.StreamIndex & 0x1FU);
-    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->NDTR) = 18;
+    (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->NDTR) = 1;
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->CR) |= DMA_SxCR_EN | DMA_SxCR_TCIE;
-    htim3.Instance->DCR = TIM_DMABURSTLENGTH_18TRANSFERS | TIM_DMABASE_CR1;
+    htim3.Instance->DCR = TIM_DMABURSTLENGTH_1TRANSFER | TIM_DMABASE_CR1;
     __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC3);
 
     // Enable the output timer.

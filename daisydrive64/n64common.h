@@ -4,7 +4,7 @@
 #define SRAM1_DATA __attribute__((section(".sram1_bss")))
 
 #define GP_SPEED GPIO_SPEED_FREQ_LOW
-#define LOG_EEPROM_BYTES 1
+//#define LOG_EEPROM_BYTES 1
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
@@ -40,8 +40,8 @@
 #define CIC_CLK (1 << 10)
 #define N64_NMI (1 << 11)
 
-#define ALE_H_IS_HIGH ((GPIOD->IDR & ALE_H) != 0)
-#define ALE_H_IS_LOW ((GPIOD->IDR & ALE_H) == 0)
+#define ALE_H_IS_HIGH ((GPIOB->IDR & ALE_H) != 0)
+#define ALE_H_IS_LOW ((GPIOB->IDR & ALE_H) == 0)
 #define ALE_L_IS_HIGH ((GPIOC->IDR & ALE_L) != 0)
 #define ALE_L_IS_LOW ((GPIOC->IDR & ALE_L) == 0)
 #define READ_IS_HIGH ((GPIOC->IDR & READ_LINE) != 0)
@@ -52,6 +52,8 @@
 int InitializeDmaChannels(void);
 void InitializeTimersPI(void);
 void InitializeTimersSI(void);
+void ITCM_FUNCTION SI_Reset(void);
+void ITCM_FUNCTION SI_Enable(void);
 extern "C" ITCM_FUNCTION void EXTI15_10_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
@@ -77,7 +79,7 @@ extern DTCM_DATA uint32_t EepLogIdx;
     GPIOB->MODER = 0x5CF555BB;
 
 #define SET_PI_INPUT_MODE \
-    GPIOB->MODER = 0x0CF000BB;\
+    GPIOB->MODER = 0x0CF000BB; \
     GPIOA->MODER = 0xABFF0000;
 
 #define EEPROM_4K 0x80

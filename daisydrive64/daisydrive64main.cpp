@@ -19,17 +19,16 @@
 #ifdef TESTROM
 const char* RomName[] = {
     "testrom.z64",
+    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
 };
 #else
-const char* RomName[] = {
+const char* RomName1[] = {
     //MENU_ROM_FILE_NAME,
-    "Mario Kart 64 (USA).n64",
-    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
     "Mario Tennis (USA).n64", // Works - lots of audio glitches.
     "Killer Instinct Gold (USA).n64", // Works - lots of audio glitches
-    //"Mortal Kombat Trilogy (USA).n64", // Gets in menu freezes on player selection screen.
+    "Mortal Kombat Trilogy (USA).n64", // Gets in menu freezes on player selection screen.
     //"Resident Evil 2 (USA).n64",  // Does not boot.
     
     //"007 - The World Is Not Enough (USA).n64",  // Does not boot.
@@ -41,13 +40,18 @@ const char* RomName[] = {
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
 };
+
+const char* RomName[] = {
+    //MENU_ROM_FILE_NAME,
+    "Mario Kart 64 (USA).n64", // Works
+};
 #endif
 
 const BYTE EEPROMTypeArray[] = {
     EEPROM_4K,
     EEPROM_4K,
-    EEPROM_4K,
     EEPROM_16K,
+    EEPROM_4K,
     EEPROM_4K,
     EEPROM_16K,
     EEPROM_16K,
@@ -260,7 +264,6 @@ void LoadRom(const char* Name)
 #endif
 }
 
-extern uint32_t LastTransferCount;
 inline void DaisyDriveN64Reset(void)
 {
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
@@ -276,7 +279,6 @@ inline void DaisyDriveN64Reset(void)
     ALE_H_Count = 0;
     ADInputAddress = 0;
     EepLogIdx = 0;
-    LastTransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
 }
 
 extern "C" const unsigned char __dtcmram_bss_start__;
@@ -333,9 +335,6 @@ int main(void)
     GPIOB->ODR = 0xC3F0;
 #endif
 
-    PortBPins = {WRITE_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOB, &PortBPins);
-
     GPIO_InitTypeDef PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
@@ -356,6 +355,14 @@ int main(void)
     PortGPins.Pin |= CIC_D1; // For now make this an input pin. It actually needs to be an OUT_OD pin.
     HAL_GPIO_Init(GPIOG, &PortGPins);
 
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_1;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
     LoadRom(RomName[0]);
     EEPROMType = EEPROMTypeArray[0];
 
@@ -370,7 +377,6 @@ int main(void)
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
-    //SITest();
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
@@ -390,6 +396,7 @@ int main(void)
             DaisyDriveN64Reset();
         }
 
+        SI_Enable();
         Running = true;
         while(Running != false) {
             RunEEPROMEmulator();
@@ -399,5 +406,6 @@ int main(void)
         RomIndex += 1;
         LoadRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
         EEPROMType = EEPROMTypeArray[WRAP_ROM_INDEX(RomIndex)];
+        SI_Reset();
     }
 }
