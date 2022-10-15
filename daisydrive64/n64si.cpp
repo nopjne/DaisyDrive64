@@ -18,6 +18,13 @@ DTCM_DATA uint32_t EepLogIdx = 0;
 BYTE EEPROMStore[2048]; // 16KiBit
 BYTE EEPROMType = 0x80;
 
+void ITCM_FUNCTION RunEEPROMEmulator(void);
+//inline bool ITCM_FUNCTION SIPutByte(BYTE In);
+//inline bool ITCM_FUNCTION SIPutDeviceTerminator(void);
+//inline bool ITCM_FUNCTION SIGetConsoleTerminator(void);
+//inline bool ITCM_FUNCTION SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block);
+//inline BYTE ITCM_FUNCTION GetSingleByte(uint32_t Offset);
+
 #if (SI_USE_DMA != 0)
 DTCM_DATA TIM_HandleTypeDef htim3;
 DTCM_DATA DMA_HandleTypeDef hdma_tim3_ch4;
@@ -27,7 +34,8 @@ SRAM1_DATA uint16_t SI_DMAOutputBuffer[SI_RINGBUFFER_LENGTH];
 DTCM_DATA uint32_t SI_DMAOutputLength;
 SRAM1_DATA uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 volatile DTCM_DATA uint32_t LastTransferCount;
-volatile uint32_t Start;
+volatile DTCM_DATA uint32_t Start;
+volatile DTCM_DATA uint32_t StartCCR4;
 SRAM1_DATA uint16_t Tim3InputSetting[] = {
     0x1, // CR1
     0x0, // CR2
@@ -69,8 +77,6 @@ volatile DTCM_DATA uint32_t OldTimeStamp;
 
 #endif
 
-#define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
-
 void Error_Handler()
 {
     GPIOC->BSRR = (1 << 7);
@@ -84,6 +90,7 @@ void ITCM_FUNCTION SI_Enable(void)
         __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
         htim3.Instance->CCER = 0xb000;
         htim3.Instance->CR1 = 1;
+        StartCCR4 = htim3.Instance->CCR4;
     }
 }
 
@@ -92,7 +99,7 @@ void ITCM_FUNCTION SI_Reset(void)
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     htim3.Instance->CR1 = 0;
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
-    htim3.Instance->DIER = 0x1000; // DIER
+    htim3.Instance->DIER = 0x1000 | TIM_DIER_CC4IE; // DIER
     htim3.Instance->SR = 0xf, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
@@ -149,7 +156,7 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     htim3.Instance->CR1 = 0;
 
-    htim3.Instance->DIER = 0x1000; // DIER
+    htim3.Instance->DIER = 0x1000 | TIM_DIER_CC4IE; // DIER
     htim3.Instance->SR = 0xf, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
@@ -198,6 +205,11 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     htim3.Instance->CCER = 0xb000;
     htim3.Instance->CR1 = 1;
     intcount += 1;
+}
+
+extern "C" void ITCM_FUNCTION HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    RunEEPROMEmulator();
 }
 
 void InitializeTimersSI(void)
@@ -344,6 +356,11 @@ void InitializeTimersSI(void)
     HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn);
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
+    HAL_NVIC_SetPriority(TIM3_IRQn, 15, 0);
+    htim3.Instance->DIER |= TIM_DIER_CC4IE;
+    HAL_NVIC_EnableIRQ(TIM3_IRQn);
+    //NVIC_SetVector(TIM3_IRQn, (uint32_t)&TIM3_IRQHandler);
+
     // Configure a timer to timeout on SI output completion and put TIM3 back in input mode.
     const uint16_t Tim3InputSettingLocal[] = {
         0x0, // CR1
@@ -377,6 +394,7 @@ void InitializeTimersSI(void)
 
     memcpy(Tim3InputSetting, Tim3InputSettingLocal, sizeof(Tim3InputSettingLocal));
     SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&(Tim3InputSetting[0]), sizeof(Tim3InputSetting));
+    StartCCR4 = htim3.Instance->CCR4;
 }
 
 #if (SI_USE_DMA == 0)
@@ -514,21 +532,27 @@ inline BYTE GetSingleByte(uint32_t Offset)
 
     return Result;
 }
+
 inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
 {
     volatile uint32_t TransferCount = LastTransferCount;
     volatile BYTE ByteCount = 0;
     *Out = 0;
 
-    // Wait for input capture to be enabled.
-    while ((Running != false) && (((((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) & 1) == 0)) {}
+    if (((((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) & 1) == 0) {
+        return false;
+    }
 
     // Read the current capture pointer.
-    //TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
+    TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
     while ((Running != false) && (ByteCount < ExpectedBytes)) {
         // Wait for data in buffer, there need to be 16 captures before a single byte of data is available.
-        while ((Block != false) && ((LastTransferCount - TransferCount) < 16) && (Running != false)) {
-            //TransferCount = ((DMA_Stream_TypeDef*) 0x40020088)->NDTR;
+        while (((LastTransferCount - TransferCount) < 16) && (Running != false)) {
+            if (Block == false) {
+                return false;
+            }
+
+            TransferCount = ((DMA_Stream_TypeDef*) 0x40020088)->NDTR;
         }
 
         if (Running == false) {
@@ -606,7 +630,6 @@ inline bool SIPutDeviceTerminator(void)
     {
         Error_Handler();
     }
-    //SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&(SI_DMAOutputBuffer[0]), SI_DMAOutputLength * sizeof(uint16_t));
 
     // Program the output dma to start.
     ((DMA_Base_Registers *)(hdma_tim3_ch4_out.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4_out.StreamIndex & 0x1FU);
@@ -625,6 +648,7 @@ inline bool SIPutDeviceTerminator(void)
 
     // Enable the output timer.
     htim3.Instance->CNT = 0;
+    htim3.Instance->DIER = 0x1800;
     htim3.Instance->CCMR2 = 0x3000;
     htim3.Instance->CR1 = 1;
 
@@ -665,12 +689,12 @@ inline bool SIPutByte(BYTE In)
 }
 #endif
 
-void ITCM_FUNCTION RunEEPROMEmulator(void)
+inline void ITCM_FUNCTION RunEEPROMEmulator(void)
 {
     BYTE Command = 0;
 
     // Check state.
-    bool result = SIGetBytes(&Command, 1, true);
+    bool result = SIGetBytes(&Command, 1, false);
     if ((Running == false) || (result == false)) {
         return;
     }

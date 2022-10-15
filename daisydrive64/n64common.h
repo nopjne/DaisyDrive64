@@ -24,13 +24,13 @@
 #define CART_DOM2_ADDR2_END       0x0FFFFFFF
 
 // Port B
-#define WRITE_LINE (1 << 1)
+#define S_DAT_LINE (1 << 1)
 #define ALE_H (1 << 12)
 
 // Port C
 #define ALE_L (1 << 0)
 #define READ_LINE (1 << 1)
-#define S_DAT_LINE (1 << 1)
+#define WRITE_LINE (1 << 1)
 
 // Port D
 #define RESET_LINE (1 << 11)
@@ -85,9 +85,9 @@ extern DTCM_DATA uint32_t EepLogIdx;
 #define EEPROM_4K 0x80
 #define EEPROM_16K 0xC0
 #if 0
-    constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA but upsets the conguity of the bits.
+    constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA but upsets the contiguity of the bits.
     constexpr Pin D24 = Pin(PORTA, 1); // AD1
-    constexpr Pin D28 = Pin(PORTA, 2); // AD2  // Could be used for DMA but upsets the conguity of the bits.
+    constexpr Pin D28 = Pin(PORTA, 2); // AD2  // Could be used for DMA but upsets the contiguity of the bits.
     constexpr Pin D16 = Pin(PORTA, 3); // AD3
     constexpr Pin D23 = Pin(PORTA, 4); // AD4
     constexpr Pin D22 = Pin(PORTA, 5); // AD5
@@ -107,7 +107,7 @@ extern DTCM_DATA uint32_t EepLogIdx;
 
     constexpr Pin D15 = Pin(PORTC, 0); // ALE_L // Read on EXTI0 -- (potential ADC3 IN10) 
     constexpr Pin D20 = Pin(PORTC, 1); // Read // Write (ADC3 IN11)
-    constexpr Pin D21 = Pin(PORTC, 4); // S-DATA // Reset 
+    constexpr Pin D21 = Pin(PORTC, 4); // N.C
     constexpr Pin D4  = Pin(PORTC, 8); // SD card D0
     constexpr Pin D3  = Pin(PORTC, 9); // SD card D1
     constexpr Pin D2  = Pin(PORTC, 10); // SD card D2
@@ -121,6 +121,6 @@ extern DTCM_DATA uint32_t EepLogIdx;
     constexpr Pin D7  = Pin(PORTG, 10); // CIC_D2
     constexpr Pin D8  = Pin(PORTG, 11); // N64_NMI // ALE_L -- HRTIM_EEV4 --
     // PORTC, 7 -- LED, NC -- Card Detect ?
-    // PORTG, 14 NC -- S-CLK  // LPTIM1_ETR -- Could be used for DMA with chain.
+    // PORTG, 14 NC -- S-CLK  // LPTIM1_ETR -- Could be used for DMA with chain. (May be in use by memory module)
     // 
 #endif

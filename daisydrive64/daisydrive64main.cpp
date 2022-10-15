@@ -19,10 +19,10 @@
 #ifdef TESTROM
 const char* RomName[] = {
     "testrom.z64",
-    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
+    //"007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
 };
 #else
-const char* RomName1[] = {
+const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
@@ -39,11 +39,6 @@ const char* RomName1[] = {
     //"Perfect Dark (USA) (Rev A).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
-};
-
-const char* RomName[] = {
-    //MENU_ROM_FILE_NAME,
-    "Mario Kart 64 (USA).n64", // Works
 };
 #endif
 
@@ -113,7 +108,7 @@ void InitializeInterrupts(void)
 
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 2);
     NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
@@ -330,7 +325,6 @@ int main(void)
     GPIO_InitTypeDef PortBPins = {0xC3F0, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOA, &PortAPins);
     HAL_GPIO_Init(GPIOB, &PortBPins);
-    
     GPIOA->ODR = 0xFF;
     GPIOB->ODR = 0xC3F0;
 #endif
@@ -399,7 +393,7 @@ int main(void)
         SI_Enable();
         Running = true;
         while(Running != false) {
-            RunEEPROMEmulator();
+            // RunCICEmulator();
         }
 
         SaveEEPRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
