@@ -34,6 +34,8 @@
 /* Private variables ---------------------------------------------------------*/
 extern DMA_HandleTypeDef DMA_Handle_Channel0;
 extern DMA_HandleTypeDef DMA_Handle_Channel1;
+extern DMA_HandleTypeDef DMA_Handle_Channel2;
+extern DMA_HandleTypeDef DMA_Handle_Channel3; // MODER switching.
 void BDMA_Channel0_IRQHandler_(void);
 void BDMA_Channel1_IRQHandler_(void);
 /* Private function prototypes -----------------------------------------------*/
@@ -157,7 +159,9 @@ void DMAMUX2_OVR_IRQHandler(void)
   //  a += 1;
   //} 
   HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel0);
-  //HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel1);
+  HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel1);
+  HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel2);
+  HAL_DMAEx_MUX_IRQHandler(&DMA_Handle_Channel3);
 }
 
 /**

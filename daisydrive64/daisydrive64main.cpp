@@ -19,10 +19,11 @@
 #ifdef TESTROM
 const char* RomName[] = {
     "testrom.z64",
-    //"007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
+    
 };
 #else
-const char* RomName[] = {
+const char* RomName1[] = {
+    
     //MENU_ROM_FILE_NAME,
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
@@ -39,6 +40,9 @@ const char* RomName[] = {
     //"Perfect Dark (USA) (Rev A).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
+};
+const char* RomName[] = {
+    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
 };
 #endif
 

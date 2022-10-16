@@ -7,8 +7,10 @@
 #include "n64common.h"
 #include "daisydrive64.h"
 
-DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel0;
-DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel1;
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel0; // AD capture.
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel1; // AD capture.
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel2; // MODER switching.
+DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel3; // MODER switching.
 DTCM_DATA HRTIM_HandleTypeDef hhrtim;
 DTCM_DATA DMA_HandleTypeDef hdma_hrtim1_m;
 DTCM_DATA DMA_HandleTypeDef hdma_dma_generator0;
@@ -29,7 +31,7 @@ uint32_t *const PortBBuffer = (uint32_t*)(Sram4Buffer + 16);
 // Latency because of the cache invalidate, needs to be taken into consideration too.
 uint32_t *const DMAOutABuffer = (uint32_t*)(Sram4Buffer + 32);
 uint32_t *const DMAOutBBuffer = (uint32_t*)(Sram4Buffer + 32 + 8);
-
+uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512));
 
 DTCM_DATA volatile uint32_t ADInputAddress = 0;
 DTCM_DATA volatile uint32_t PrefetchRead = 0;
@@ -63,11 +65,163 @@ static void Error_Handler(void)
 
 int InitializeDmaChannels(void)
 {
-    //return 0;
-
     HAL_DMA_MuxRequestGeneratorConfigTypeDef dmamux_ReqGenParams  = {0};
     __HAL_RCC_BDMA_CLK_ENABLE();
 
+#if (MODE_SWITCH_ON_RD2 == 0)
+    // Setup the MODE switching DMA that should execute before the other channels start.
+    {
+        DMA_Handle_Channel2.Instance                 = BDMA_Channel2;
+        DMA_Handle_Channel2.Init.Request             = BDMA_REQUEST_GENERATOR2;
+        DMA_Handle_Channel2.Init.Direction           = DMA_MEMORY_TO_PERIPH;
+        DMA_Handle_Channel2.Init.PeriphInc           = DMA_PINC_DISABLE;
+        DMA_Handle_Channel2.Init.MemInc              = DMA_MINC_DISABLE;
+        DMA_Handle_Channel2.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        DMA_Handle_Channel2.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+        DMA_Handle_Channel2.Init.Mode                = DMA_CIRCULAR;
+        DMA_Handle_Channel2.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
+        DMA_Handle_Channel2.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+        DMA_Handle_Channel2.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+        DMA_Handle_Channel2.Init.MemBurst            = DMA_MBURST_SINGLE;
+        DMA_Handle_Channel2.Init.PeriphBurst         = DMA_PBURST_SINGLE;
+
+        // Initialize the DMA for Transmission.
+        HAL_StatusTypeDef dmares = HAL_OK;
+        dmares = HAL_DMA_Init(&DMA_Handle_Channel2);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // Select Callbacks functions called after Transfer complete and Transfer error.
+        dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel2, HAL_DMA_XFER_CPLT_CB_ID, NULL);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel2, HAL_DMA_XFER_ERROR_CB_ID, HAL_TransferError);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // NVIC configuration for DMA transfer complete interrupt.
+        HAL_NVIC_SetPriority(BDMA_Channel2_IRQn, 1, 0);
+        HAL_NVIC_DisableIRQ(BDMA_Channel2_IRQn);
+
+        // Configure and enable the DMAMUX Request generator.
+        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
+        dmamux_ReqGenParams.RequestNumber = 1;
+
+        dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel2, &dmamux_ReqGenParams);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        HAL_DMA_MuxSyncConfigTypeDef Sync;
+        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_EXTI0;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING_FALLING;
+        Sync.SyncEnable = FunctionalState::DISABLE;
+        Sync.EventEnable = FunctionalState::ENABLE;
+        Sync.RequestNumber = 1;
+        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel2, &Sync);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // NVIC configuration for DMAMUX request generator overrun errors
+        HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
+
+        dmares = HAL_DMAEx_EnableMuxRequestGenerator(&DMA_Handle_Channel2);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel2, (uint32_t)(MODERDMA[1]), (uint32_t)&(GPIOB->MODER), 1);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+    }
+    // Setup the MODE switching DMA that should execute before the other channels start.
+    {
+        DMA_Handle_Channel3.Instance                 = BDMA_Channel3;
+        DMA_Handle_Channel3.Init.Request             = BDMA_REQUEST_GENERATOR3;
+        DMA_Handle_Channel3.Init.Direction           = DMA_MEMORY_TO_PERIPH;
+        DMA_Handle_Channel3.Init.PeriphInc           = DMA_PINC_DISABLE;
+        DMA_Handle_Channel3.Init.MemInc              = DMA_MINC_DISABLE;
+        DMA_Handle_Channel3.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        DMA_Handle_Channel3.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+        DMA_Handle_Channel3.Init.Mode                = DMA_CIRCULAR;
+        DMA_Handle_Channel3.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
+        DMA_Handle_Channel3.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+        DMA_Handle_Channel3.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+        DMA_Handle_Channel3.Init.MemBurst            = DMA_MBURST_SINGLE;
+        DMA_Handle_Channel3.Init.PeriphBurst         = DMA_PBURST_SINGLE;
+
+        // Initialize the DMA for Transmission.
+        HAL_StatusTypeDef dmares = HAL_OK;
+        dmares = HAL_DMA_Init(&DMA_Handle_Channel3);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // Select Callbacks functions called after Transfer complete and Transfer error.
+        dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel3, HAL_DMA_XFER_CPLT_CB_ID, NULL);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        dmares = HAL_DMA_RegisterCallback(&DMA_Handle_Channel3, HAL_DMA_XFER_ERROR_CB_ID, HAL_TransferError);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // NVIC configuration for DMA transfer complete interrupt.
+        HAL_NVIC_SetPriority(BDMA_Channel3_IRQn, 1, 0);
+        HAL_NVIC_DisableIRQ(BDMA_Channel3_IRQn);
+
+        // Configure and enable the DMAMUX Request generator.
+        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
+        dmamux_ReqGenParams.RequestNumber = 1;
+
+        dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel3, &dmamux_ReqGenParams);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // NVIC configuration for DMAMUX request generator overrun errors
+        HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 1, 0);
+        HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
+
+        dmares = HAL_DMAEx_EnableMuxRequestGenerator(&DMA_Handle_Channel3);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        HAL_DMA_MuxSyncConfigTypeDef Sync;
+        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_EXTI0;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING_FALLING;
+        Sync.SyncEnable = FunctionalState::DISABLE;
+        Sync.EventEnable = FunctionalState::ENABLE;
+        Sync.RequestNumber = 1;
+        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel3, &Sync);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel3, (uint32_t)(MODERDMA[0]), (uint32_t)&(GPIOA->MODER), 1);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        MODERDMA[0] = 0xABFF0000;
+        MODERDMA[1] = 0x0CF000BB;
+        SCB_CleanInvalidateDCache_by_Addr(MODERDMA, 8);
+    }
+#endif
+
+    // Setup the Address capture DMA.
     {
         DMA_Handle_Channel0.Instance                 = BDMA_Channel0;
         DMA_Handle_Channel0.Init.Request             = BDMA_REQUEST_GENERATOR0;
@@ -77,7 +231,7 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
         DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
-        DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
+        DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
         DMA_Handle_Channel0.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel0.Init.MemBurst            = DMA_MBURST_SINGLE;
@@ -105,8 +259,23 @@ int InitializeDmaChannels(void)
         HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 
+#if (MODE_SWITCH_ON_RD2 == 0)
+        HAL_DMA_MuxSyncConfigTypeDef Sync;
+        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_DMAMUX2_CH2_EVT;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING;
+        Sync.SyncEnable = FunctionalState::ENABLE;
+        Sync.EventEnable = FunctionalState::DISABLE;
+        Sync.RequestNumber = 1;
+        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel0, &Sync);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
         // Configure and enable the DMAMUX Request generator.
+        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_DMAMUX2_CH2_EVT;
+#else
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
+#endif
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
         dmamux_ReqGenParams.RequestNumber = 1;
 
@@ -132,14 +301,14 @@ int InitializeDmaChannels(void)
 
     {
         DMA_Handle_Channel1.Instance                 = BDMA_Channel1;
-        DMA_Handle_Channel1.Init.Request             = BDMA_REQUEST_GENERATOR0;
+        DMA_Handle_Channel1.Init.Request             = BDMA_REQUEST_GENERATOR1;
         DMA_Handle_Channel1.Init.Direction           = DMA_PERIPH_TO_MEMORY;
         DMA_Handle_Channel1.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel1.Init.MemInc              = DMA_MINC_ENABLE;
         DMA_Handle_Channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
         DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
-        DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_VERY_HIGH;
+        DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
         DMA_Handle_Channel1.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel1.Init.MemBurst            = DMA_MBURST_SINGLE;
@@ -167,7 +336,23 @@ int InitializeDmaChannels(void)
         HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
 
         // Configure and enable the DMAMUX Request generator.
+#if (MODE_SWITCH_ON_RD2 == 0)
+        HAL_DMA_MuxSyncConfigTypeDef Sync;
+        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_DMAMUX2_CH3_EVT;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING;
+        Sync.SyncEnable = FunctionalState::ENABLE;
+        Sync.EventEnable = FunctionalState::DISABLE;
+        Sync.RequestNumber = 1;
+        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel1, &Sync);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
+        // Configure and enable the DMAMUX Request generator.
+        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_SYNC_DMAMUX2_CH3_EVT;
+#else
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
+#endif
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
         dmamux_ReqGenParams.RequestNumber = 1;
 
@@ -204,6 +389,7 @@ int InitializeDmaChannels(void)
     //  A decrementing timer is kicked on every Hi->Lo transition which coinsides with RD Pulse Width.
     //    Potentially attempt to use OD instead of PP.
     //  
+
 
     return 0;
 }
@@ -523,7 +709,7 @@ void EXTI1_IRQHandler(void)
 #if (READ_DELAY_NS >= 500)
     // TODO: This code is here because the calculated loop at the end of this function needs these instructions to occur.
     //       Ideally the wait at the end of this function needs to become a property of a timer that sets the mode back to read.
-    //       Potentially using open drain instead of push-pull. The speed of OD over PP needs to be investigated in relateion to internal pullups.
+    //       Potentially using open drain instead of push-pull. The speed of OD over PP needs to be investigated in relation to internal pullups.
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
     } else {
@@ -568,6 +754,7 @@ void EXTI1_IRQHandler(void)
     ReadOffset += 2;
     IntCount += 1;
 
+#if (MODE_SWITCH_ON_RD2 != 0)
     if ((ReadOffset % 4) == 0 && (IntCount != 2)) {
 #if OVERCLOCK
 #if (READ_DELAY_NS == 4000)
@@ -598,9 +785,10 @@ void EXTI1_IRQHandler(void)
         GPIOB->ODR = 0xC3F0;
 #endif
     }
+#endif
 
-    //if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
-    if (IntCount >= 3) {
+    if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
+    //if (IntCount >= 3) {
         IntCount = 3;
     }
 
@@ -675,4 +863,19 @@ void BDMA_Channel0_IRQHandler(void)
     if ((DoOp & 1) == 0) {
         ConstructAddress();
     }
+}
+
+extern "C"
+ITCM_FUNCTION
+void LPTIM1_PISetInputMode(void)
+{
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
+    GPIOA->ODR = 0x00;
+    GPIOB->ODR = 0x0000;
+    SET_PI_INPUT_MODE;
+#else
+    // Switch to Input.
+    GPIOA->ODR = 0xFF;
+    GPIOB->ODR = 0xC3F0;
+#endif
 }
