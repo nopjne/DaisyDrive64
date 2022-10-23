@@ -31,14 +31,14 @@
 // Port C
 #define ALE_L (1 << 0)
 #define READ_LINE (1 << 1)
-#define WRITE_LINE (1 << 1)
+#define WRITE_LINE (1 << 4)
 
 // Port D
 #define RESET_LINE (1 << 11)
 
 // Port G
-#define CIC_D1 (1 << 9)
-#define CIC_CLK (1 << 10)
+#define CIC_CLK (1 << 9)
+#define CIC_DAT (1 << 10)
 #define N64_NMI (1 << 11)
 
 #define ALE_H_IS_HIGH ((GPIOB->IDR & ALE_H) != 0)
@@ -50,11 +50,15 @@
 #define RESET_IS_HIGH ((GPIOD->IDR & RESET_LINE) != 0)
 #define RESET_IS_LOW ((GPIOD->IDR & RESET_LINE) == 0)
 
+void CICEmulatorInit(void);
+void StartCICEmulator(void);
+int RunCICEmulator(void);
 int InitializeDmaChannels(void);
 void InitializeTimersPI(void);
 void InitializeTimersSI(void);
 void ITCM_FUNCTION SI_Reset(void);
 void ITCM_FUNCTION SI_Enable(void);
+extern "C" ITCM_FUNCTION void EXTI9_5_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI15_10_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
@@ -66,6 +70,7 @@ extern DTCM_DATA volatile bool Running;
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
+extern SRAM1_DATA BYTE FlashRamStorage[512];
 extern unsigned char *ram;
 
 
@@ -97,20 +102,20 @@ extern DTCM_DATA uint32_t OverflowCounter;
     constexpr Pin D19 = Pin(PORTA, 6); // AD6
     constexpr Pin D18 = Pin(PORTA, 7); // AD7
 
-    constexpr Pin D17 = Pin(PORTB, 1); // Write. // S-DATA TIM3_CH4 // This is a good candidate for S-DATA, because Tim3-CH4 can do direct capture mode of a signal.
+    constexpr Pin D17 = Pin(PORTB, 1); // S-DATA TIM3_CH4 // This is a good candidate for S-DATA, because Tim3-CH4 can do direct capture mode of a signal.
     constexpr Pin D9  = Pin(PORTB, 4); // AD8 --- TIM3-CH1
     constexpr Pin D10 = Pin(PORTB, 5); // AD9 --- TIM3-CH2
     constexpr Pin D13 = Pin(PORTB, 6); // AD10 -- TIM4-CH1
     constexpr Pin D14 = Pin(PORTB, 7); // AD11 -- TIM4-CH2
     constexpr Pin D11 = Pin(PORTB, 8); // AD12 -- TIM4-CH3
     constexpr Pin D12 = Pin(PORTB, 9); // AD13 -- TIM4-CH4
-    constexpr Pin D0  = Pin(PORTB, 12); // ALE_H  TIM1-BKIN // Needs to be on port B so when capturing a decision on address can be made.
+    constexpr Pin D0  = Pin(PORTB, 12); // ALE_H  TIM1-BKIN // Needs to be on port B so when capturing a decision can be made whether the high part of the address makes sense. (May have issues when only high part of address is changed.)
     constexpr Pin D29 = Pin(PORTB, 14); // AD14 - TIM1_CH2N
     constexpr Pin D30 = Pin(PORTB, 15); // AD15 - TIM1_CH3N
 
     constexpr Pin D15 = Pin(PORTC, 0); // ALE_L // Read on EXTI0 -- (potential ADC3 IN10) 
-    constexpr Pin D20 = Pin(PORTC, 1); // Read // Write (ADC3 IN11)
-    constexpr Pin D21 = Pin(PORTC, 4); // N.C
+    constexpr Pin D20 = Pin(PORTC, 1); // Read 
+    constexpr Pin D21 = Pin(PORTC, 4); // N.C // Write ?
     constexpr Pin D4  = Pin(PORTC, 8); // SD card D0
     constexpr Pin D3  = Pin(PORTC, 9); // SD card D1
     constexpr Pin D2  = Pin(PORTC, 10); // SD card D2
@@ -120,9 +125,9 @@ extern DTCM_DATA uint32_t OverflowCounter;
     constexpr Pin D5  = Pin(PORTD, 2);  // SD card CMD  // Could be used for DMA, requires disabling the SD Card.
     constexpr Pin D26 = Pin(PORTD, 11); // Reset // N64_NMI LPTIM2_IN2 cannot be used for anything useful..
 
-    constexpr Pin D27 = Pin(PORTG, 9);  // CIC_D1
-    constexpr Pin D7  = Pin(PORTG, 10); // CIC_D2
-    constexpr Pin D8  = Pin(PORTG, 11); // N64_NMI // ALE_L -- HRTIM_EEV4 --
+    constexpr Pin D27 = Pin(PORTG, 9);  // CIC_CLK
+    constexpr Pin D7  = Pin(PORTG, 10); // CIC_DAT
+    constexpr Pin D8  = Pin(PORTG, 11); // READ line should be connected here to make use of DMA -- HRTIM_EEV4 --
     // PORTC, 7 -- LED, NC -- Card Detect ?
     // PORTG, 14 NC -- S-CLK  // LPTIM1_ETR -- Could be used for DMA with chain. (May be in use by memory module)
     // 

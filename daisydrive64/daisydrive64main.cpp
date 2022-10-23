@@ -24,15 +24,23 @@ const char* RomName[] = {
 #else
 const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
+    "Star Fox 64 (USA) (Rev A).n64",
+    "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", // Need to fix the speed of DOMAIN2 reads.
+    "Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64",
+    "Yoshi's Story (USA) (En,Ja).n64",
+    "Donkey Kong 64 (Japan).n64", // Does not boot.
+    "Super Smash Bros. (USA).n64", // Hangs, need to fix the speed of DOMAIN2 reads.
+    "Paper Mario (USA).n64",
+
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
     "Mario Tennis (USA).n64", // Works
     "Killer Instinct Gold (USA).n64", // Works
-    "Mortal Kombat Trilogy (USA).n64", // Works
+    "Mortal Kombat Trilogy (USA) (Rev B).n64", // Works
     "007 - GoldenEye (USA).n64", // Works
     "Resident Evil 2 (USA).n64",  // Works
     "007 - The World Is Not Enough (USA).n64",  // Works
-    //"Mario Golf (USA).n64", // Needs different CIC chip.
+    
     "Mario Tennis 64 (Japan).n64", // Works
     "Mortal Kombat 4 (USA).n64", // Works
     "Mortal Kombat Mythologies - Sub-Zero (USA).n64", // Works.
@@ -40,13 +48,24 @@ const char* RomName[] = {
     "Mario Party 3 (USA).n64", // Works
     "Killer Instinct Gold (USA) (Rev B).n64", // Works
     "Wave Race 64 (USA) (Rev A).n64", // Works
-    //"Perfect Dark (USA) (Rev A).n64", // Needs different CIC chip. (CIC select not implemented)
-    //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
-    //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
+    "Perfect Dark (USA) (Rev A).n64", // Works
+    "Mario Golf (USA).n64", // Works, need saves.
+    "Star Fox 64 (Japan).n64", // Works, hangs because of EEPROM interfering with PI address latch.
+    "Pilotwings 64 (USA).n64",
+    "Turok - Dinosaur Hunter (USA).n64",
+    "1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64",
+    "Blast Corps (USA).n64",
 };
 #endif
 
 const BYTE EEPROMTypeArray[] = {
+    EEPROM_4K, // SF64
+    EEPROM_4K, // Zelda
+    EEPROM_4K, // Zelda
+    EEPROM_16K, // Yoshi
+    EEPROM_16K, // DK64
+    EEPROM_4K, // SMS64
+    EEPROM_4K, // Paper Mario
     EEPROM_4K, // MK64
     EEPROM_4K, // SM64
     EEPROM_16K, // Mario Tennis
@@ -62,6 +81,13 @@ const BYTE EEPROMTypeArray[] = {
     EEPROM_16K, // MP3
     EEPROM_4K, // KI
     EEPROM_4K, // Waverace
+    EEPROM_16K, // PD
+    EEPROM_4K, // MGolf
+    EEPROM_4K, // SF4 JP
+    EEPROM_4K, // Pilotwings
+    EEPROM_4K, // Turok
+    EEPROM_4K, // 1080 snow.
+    EEPROM_4K, // blast corps.
 };
 
 unsigned char *ram = (unsigned char *)0xC0000000;
@@ -104,17 +130,6 @@ void InitializeInterrupts(void)
     GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-#ifdef TEST
-    GPIO_InitStruct = {(1 << 12), GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM2};
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-    
-    GPIO_InitStruct = {(1 << 10), GPIO_MODE_AF_PP, GPIO_NOPULL, GP_SPEED, GPIO_AF3_LPTIM2};
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    GPIOB->BSRR = (1 << 10);
-    GPIOD->BSRR = (1 << 11) << 16;
-    GPIOD->BSRR = (1 << 12);
-#endif
-
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
     HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 2);
@@ -124,12 +139,6 @@ void InitializeInterrupts(void)
     // Reset line setup
     GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-#ifdef TEST
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI0_IRQn, 10, 0);
-    NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
-    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-#endif
 }
 
 void SaveEEPRom(const char* Name)
@@ -165,6 +174,41 @@ void SaveEEPRom(const char* Name)
         }
     }
 }
+
+void SaveFlashRam(const char* Name)
+{
+    SdmmcHandler::Config sd_cfg;
+    sd_cfg.Defaults();
+    sd_cfg.speed = SdmmcHandler::Speed::STANDARD;
+    {
+        sd.Init(sd_cfg);
+
+        // Links libdaisy i/o to fatfs driver.
+        fsi.Init(FatFSInterface::Config::MEDIA_SD);
+
+        // Mount SD Card
+        if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
+            BlinkAndDie(500, 100);
+        }
+
+        // Open the eeprom save file for the requested rom.
+        char SaveName[265];
+        sprintf(SaveName, "%s.fla", Name);
+        if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
+            UINT byteswritten;
+            f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+            f_close(&SDFile);
+
+            if (byteswritten != sizeof(FlashRamStorage)) {
+                // Let the user know something went wrong.
+                BlinkAndDie(1000, 500);
+            }
+        } else {
+            BlinkAndDie(2000, 500);
+        }
+    }
+}
+
 
 void LoadRom(const char* Name)
 {
@@ -203,7 +247,7 @@ void LoadRom(const char* Name)
 
         } else {
             FILINFO FileInfo;
-            FRESULT result = f_stat(SaveName, &FileInfo);
+            volatile FRESULT result = f_stat(SaveName, &FileInfo);
             if (FileInfo.fsize != sizeof(EEPROMStore)) {
                 BlinkAndDie(200, 300);
             }
@@ -216,7 +260,37 @@ void LoadRom(const char* Name)
             f_close(&SDFile);
         }
 
-        // TODO: Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 125KB)
+#if 0
+        // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
+        sprintf(SaveName, "%s.fla", Name);
+        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
+                UINT byteswritten;
+                f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+                f_close(&SDFile);
+
+                if (byteswritten != sizeof(FlashRamStorage)) {
+                    // Let the user know something went wrong.
+                    BlinkAndDie(1000, 500);
+                }
+            }
+
+        } else {
+            FILINFO FileInfo;
+            FRESULT result = f_stat(SaveName, &FileInfo);
+            if (FileInfo.fsize != sizeof(FlashRamStorage)) {
+                BlinkAndDie(200, 300);
+            }
+
+            result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
+            if (result != FR_OK) {
+                BlinkAndDie(200, 300);
+            }
+
+            f_close(&SDFile);
+        }
+#endif
 
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
@@ -356,8 +430,13 @@ int main(void)
     GPIO_InitTypeDef ALE_L_Pin = {ALE_L, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &ALE_L_Pin);
 
-    GPIO_InitTypeDef PortGPins = {(N64_NMI | CIC_CLK), GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
-    PortGPins.Pin |= CIC_D1; // For now make this an input pin. It actually needs to be an OUT_OD pin.
+    GPIO_InitTypeDef PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+    PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &PortGPins);
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -368,16 +447,10 @@ int main(void)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    LoadRom(RomName[0]);
-    EEPROMType = EEPROMTypeArray[0];
-
-    // TODO: "Output complete" timer setup. This timer needs to be setup to hit at the end of second read interrupt.
-    // This timer allows the interrupt to complete instead of hogging up the CM7, the completion time needs to 
-    // be calculated based on the speed value set in the rom.
-    //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&__EXTI0_IRQHandler);
-    //LPTIM_Config();
-    // Disable LP3 timer.
-    //DISABLE_LP3_TIMER();
+    uint32_t RomIndex = 0;
+    LoadRom(RomName[RomIndex]);
+    CICEmulatorInit();
+    EEPROMType = EEPROMTypeArray[RomIndex];
 
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
@@ -385,8 +458,9 @@ int main(void)
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
+    GPIOG->BSRR = CIC_DAT;
     SysTick->CTRL = TimerCtrl;
-    System::Delay(2);
+    //System::Delay(2);
     EXTI->PR1 = RESET_LINE;
     while (RESET_IS_LOW) { }
     SysTick->CTRL = 0;
@@ -395,7 +469,7 @@ int main(void)
     InitializeTimersPI();
     InitializeTimersSI();
 
-    uint32_t RomIndex = 0;
+    
     while(1) {
         while (RESET_IS_LOW) {
             DaisyDriveN64Reset();
@@ -404,13 +478,16 @@ int main(void)
         SI_Enable();
         Running = true;
         OverflowCounter = 0;
+        StartCICEmulator();
         while(Running != false) {
-            // RunCICEmulator();
+            RunCICEmulator();
         }
 
         SaveEEPRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        //SaveFlashRam(RomName[WRAP_ROM_INDEX(RomIndex)]);
         RomIndex += 1;
         LoadRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        CICEmulatorInit();
         EEPROMType = EEPROMTypeArray[WRAP_ROM_INDEX(RomIndex)];
         SI_Reset();
     }

@@ -13,11 +13,14 @@
  *                                                            *
  **************************************************************/
 
+#include "daisy_seed.h"
+#include "daisydrive64.h"
+#include "n64common.h"
 #define REGION_NTSC (0)
 #define REGION_PAL  (1)
 
 #define GET_REGION() (REGION_NTSC)
-
+#define CIC_USE_INTERRUPTS 1
 /* SEEDs */ 
 
 // 6102/7101
@@ -63,11 +66,18 @@ void CicRound(unsigned char *);
 void Cic6105Algo(void);
 
 /* Select SEED and CHECKSUM here */
-const unsigned char _CicSeed = CIC6102_SEED;
+unsigned char _CicSeed = CIC6102_SEED;
 
-const unsigned char _CicChecksum[] = {
-    CIC6102_CHECKSUM
-};
+const unsigned char _CicChecksumBytes[] = {
+        CIC6102_CHECKSUM,
+        CIC6101_CHECKSUM,
+        CIC6103_CHECKSUM,
+        CIC6105_CHECKSUM,
+        CIC6106_CHECKSUM,
+        CIC7102_CHECKSUM,
+    };
+
+const unsigned char *_CicChecksum;
 
 
 /* NTSC initial RAM */
@@ -90,21 +100,55 @@ unsigned char _6105Mem[32];
 
 /* YOU HAVE TO IMPLEMENT THE LOW LEVEL GPIO FUNCTIONS ReadBit() and WriteBit() */
 
+#define CIC_DCLK_PIN ((GPIOG->IDR) & CIC_CLK)
+#define CIC_DATA_PIN ((GPIOG->IDR) & CIC_DAT)
+#define CIC_DATA_PIN_SET ((GPIOG->BSRR) = CIC_DAT)
+#define CIC_DATA_PIN_CLEAR ((GPIOG->BSRR) = (CIC_DAT << 16))
+
+volatile bool CicOut;
+volatile bool CicBitIn;
+volatile bool CicWait;
+
+extern "C"
+ITCM_FUNCTION
+void EXTI9_5_IRQHandler(void)
+{
+    EXTI->PR1 = CIC_CLK;
+    if (CIC_DCLK_PIN == 0) {
+        if (CicOut == false) {
+            CicBitIn = CIC_DATA_PIN;
+        }
+
+    } else {
+        if (CicOut != false) {
+            CIC_DATA_PIN_SET;
+        }
+    }
+
+    CicWait = false;
+}
+
 /* Read a bit synchronized by DCLK */
 unsigned char ReadBit(void)
 {
     unsigned char res;
-
+#if (CIC_USE_INTERRUPTS == 0)
     // wait for DCLK to go low
-//  while (DCLK_PIN == HIGH)
-//  { }
+    while ((CIC_DCLK_PIN != 0) && (Running != false)) { }
 
     // Read the data bit
-    res = 0;
+    res = CIC_DATA_PIN;
 
     // wait for DCLK to go high
-//  while (DCLK_PIN == LOW)
-//  { }
+    while ((CIC_DCLK_PIN == 0) && (Running != false)) { }
+#else
+    CicWait = true;
+    CicOut = false;
+    while ((CicWait != false) && (Running != false)) {}
+    CicWait = true;
+    while ((CicWait != false) && (Running != false)) {}
+    res = CicBitIn;
+#endif
 
     return res;
 }
@@ -112,23 +156,36 @@ unsigned char ReadBit(void)
 /* Write a bit synchronized by DCLK */
 void WriteBit(unsigned char b)
 {
+#if (CIC_USE_INTERRUPTS == 0)
     // wait for DCLK to go low
-//  while (DCLK_PIN == HIGH)
-//  { }
+    while ((CIC_DCLK_PIN != 0) && (Running != false)) { }
 
-    if (b == 0)
-    {
+    if (b == 0) {
         // drive the output low
         // OUTPUT_TRISTATE = 0;
         // OUTPUT_DATA = 0;
+        CIC_DATA_PIN_CLEAR;
     }
 
     // wait for DCLK to go high
-//  while (DCLK_PIN == LOW)
-//  { }
+    while ((CIC_DCLK_PIN == 0) && (Running != false)) { }
 
     // tristate the output
-//  OUTPUT_TRISTATE = 1;
+    //  OUTPUT_TRISTATE = 1;
+    CIC_DATA_PIN_SET;
+
+#else
+    CicWait = true;
+    CicOut = true;
+    while ((CicWait != false) && (Running != false)) {}
+    if (b == 0) {
+        CIC_DATA_PIN_CLEAR;
+    }
+    
+    CicWait = true;
+    while ((CicWait != false) && (Running != false)) {}
+    
+#endif
 }
 
 /* Writes the lowes 4 bits of the byte */
@@ -143,8 +200,7 @@ void WriteNibble(unsigned char n)
 // Write RAM nibbles until index hits a 16 Byte border
 void WriteRamNibbles(unsigned char index)
 {
-    do
-    {
+    do {
         WriteNibble(_CicMem[index]);
         index++;
     } while ((index & 0x0f) != 0);
@@ -155,8 +211,7 @@ unsigned char ReadNibble(void)
 {
     unsigned char res = 0;
     unsigned char i;
-    for (i = 0; i < 4; i++)
-    {
+    for (i = 0; i < 4; i++) {
         res <<= 1;
         res |= ReadBit();
     }
@@ -182,8 +237,9 @@ void WriteSeed(void)
 void WriteChecksum(void)
 {
     unsigned char i;
-    for (i = 0; i < 12; i++)
+    for (i = 0; i < 12; i++) {
         _CicMem[i + 4] = _CicChecksum[i];
+    }
 
     // wait for DCLK to go low
     // (doesn't seem to be necessary)
@@ -216,8 +272,7 @@ void EncodeRound(unsigned char index)
     a = _CicMem[index];
     index++;
 
-    do
-    {
+    do {
         a = (a + 1) & 0x0f;
         a = (a + _CicMem[index]) & 0x0f;
         _CicMem[index] = a;
@@ -246,8 +301,7 @@ void CicRound(unsigned char * m)
     x = m[15];
     a = x;
 
-    do
-    {
+    do {
         b = 1;
         a += m[b] + 1;
         m[b] = a;
@@ -258,8 +312,7 @@ void CicRound(unsigned char * m)
         b++;
         a &= 0xf;
         a += (m[b] & 0xf) + 1;
-        if (a < 16)
-        {
+        if (a < 16) {
             Exchange(&a, &m[b]);
             b++;
         }
@@ -271,8 +324,10 @@ void CicRound(unsigned char * m)
         b++;
         a &= 0xf;
         a += 8;
-        if (a < 16)
+        if (a < 16) {
             a += m[b];
+        }
+
         Exchange(&a, &m[b]);
         b++;
         do
@@ -295,27 +350,31 @@ void Cic6105Algo(void)
     unsigned char A = 5;
     unsigned char carry = 1;
     unsigned char i;
-    for (i = 0; i < 30; ++i)
-    {
-        if (!(_6105Mem[i] & 1))
+    for (i = 0; i < 30; ++i) {
+        if (!(_6105Mem[i] & 1)) {
             A += 8;
-        if (!(A & 2))
+        }
+
+        if (!(A & 2)) {
             A += 4;
+        }
+
         A = (A + _6105Mem[i]) & 0xf;
         _6105Mem[i] = A;
-        if (!carry)
+        if (carry == false) {
             A += 7;
+        }
+
         A = (A + _6105Mem[i]) & 0xF;
         A = A + _6105Mem[i] + carry;
-        if (A >= 0x10)
-        {
+        if (A >= 0x10) {
             carry = 1;
             A -= 0x10;
-        }
-        else
-        {
+
+        } else {
             carry = 0;
         }
+
         A = (~A) & 0xf;
         _6105Mem[i] = A;
     }
@@ -345,8 +404,10 @@ void CompareMode(unsigned char isPal)
 
     // 0x17 determines the start index (but never 0)
     ramPtr = _CicMem[0x17] & 0xf;
-    if (ramPtr == 0)
+    if (ramPtr == 0) {
         ramPtr = 1;
+    }
+
     ramPtr |= 0x10;
 
     do
@@ -358,13 +419,10 @@ void CompareMode(unsigned char isPal)
         WriteBit(_CicMem[ramPtr] & 0x01);
 
         // PAL or NTSC?
-        if (!isPal)
-        {
+        if (isPal == false) {
             // NTSC
             ramPtr++;
-        }
-        else
-        {
+        } else {
             // PAL
             ramPtr--;
         }
@@ -383,8 +441,7 @@ void Cic6105Mode(void)
     WriteNibble(0xa);
 
     // receive 30 nibbles
-    for (ramPtr = 0; ramPtr < 30; ramPtr++)
-    {
+    for (ramPtr = 0; ramPtr < 30; ramPtr++) {
         _6105Mem[ramPtr] = ReadNibble();
     }
 
@@ -406,108 +463,170 @@ void InitRam(unsigned char isPal)
 {
     unsigned char i;
 
-    if (!isPal)
-    {
-        for (i = 0; i < 32; i++)
+    if (isPal == false) {
+        for (i = 0; i < 32; i++) {
             _CicMem[i] = _CicRamInitNtsc[i];
-    }
-    else
-    {
-        for (i = 0; i < 32; i++)
+        }
+
+    } else {
+        for (i = 0; i < 32; i++) {
             _CicMem[i] = _CicRamInitPal[i];
-    }
-}
-
-#if 0
-int main(void)
-{
-    unsigned char isPal;
-
-    // read the region setting
-    isPal = GET_REGION();
-
-    // send out the corresponding id
-    unsigned char hello = 0x1;
-    if (isPal)
-        hello |= 0x4;
-    WriteNibble(hello);
-
-    // encode and send the seed
-    WriteSeed();
-
-    // encode and send the checksum
-    WriteChecksum();
-    
-    // init the ram corresponding to the region
-    InitRam(isPal);
-    
-    // read the initial values from the PIF
-    _CicMem[0x01] = ReadNibble();
-    _CicMem[0x11] = ReadNibble();
-
-    while(1)
-    {
-        // read mode (2 bit)
-        unsigned char cmd = 0;
-        cmd |= (ReadBit() << 1);
-        cmd |= ReadBit();
-        switch (cmd)
-        {
-        case 0:
-            // 00 (compare)
-            CompareMode(isPal);
-            break;
-
-        case 2:
-            // 10 (6105)
-            Cic6105Mode();
-            break;
-
-        case 3:
-            // 11 (reset)
-            WriteBit(0);
-            break;
-
-        case 1:
-            // 01 (die)
-        default:
-            Die();
         }
     }
 }
-#endif
 
 unsigned char isPal;
 
-int cic_init(void)
+#define CIC6102_TYPE 0
+#define CIC6101_TYPE 1
+#define CIC6103_TYPE 2
+#define CIC6105_TYPE 3
+#define CIC6106_TYPE 4
+#define CIC7102_TYPE 5
+
+uint32_t CrcTable[256];
+bool TableBuilt = false;
+uint32_t si_crc32(const uint8_t *data, size_t size) {
+    unsigned n, k;
+    uint32_t c;
+
+    // No need to recompute the table on every invocation.
+    if (TableBuilt == false) {
+        for (n = 0; n < 256; n++) {
+            c = (uint32_t) n;
+            for (k = 0; k < 8; k++) {
+                if (c & 1) {
+                    c = 0xEDB88320L ^ (c >> 1);
+                    
+                } else {
+                    c = c >> 1;
+                }
+
+                CrcTable[n] = c;
+            }
+        }
+
+        TableBuilt = true;
+    }
+
+    c = 0L ^ 0xFFFFFFFF;
+    for (n = 0; n < size; n++) {
+        c = CrcTable[(c ^ data[n]) & 0xFF] ^ (c >> 8);
+    }
+
+  return c ^ 0xFFFFFFFF;
+}
+
+int cic_init(unsigned int Region, unsigned int Type)
 {
+    switch (Type) {
+        case CIC6102_TYPE:
+            _CicSeed = CIC6102_SEED;
+        break;
+        case CIC6101_TYPE:
+            _CicSeed = CIC6101_SEED;
+        break;
+        case CIC6103_TYPE:
+            _CicSeed = CIC6103_SEED;
+        break;
+        case CIC6105_TYPE:
+            _CicSeed = CIC6105_SEED;
+        break;
+        case CIC6106_TYPE:
+            _CicSeed = CIC6106_SEED;
+        break;
+        case CIC7102_TYPE:
+            _CicSeed = CIC7102_SEED;
+        break;
+        default:
+            _CicSeed = CIC6102_SEED;
+            Type = CIC6102_TYPE;
+        break;
+    }
+
+    _CicChecksum = &(_CicChecksumBytes[Type * 12]);
 
     // read the region setting
-    isPal = GET_REGION();
-
-    // send out the corresponding id
-    unsigned char hello = 0x1;
-    if (isPal)
-        hello |= 0x4;
-    WriteNibble(hello);
-
-    // encode and send the seed
-    WriteSeed();
-
-    // encode and send the checksum
-    WriteChecksum();
-    
-    // init the ram corresponding to the region
-    InitRam(isPal);
-    
-    // read the initial values from the PIF
-    _CicMem[0x01] = ReadNibble();
-    _CicMem[0x11] = ReadNibble();
+    isPal = Region;
 
     return 0;
 }
 
-int cic_run(void)
+#define CRC_NUS_5101 0x587BD543 // ??
+#define CRC_NUS_6101 0x9AF30466 //0x6170A4A1
+#define CRC_NUS_7102 0x009E9EA3 // ??
+#define CRC_NUS_6102 0x6D089C64 //0x90BB6CB5
+#define CRC_NUS_6103 0x211BA9FB //0x0B050EE0
+#define CRC_NUS_6105 0x520D9ABB //0x98BC2C86
+#define CRC_NUS_6106 0x266C376C //0xACC8580A
+#define CRC_NUS_8303 0x0E018159 // ??
+#define CRC_iQue_1 0xCD19FEF1
+#define CRC_iQue_2 0xB98CED9A
+#define CRC_iQue_3 0xE71C2766
+void CICEmulatorInit(void)
+{
+    volatile uint32_t crc = si_crc32(ram + 0x40, 0x1000 - 0x40);
+    switch (crc) {
+    case CRC_NUS_6101:
+    case CRC_NUS_7102:
+    case CRC_iQue_1:
+    case CRC_iQue_2:
+    case CRC_iQue_3:
+      cic_init(REGION_NTSC, CIC6101_TYPE);
+      break;
+
+    case CRC_NUS_6102:
+      cic_init(REGION_NTSC, CIC6102_TYPE);
+      break;
+
+    case CRC_NUS_6103:
+      cic_init(REGION_NTSC, CIC6103_TYPE);
+      break;
+
+    case CRC_NUS_6105:
+      cic_init(REGION_NTSC, CIC6105_TYPE);
+      break;
+
+    case CRC_NUS_6106:
+      cic_init(REGION_NTSC, CIC6106_TYPE);
+      break;
+
+    case CRC_NUS_8303:
+      cic_init(REGION_NTSC, CIC6102_TYPE);
+      break;
+
+    // TODO do the PAL regions too.
+    default:
+      cic_init(REGION_NTSC, CIC6102_TYPE);
+  }
+}
+
+void StartCICEmulator()
+{
+    // send out the corresponding id
+    unsigned char hello = 0x1;
+    if (isPal) {
+        hello |= 0x4;
+    }
+
+    CIC_DATA_PIN_SET;
+    WriteNibble(hello);
+
+    // encode and send the seed
+    WriteSeed();
+
+    // encode and send the checksum
+    WriteChecksum();
+    
+    // init the ram corresponding to the region
+    InitRam(isPal);
+    
+    // read the initial values from the PIF
+    _CicMem[0x01] = ReadNibble();
+    _CicMem[0x11] = ReadNibble();
+
+}
+int RunCICEmulator(void)
 {
     // read mode (2 bit)
     unsigned char cmd = 0;

@@ -34,6 +34,9 @@ uint32_t *const DMAOutABuffer = (uint32_t*)(Sram4Buffer + 32);
 uint32_t *const DMAOutBBuffer = (uint32_t*)(Sram4Buffer + 32 + 8);
 uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512));
 
+// Storage for Flash ram.
+SRAM1_DATA BYTE FlashRamStorage[512];
+
 DTCM_DATA volatile uint32_t ADInputAddress = 0;
 DTCM_DATA volatile uint32_t PrefetchRead = 0;
 DTCM_DATA volatile uint32_t ReadOffset = 0;
@@ -44,6 +47,7 @@ DTCM_DATA volatile bool Running = false;
 
 static void HAL_TransferError(DMA_HandleTypeDef *hdma);
 static void Error_Handler(void);
+extern "C" ITCM_FUNCTION void EXTI4_IRQHandler(void);
 
 typedef struct
 {
@@ -373,6 +377,15 @@ int InitializeDmaChannels(void)
     //    Potentially attempt to use OD instead of PP.
     //  
 
+#if 0
+    // TODO: Putting this here for now, but should not be in the DMA init function.
+    GPIO_InitTypeDef WritePin = {WRITE_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &WritePin);
+    NVIC_SetVector(EXTI4_IRQn, (uint32_t)&EXTI4_IRQHandler);
+    HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+#endif
+
     return 0;
 }
 
@@ -634,6 +647,19 @@ void InitializeTimersPI(void)
 
 extern "C"
 ITCM_FUNCTION
+void EXTI4_IRQHandler(void)
+{
+    // SRAM/FRAM handler
+    EXTI->PR1 = WRITE_LINE;
+    SET_PI_INPUT_MODE
+    uint32_t ValueB = GPIOB->IDR;
+    uint32_t Address = ADInputAddress - CART_DOM2_ADDR2_START;
+    //*((uint16_t*)(FlashRamStorage + Address + (ReadOffset & 511))) = (GPIOA->IDR & 0xFE) | ((ValueB & 0x03F0) << 4) | (ValueB & 0xC000);
+    ReadOffset += 2;
+}
+
+extern "C"
+ITCM_FUNCTION
 void EXTI15_10_IRQHandler(void)
 {
     if ((EXTI->PR1 & RESET_LINE) != 0) {
@@ -710,6 +736,7 @@ void EXTI1_IRQHandler(void)
             } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
                 PrefetchRead = 0;
             } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
+                //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
                 PrefetchRead = 0;
             } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
                 // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
@@ -769,12 +796,12 @@ void EXTI1_IRQHandler(void)
         GPIOB->ODR = 0xC3F0;
 #endif
     }
-#endif
 
     //if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
     if (IntCount >= 3) {
         IntCount = 3;
     }
+#endif
 
 #if 0 // Debugging
     if (IntCount == 565966) {
