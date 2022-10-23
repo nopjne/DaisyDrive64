@@ -22,27 +22,27 @@ const char* RomName[] = {
     
 };
 #else
-const char* RomName1[] = {
-    
+const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
     "Mario Tennis (USA).n64", // Works - lots of audio glitches.
     "Killer Instinct Gold (USA).n64", // Works - lots of audio glitches
     "Mortal Kombat Trilogy (USA).n64", // Gets in menu freezes on player selection screen.
-    //"Resident Evil 2 (USA).n64",  // Does not boot.
-    
-    //"007 - The World Is Not Enough (USA).n64",  // Does not boot.
-    //"Mario Golf (USA).n64", // Does not boot.
-    //"Mario Tennis 64 (Japan).n64", // Works - audio glitches.
+    "007 - GoldenEye (USA).n64",
+    "Resident Evil 2 (USA).n64",  // Does not boot.
+    "007 - The World Is Not Enough (USA).n64",  // Does not boot.
+    //"Mario Golf (USA).n64", // Does not boot Needs CIC chip.
+    "Mario Tennis 64 (Japan).n64", // Works - audio glitches.
     "Mortal Kombat 4 (USA).n64", // Works - audio glitches.
     "Mortal Kombat Mythologies - Sub-Zero (USA).n64", // Works.
+    "Mario Party 2 (USA).n64",
+    "Mario Party 3 (USA).n64",
+    "Killer Instinct Gold (USA) (Rev B).n64",
+    "Wave Race 64 (USA) (Rev A).n64",
     //"Perfect Dark (USA) (Rev A).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
-};
-const char* RomName[] = {
-    "007 - GoldenEye (USA).n64", // Boots, shows logo and hangs.
 };
 #endif
 
@@ -51,9 +51,16 @@ const BYTE EEPROMTypeArray[] = {
     EEPROM_4K,
     EEPROM_16K,
     EEPROM_4K,
+    EEPROM_4K, // Golden eye
+    EEPROM_4K,
+    EEPROM_4K,
     EEPROM_4K,
     EEPROM_16K,
     EEPROM_16K,
+    EEPROM_4K,
+    EEPROM_16K,
+    EEPROM_4K,
+    EEPROM_4K,
     //EEPROM_16K,
     //EEPROM_16K,
     //EEPROM_16K,
@@ -258,6 +265,8 @@ void LoadRom(const char* Name)
     *(ram + 3) =  0x80;
 #elif (READ_DELAY_NS == 1000)
     *(ram + 3) =  0x40;
+#elif (READ_DELAY_NS == 750)
+    *(ram + 3) =  0x30;
 #elif (READ_DELAY_NS == 500)
     *(ram + 3) =  0x20;
 #endif
@@ -396,6 +405,7 @@ int main(void)
 
         SI_Enable();
         Running = true;
+        OverflowCounter = 0;
         while(Running != false) {
             // RunCICEmulator();
         }

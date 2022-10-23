@@ -9,6 +9,7 @@
 
 // Set the read speed delay.
 #define READ_DELAY_NS 1000
+//#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
 
 #define N64_ROM_BASE              0x10000000
@@ -73,8 +74,9 @@ extern DTCM_DATA volatile uint32_t IntCount;
 extern DTCM_DATA volatile uint32_t ALE_H_Count;
 extern DTCM_DATA volatile uint32_t ADInputAddress;
 extern DTCM_DATA uint32_t EepLogIdx;
+extern DTCM_DATA uint32_t OverflowCounter;
 
-#define MODE_SWITCH_ON_RD2 1
+#define MODE_SWITCH_ON_RD2 0
 #define SET_PI_OUTPUT_MODE \
     GPIOA->MODER = 0xABFF5555; \
     GPIOB->MODER = 0x5CF555BB;

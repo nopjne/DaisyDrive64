@@ -16,8 +16,9 @@ DTCM_DATA DMA_HandleTypeDef hdma_hrtim1_m;
 DTCM_DATA DMA_HandleTypeDef hdma_dma_generator0;
 DTCM_DATA DMA_HandleTypeDef hdma_dma_generator1;
 
-LPTIM_HandleTypeDef LptimHandle = {0};
 
+LPTIM_HandleTypeDef LptimHandle = {0};
+DTCM_DATA uint32_t OverflowCounter = 0;
 BYTE *const Sram4Buffer = (BYTE*)0x38000000;
 uint32_t *const LogBuffer = (uint32_t*)(ram + (48 * 1024 * 1024));
 uint32_t *const PortABuffer = (uint32_t*)Sram4Buffer;
@@ -72,7 +73,7 @@ int InitializeDmaChannels(void)
     // Setup the MODE switching DMA that should execute before the other channels start.
     {
         DMA_Handle_Channel2.Instance                 = BDMA_Channel2;
-        DMA_Handle_Channel2.Init.Request             = BDMA_REQUEST_GENERATOR2;
+        DMA_Handle_Channel2.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel2.Init.Direction           = DMA_MEMORY_TO_PERIPH;
         DMA_Handle_Channel2.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel2.Init.MemInc              = DMA_MINC_DISABLE;
@@ -119,7 +120,7 @@ int InitializeDmaChannels(void)
 
         HAL_DMA_MuxSyncConfigTypeDef Sync;
         Sync.SyncSignalID = HAL_DMAMUX2_SYNC_EXTI0;
-        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING_FALLING;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_NO_EVENT;
         Sync.SyncEnable = FunctionalState::DISABLE;
         Sync.EventEnable = FunctionalState::ENABLE;
         Sync.RequestNumber = 1;
@@ -137,7 +138,7 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel2, (uint32_t)(MODERDMA[1]), (uint32_t)&(GPIOB->MODER), 1);
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel2, (uint32_t)&(MODERDMA[1]), (uint32_t)&(GPIOB->MODER), 1);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
@@ -145,7 +146,7 @@ int InitializeDmaChannels(void)
     // Setup the MODE switching DMA that should execute before the other channels start.
     {
         DMA_Handle_Channel3.Instance                 = BDMA_Channel3;
-        DMA_Handle_Channel3.Init.Request             = BDMA_REQUEST_GENERATOR3;
+        DMA_Handle_Channel3.Init.Request             = BDMA_REQUEST_GENERATOR0;
         DMA_Handle_Channel3.Init.Direction           = DMA_MEMORY_TO_PERIPH;
         DMA_Handle_Channel3.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel3.Init.MemInc              = DMA_MINC_DISABLE;
@@ -190,6 +191,17 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
+        HAL_DMA_MuxSyncConfigTypeDef Sync;
+        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_EXTI0;
+        Sync.SyncPolarity = HAL_DMAMUX_SYNC_NO_EVENT;
+        Sync.SyncEnable = FunctionalState::DISABLE;
+        Sync.EventEnable = FunctionalState::ENABLE;
+        Sync.RequestNumber = 1;
+        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel3, &Sync);
+        if (dmares != HAL_OK) {
+            Error_Handler();
+        }
+
         // NVIC configuration for DMAMUX request generator overrun errors
         HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 1, 0);
         HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
@@ -199,32 +211,21 @@ int InitializeDmaChannels(void)
             Error_Handler();
         }
 
-        HAL_DMA_MuxSyncConfigTypeDef Sync;
-        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_EXTI0;
-        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING_FALLING;
-        Sync.SyncEnable = FunctionalState::DISABLE;
-        Sync.EventEnable = FunctionalState::ENABLE;
-        Sync.RequestNumber = 1;
-        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel3, &Sync);
-        if (dmares != HAL_OK) {
-            Error_Handler();
-        }
-
-        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel3, (uint32_t)(MODERDMA[0]), (uint32_t)&(GPIOA->MODER), 1);
+        dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel3, (uint32_t)&(MODERDMA[0]), (uint32_t)&(GPIOA->MODER), 1);
         if (dmares != HAL_OK) {
             Error_Handler();
         }
 
         MODERDMA[0] = 0xABFF0000;
         MODERDMA[1] = 0x0CF000BB;
-        SCB_CleanInvalidateDCache_by_Addr(MODERDMA, 8);
+        SCB_CleanDCache_by_Addr(MODERDMA, 8);
     }
 #endif
 
     // Setup the Address capture DMA.
     {
         DMA_Handle_Channel0.Instance                 = BDMA_Channel0;
-        DMA_Handle_Channel0.Init.Request             = BDMA_REQUEST_GENERATOR0;
+        DMA_Handle_Channel0.Init.Request             = BDMA_REQUEST_GENERATOR1;
         DMA_Handle_Channel0.Init.Direction           = DMA_PERIPH_TO_MEMORY;
         DMA_Handle_Channel0.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel0.Init.MemInc              = DMA_MINC_ENABLE;
@@ -259,24 +260,15 @@ int InitializeDmaChannels(void)
         HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 
-#if (MODE_SWITCH_ON_RD2 == 0)
-        HAL_DMA_MuxSyncConfigTypeDef Sync;
-        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_DMAMUX2_CH2_EVT;
-        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING;
-        Sync.SyncEnable = FunctionalState::ENABLE;
-        Sync.EventEnable = FunctionalState::DISABLE;
-        Sync.RequestNumber = 1;
-        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel0, &Sync);
-        if (dmares != HAL_OK) {
-            Error_Handler();
-        }
-
         // Configure and enable the DMAMUX Request generator.
+#if (MODE_SWITCH_ON_RD2 == 0)
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_DMAMUX2_CH2_EVT;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;
 #else
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
-#endif
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
+#endif
+
         dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel0, &dmamux_ReqGenParams);
@@ -337,23 +329,13 @@ int InitializeDmaChannels(void)
 
         // Configure and enable the DMAMUX Request generator.
 #if (MODE_SWITCH_ON_RD2 == 0)
-        HAL_DMA_MuxSyncConfigTypeDef Sync;
-        Sync.SyncSignalID = HAL_DMAMUX2_SYNC_DMAMUX2_CH3_EVT;
-        Sync.SyncPolarity = HAL_DMAMUX_SYNC_RISING;
-        Sync.SyncEnable = FunctionalState::ENABLE;
-        Sync.EventEnable = FunctionalState::DISABLE;
-        Sync.RequestNumber = 1;
-        dmares = HAL_DMAEx_ConfigMuxSync(&DMA_Handle_Channel1, &Sync);
-        if (dmares != HAL_OK) {
-            Error_Handler();
-        }
-
-        // Configure and enable the DMAMUX Request generator.
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_SYNC_DMAMUX2_CH3_EVT;
+        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;
 #else
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
-#endif
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
+#endif
+
         dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel1, &dmamux_ReqGenParams);
@@ -369,6 +351,7 @@ int InitializeDmaChannels(void)
         if (dmares != HAL_OK) {
             Error_Handler();
         }
+
 
         dmares = HAL_DMA_Start_IT(&DMA_Handle_Channel1, (uint32_t)&(GPIOA->IDR), (uint32_t)(PortABuffer), 2);
         if (dmares != HAL_OK) {
@@ -389,7 +372,6 @@ int InitializeDmaChannels(void)
     //  A decrementing timer is kicked on every Hi->Lo transition which coinsides with RD Pulse Width.
     //    Potentially attempt to use OD instead of PP.
     //  
-
 
     return 0;
 }
@@ -706,6 +688,7 @@ void EXTI1_IRQHandler(void)
         return;
     }
 
+#if (MODE_SWITCH_ON_RD2 != 0)
 #if (READ_DELAY_NS >= 500)
     // TODO: This code is here because the calculated loop at the end of this function needs these instructions to occur.
     //       Ideally the wait at the end of this function needs to become a property of a timer that sets the mode back to read.
@@ -715,6 +698,7 @@ void EXTI1_IRQHandler(void)
     } else {
         LogBuffer[IntCount] = PrefetchRead;
     }
+#endif
 #endif
 
     if ((ReadOffset & 3) == 0) {
@@ -787,8 +771,8 @@ void EXTI1_IRQHandler(void)
     }
 #endif
 
-    if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
-    //if (IntCount >= 3) {
+    //if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
+    if (IntCount >= 3) {
         IntCount = 3;
     }
 
