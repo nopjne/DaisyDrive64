@@ -26,20 +26,20 @@ const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
     "Mario Kart 64 (USA).n64", // Works
     "Super Mario 64 (USA).n64", // Works
-    "Mario Tennis (USA).n64", // Works - lots of audio glitches.
-    "Killer Instinct Gold (USA).n64", // Works - lots of audio glitches
-    "Mortal Kombat Trilogy (USA).n64", // Gets in menu freezes on player selection screen.
-    "007 - GoldenEye (USA).n64",
-    "Resident Evil 2 (USA).n64",  // Does not boot.
-    "007 - The World Is Not Enough (USA).n64",  // Does not boot.
-    //"Mario Golf (USA).n64", // Does not boot Needs CIC chip.
-    "Mario Tennis 64 (Japan).n64", // Works - audio glitches.
-    "Mortal Kombat 4 (USA).n64", // Works - audio glitches.
+    "Mario Tennis (USA).n64", // Works
+    "Killer Instinct Gold (USA).n64", // Works
+    "Mortal Kombat Trilogy (USA).n64", // Works
+    "007 - GoldenEye (USA).n64", // Works
+    "Resident Evil 2 (USA).n64",  // Works
+    "007 - The World Is Not Enough (USA).n64",  // Works
+    //"Mario Golf (USA).n64", // Needs different CIC chip.
+    "Mario Tennis 64 (Japan).n64", // Works
+    "Mortal Kombat 4 (USA).n64", // Works
     "Mortal Kombat Mythologies - Sub-Zero (USA).n64", // Works.
-    "Mario Party 2 (USA).n64",
-    "Mario Party 3 (USA).n64",
-    "Killer Instinct Gold (USA) (Rev B).n64",
-    "Wave Race 64 (USA) (Rev A).n64",
+    "Mario Party 2 (USA).n64", // Works
+    "Mario Party 3 (USA).n64", // Works
+    "Killer Instinct Gold (USA) (Rev B).n64", // Works
+    "Wave Race 64 (USA) (Rev A).n64", // Works
     //"Perfect Dark (USA) (Rev A).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (Japan).n64", // Needs different CIC chip. (CIC select not implemented)
     //"Star Fox 64 (USA).n64", // Needs different CIC chip. (CIC select not implemented)
@@ -47,23 +47,21 @@ const char* RomName[] = {
 #endif
 
 const BYTE EEPROMTypeArray[] = {
-    EEPROM_4K,
-    EEPROM_4K,
-    EEPROM_16K,
-    EEPROM_4K,
+    EEPROM_4K, // MK64
+    EEPROM_4K, // SM64
+    EEPROM_16K, // Mario Tennis
+    EEPROM_4K, // KI
+    EEPROM_4K, // MKT
     EEPROM_4K, // Golden eye
-    EEPROM_4K,
-    EEPROM_4K,
-    EEPROM_4K,
-    EEPROM_16K,
-    EEPROM_16K,
-    EEPROM_4K,
-    EEPROM_16K,
-    EEPROM_4K,
-    EEPROM_4K,
-    //EEPROM_16K,
-    //EEPROM_16K,
-    //EEPROM_16K,
+    EEPROM_4K, // RE2
+    EEPROM_4K, // World
+    EEPROM_16K, // Tennis
+    EEPROM_16K, // MK4
+    EEPROM_16K, // MK Myth
+    EEPROM_4K, // MP2
+    EEPROM_16K, // MP3
+    EEPROM_4K, // KI
+    EEPROM_4K, // Waverace
 };
 
 unsigned char *ram = (unsigned char *)0xC0000000;
