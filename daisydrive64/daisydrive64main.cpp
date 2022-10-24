@@ -24,6 +24,8 @@ const char* RomName[] = {
 #else
 const char* RomName[] = {
     //MENU_ROM_FILE_NAME,
+    "Harvest Moon 64 (USA).n64",
+    "Conker's Bad Fur Day (USA).n64",
     "Star Fox 64 (USA) (Rev A).n64",
     "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", // Need to fix the speed of DOMAIN2 reads.
     "Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64",
@@ -59,6 +61,8 @@ const char* RomName[] = {
 #endif
 
 const BYTE EEPROMTypeArray[] = {
+    EEPROM_4K, // Harvest moon
+    EEPROM_16K, // Conker's
     EEPROM_4K, // SF64
     EEPROM_4K, // Zelda
     EEPROM_4K, // Zelda
@@ -338,7 +342,7 @@ void LoadRom(const char* Name)
 #elif (READ_DELAY_NS == 1000)
     *(ram + 3) =  0x40;
 #elif (READ_DELAY_NS == 750)
-    *(ram + 3) =  0x30;
+    *(ram + 3) =  0x39;
 #elif (READ_DELAY_NS == 500)
     *(ram + 3) =  0x20;
 #endif
