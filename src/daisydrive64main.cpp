@@ -472,8 +472,6 @@ int main(void)
     InitializeInterrupts();
     InitializeTimersPI();
     InitializeTimersSI();
-
-    
     while(1) {
         while (RESET_IS_LOW) {
             DaisyDriveN64Reset();
@@ -484,7 +482,6 @@ int main(void)
         OverflowCounter = 0;
         StartCICEmulator();
         while(Running != false) {
-            RunCICEmulator();
         }
 
         SaveEEPRom(RomName[WRAP_ROM_INDEX(RomIndex)]);

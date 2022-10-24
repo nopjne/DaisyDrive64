@@ -3,12 +3,15 @@
 #define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
 #define SRAM1_DATA __attribute__((section(".sram1_bss")))
 
+// Only enable for ROM less than 16MB.
+#define PI_ENABLE_LOGGING 0
+
 #define GP_SPEED GPIO_SPEED_FREQ_LOW
 //#define LOG_EEPROM_BYTES 1
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
-#define READ_DELAY_NS 2000
+#define READ_DELAY_NS 1000
 //#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
 

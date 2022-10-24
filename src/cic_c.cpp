@@ -105,87 +105,97 @@ unsigned char _6105Mem[32];
 #define CIC_DATA_PIN_SET ((GPIOG->BSRR) = CIC_DAT)
 #define CIC_DATA_PIN_CLEAR ((GPIOG->BSRR) = (CIC_DAT << 16))
 
-volatile bool CicOut;
-volatile bool CicBitIn;
-volatile bool CicWait;
+enum CIC_STATE {
+    CIC_RESET,
+    CIC_SETUP_CIC_MEMORY,
+    CIC_COMMAND_INPUT,
+    CIC_COMMAND_INPUT_RESOLVE,
+    CIC_COMMAND_PROCESS,
+    CIC_6015_INPUT,
+    CIC_6015_OUTPUT,
+};
+
+volatile CIC_STATE gCicState;
+volatile uint32_t gCicWritePtr;
+volatile uint32_t gCicReadPtr;
+volatile uint32_t gBufferReadPtr;
+volatile uint32_t gBufferWritePtr;
+volatile uint32_t gReadReqCount;
+
+BYTE CicReadBuffer[1024];
+enum CIC_OPERATION {
+    CIC_READ_BIT = 0x80,
+    CIC_WRITE_BIT_0 = 0x90,
+    CIC_WRITE_BIT_1 = 0xA0,
+};
+
+CIC_OPERATION CicOperationList[sizeof(CicReadBuffer)];
 
 extern "C"
 ITCM_FUNCTION
 void EXTI9_5_IRQHandler(void)
 {
     EXTI->PR1 = CIC_CLK;
+    if (Running == false) {
+        return;
+    }
+
+    if (gCicWritePtr == gCicReadPtr) {
+        RunCICEmulator();
+    }
+
     if (CIC_DCLK_PIN == 0) {
-        if (CicOut == false) {
-            CicBitIn = CIC_DATA_PIN;
+        CIC_OPERATION Op = (CicOperationList[gCicReadPtr % sizeof(CicOperationList)]);
+        gCicReadPtr += 1;
+        if (Op == CIC_READ_BIT) {
+            CicReadBuffer[gBufferWritePtr % sizeof(CicOperationList)] = (CIC_DATA_PIN != 0) ? 1 : 0;
+            gBufferWritePtr += 1;
+        } else if (Op == CIC_WRITE_BIT_0) {
+            CIC_DATA_PIN_CLEAR;
         }
 
     } else {
-        if (CicOut != false) {
+        // Not expecting to ever wrap.
+        CIC_OPERATION Op = (CicOperationList[(gCicReadPtr - 1) & (sizeof(CicOperationList) - 1)]);
+        if (Op == CIC_WRITE_BIT_0) {
             CIC_DATA_PIN_SET;
         }
     }
+}
 
-    CicWait = false;
+/* Wait for reset */
+void Die(void)
+{
+    // never return
+    while (Running)
+    { }
+}
+
+bool GetBit(unsigned char &out)
+{
+    if ((gBufferWritePtr == gBufferReadPtr) || (gReadReqCount <= gBufferReadPtr)) {
+        Die();
+        return false;
+    }
+
+    out = CicReadBuffer[gBufferReadPtr % sizeof(CicOperationList)];
+    gBufferReadPtr += 1;
+    return true;
 }
 
 /* Read a bit synchronized by DCLK */
-unsigned char ReadBit(void)
+void ReadBit(void)
 {
-    unsigned char res;
-#if (CIC_USE_INTERRUPTS == 0)
-    // wait for DCLK to go low
-    while ((CIC_DCLK_PIN != 0) && (Running != false)) { }
-
-    // Read the data bit
-    res = CIC_DATA_PIN;
-
-    // wait for DCLK to go high
-    while ((CIC_DCLK_PIN == 0) && (Running != false)) { }
-#else
-    CicWait = true;
-    CicOut = false;
-    while ((CicWait != false) && (Running != false)) {}
-    CicWait = true;
-    while ((CicWait != false) && (Running != false)) {}
-    res = CicBitIn;
-#endif
-
-    return res;
+    CicOperationList[gCicWritePtr % sizeof(CicOperationList)] = CIC_READ_BIT;
+    gCicWritePtr += 1;
+    gReadReqCount += 1;
 }
 
 /* Write a bit synchronized by DCLK */
 void WriteBit(unsigned char b)
 {
-#if (CIC_USE_INTERRUPTS == 0)
-    // wait for DCLK to go low
-    while ((CIC_DCLK_PIN != 0) && (Running != false)) { }
-
-    if (b == 0) {
-        // drive the output low
-        // OUTPUT_TRISTATE = 0;
-        // OUTPUT_DATA = 0;
-        CIC_DATA_PIN_CLEAR;
-    }
-
-    // wait for DCLK to go high
-    while ((CIC_DCLK_PIN == 0) && (Running != false)) { }
-
-    // tristate the output
-    //  OUTPUT_TRISTATE = 1;
-    CIC_DATA_PIN_SET;
-
-#else
-    CicWait = true;
-    CicOut = true;
-    while ((CicWait != false) && (Running != false)) {}
-    if (b == 0) {
-        CIC_DATA_PIN_CLEAR;
-    }
-    
-    CicWait = true;
-    while ((CicWait != false) && (Running != false)) {}
-    
-#endif
+    CicOperationList[gCicWritePtr % sizeof(CicOperationList)] = ((b != 0) ? CIC_WRITE_BIT_1 : CIC_WRITE_BIT_0);
+    gCicWritePtr += 1;
 }
 
 /* Writes the lowes 4 bits of the byte */
@@ -207,15 +217,24 @@ void WriteRamNibbles(unsigned char index)
 }
 
 /* Reads 4 bits and returns them in the lowes 4 bits of a byte */
-unsigned char ReadNibble(void)
+void ReadNibble(void)
 {
-    unsigned char res = 0;
-    unsigned char i;
-    for (i = 0; i < 4; i++) {
-        res <<= 1;
-        res |= ReadBit();
+    for (int i = 0; i < 4; i++) {
+        ReadBit();
     }
-    return res;
+}
+
+bool GetNibble(unsigned char &out)
+{
+    out = 0;
+    unsigned char inp = 0;
+    for (int i = 0; i < 4; i++) {
+        out <<= 1;
+        GetBit(inp);
+        out |= (inp & 1);
+    }
+
+    return true;
 }
 
 /* Encrypt and output the seed */
@@ -380,14 +399,6 @@ void Cic6105Algo(void)
     }
 }
 
-/* Wait for reset */
-void Die(void)
-{
-    // never return
-    while (1)
-    { }
-}
-
 /* CIC compare mode */
 void CompareMode(unsigned char isPal)
 {
@@ -409,11 +420,16 @@ void CompareMode(unsigned char isPal)
     }
 
     ramPtr |= 0x10;
-
     do
     {
         // read the bit from PIF (don't care about the value)
         ReadBit();
+
+        // Skip the bit that was read.
+        gBufferReadPtr += 1;
+        if (gReadReqCount != gReadReqCount) {
+            Die();
+        }
 
         // send out the lowest bit of the currently indexed ram
         WriteBit(_CicMem[ramPtr] & 0x01);
@@ -429,32 +445,43 @@ void CompareMode(unsigned char isPal)
 
         // repeat until the end is reached
     } while (ramPtr & 0xf);
+    gCicState = CIC_COMMAND_INPUT;
 }
 
 /* CIC 6105 mode */
 void Cic6105Mode(void)
 {
     unsigned char ramPtr;
+    if (gCicState == CIC_COMMAND_PROCESS) {
+        // write 0xa 0xa
+        WriteNibble(0xa);
+        WriteNibble(0xa);
 
-    // write 0xa 0xa
-    WriteNibble(0xa);
-    WriteNibble(0xa);
+        // receive 30 nibbles
+        for (ramPtr = 0; ramPtr < 30; ramPtr++) {
+            ReadNibble();
+        }
 
-    // receive 30 nibbles
-    for (ramPtr = 0; ramPtr < 30; ramPtr++) {
-        _6105Mem[ramPtr] = ReadNibble();
-    }
+        gCicState = CIC_6015_INPUT;
+    } else if (gCicState == CIC_6015_INPUT) { 
+        for (ramPtr = 0; ramPtr < 30; ramPtr++) {
+            GetNibble(_6105Mem[ramPtr]);
+        }
 
-    // execute the algorithm
-    Cic6105Algo();
+        gCicState = CIC_6015_OUTPUT;
+    } else if (gCicState == CIC_6015_OUTPUT) { // Sync point
+        // execute the algorithm
+        Cic6105Algo();
 
-    // send bit 0
-    WriteBit(0);
+        // send bit 0
+        WriteBit(0);
 
-    // send 30 nibbles
-    for (ramPtr = 0; ramPtr < 30; ramPtr++)
-    {
-        WriteNibble(_6105Mem[ramPtr]);
+        // send 30 nibbles
+        for (ramPtr = 0; ramPtr < 30; ramPtr++) {
+            WriteNibble(_6105Mem[ramPtr]);
+        }
+
+        gCicState = CIC_COMMAND_INPUT;
     }
 }
 
@@ -572,38 +599,47 @@ void CICEmulatorInit(void)
     case CRC_iQue_1:
     case CRC_iQue_2:
     case CRC_iQue_3:
-      cic_init(REGION_NTSC, CIC6101_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6101_TYPE);
+    break;
 
     case CRC_NUS_6102:
-      cic_init(REGION_NTSC, CIC6102_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6102_TYPE);
+    break;
 
     case CRC_NUS_6103:
-      cic_init(REGION_NTSC, CIC6103_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6103_TYPE);
+    break;
 
     case CRC_NUS_6105:
-      cic_init(REGION_NTSC, CIC6105_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6105_TYPE);
+    break;
 
     case CRC_NUS_6106:
-      cic_init(REGION_NTSC, CIC6106_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6106_TYPE);
+    break;
 
     case CRC_NUS_8303:
-      cic_init(REGION_NTSC, CIC6102_TYPE);
-      break;
+        cic_init(REGION_NTSC, CIC6102_TYPE);
+    break;
 
-    // TODO do the PAL regions too.
+    // TODO: do the PAL regions too.
     default:
-      cic_init(REGION_NTSC, CIC6102_TYPE);
-  }
+        cic_init(REGION_NTSC, CIC6102_TYPE);
+    }
 }
 
 void StartCICEmulator()
 {
+    gCicReadPtr = 0;
+    gCicWritePtr = 0;
+    gBufferReadPtr = 0;
+    gBufferWritePtr = 0;
+    gReadReqCount = 0;
+
+    memset(_CicMem, 0, sizeof(_CicMem));
+    memset(_6105Mem, 0, sizeof(_6105Mem));
     // send out the corresponding id
+    gCicState = CIC_RESET;
     unsigned char hello = 0x1;
     if (isPal) {
         hello |= 0x4;
@@ -617,43 +653,64 @@ void StartCICEmulator()
 
     // encode and send the checksum
     WriteChecksum();
-    
+
     // init the ram corresponding to the region
     InitRam(isPal);
-    
-    // read the initial values from the PIF
-    _CicMem[0x01] = ReadNibble();
-    _CicMem[0x11] = ReadNibble();
-
+    ReadNibble();
+    ReadNibble();
+    gCicState = CIC_SETUP_CIC_MEMORY;
 }
+
+unsigned char cmd = 0;
 int RunCICEmulator(void)
 {
     // read mode (2 bit)
-    unsigned char cmd = 0;
-    cmd |= (ReadBit() << 1);
-    cmd |= ReadBit();
-    switch (cmd)
-    {
-    case 0:
-        // 00 (compare)
-        CompareMode(isPal);
-        break;
-
-    case 2:
-        // 10 (6105)
-        Cic6105Mode();
-        break;
-
-    case 3:
-        // 11 (reset)
-        WriteBit(0);
-        break;
-
-    case 1:
-        // 01 (die)
-    default:
-        Die();
+    if (gCicState == CIC_SETUP_CIC_MEMORY) {
+        // read the initial values from the PIF
+        GetNibble(_CicMem[0x01]);
+        GetNibble(_CicMem[0x11]);
+        gCicState = CIC_COMMAND_INPUT;
     }
 
+    if (gCicState == CIC_COMMAND_INPUT) {
+        ReadBit();
+        ReadBit();
+        gCicState = CIC_COMMAND_INPUT_RESOLVE;
+
+    } else if (gCicState == CIC_COMMAND_INPUT_RESOLVE) {
+        cmd = 0;
+        unsigned char inp = 0;
+        GetBit(inp);
+        cmd |= inp << 1;
+        GetBit(inp);
+        cmd |= inp;
+        gCicState = CIC_COMMAND_PROCESS;
+    }
+
+    if ((gCicState == CIC_6015_INPUT) || (gCicState == CIC_COMMAND_PROCESS) || (gCicState == CIC_6015_OUTPUT)) { // Sync point
+        switch (cmd)
+        {
+        case 0:
+            // 00 (compare)
+            CompareMode(isPal);
+            break;
+
+        case 2:
+            // 10 (6105)
+            Cic6105Mode();
+            break;
+
+        case 3:
+            // 11 (reset)
+            WriteBit(0);
+            gCicState = CIC_COMMAND_INPUT;
+            break;
+
+        case 1:
+            // 01 (die)
+        default:
+            Die();
+        }
+    }
     return 0;
 }

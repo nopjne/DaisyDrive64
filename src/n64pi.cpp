@@ -714,6 +714,14 @@ void EXTI1_IRQHandler(void)
         return;
     }
 
+#if PI_ENABLE_LOGGING
+    if ((ReadOffset & 2) == 0) {
+        LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
+    } else {
+        LogBuffer[IntCount] = PrefetchRead;
+    }
+#endif
+
 #if (MODE_SWITCH_ON_RD2 != 0)
 #if (READ_DELAY_NS >= 500)
     // TODO: This code is here because the calculated loop at the end of this function needs these instructions to occur.
@@ -797,8 +805,12 @@ void EXTI1_IRQHandler(void)
 #endif
     }
 
-    //if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
-    if (IntCount >= 3) {
+
+#endif
+
+#if PI_ENABLE_LOGGING
+    if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
+    //if (IntCount >= 3) {
         IntCount = 3;
     }
 #endif
