@@ -8,7 +8,7 @@
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
-#define READ_DELAY_NS 1000
+#define READ_DELAY_NS 2000
 //#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
 
@@ -62,7 +62,7 @@ extern "C" ITCM_FUNCTION void EXTI9_5_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI15_10_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
-void ITCM_FUNCTION RunEEPROMEmulator(void);
+void RunEEPROMEmulator(void);
 
 extern DTCM_DATA volatile bool Running;
 

@@ -207,7 +207,7 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     intcount += 1;
 }
 
-extern "C" void ITCM_FUNCTION HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
     RunEEPROMEmulator();
 }
@@ -544,18 +544,14 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
         return false;
     }
 
-    // Read the current capture pointer.
     TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
+    if ((LastTransferCount - TransferCount) < (16 * ExpectedBytes)) {
+        return false;
+    }
+
+    // Read the current capture pointer.
     while ((Running != false) && (ByteCount < ExpectedBytes)) {
         // Wait for data in buffer, there need to be 16 captures before a single byte of data is available.
-        while (((LastTransferCount - TransferCount) < 16) && (Running != false)) {
-            if (Block == false) {
-                return false;
-            }
-
-            TransferCount = ((DMA_Stream_TypeDef*) 0x40020088)->NDTR;
-        }
-
         if (Running == false) {
             return false;
         }
@@ -589,8 +585,8 @@ inline bool SIGetConsoleTerminator(void)
 {
     // Wait for data in buffer, 2 edges need to come in before the transfer is considered complete.
     uint32_t TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
-    while ((TransferCount - LastTransferCount) < 2) {
-        TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
+    if ((TransferCount - LastTransferCount) < 2) {
+        return false;
     }
 
     LastTransferCount -= 2;
@@ -690,18 +686,38 @@ inline bool SIPutByte(BYTE In)
 }
 #endif
 
-inline void ITCM_FUNCTION RunEEPROMEmulator(void)
-{
-    BYTE Command = 0;
+enum SI_STATE {
+    SI_STATE_NONE,
+    SI_STATE_COMMAND,
+    SI_STATE_INFO,
+    SI_STATE_READ_ADDRESS,
+    SI_STATE_WRITE_ADDRESS,
+    SI_STATE_WRITE_DATA,
+};
+uint32_t SIState = SI_STATE_NONE;
 
-    // Check state.
-    bool result = SIGetBytes(&Command, 1, false);
-    if ((Running == false) || (result == false)) {
-        return;
+BYTE Command = 0;
+BYTE AddressByte = 0;
+void RunEEPROMEmulator(void)
+{
+    if (SIState == SI_STATE_NONE) {
+        // Check state.
+        bool result = SIGetBytes(&Command, 1, false);
+        if ((Running == false) || (result == false)) {
+            return;
+        }
+
+        SIState = SI_STATE_COMMAND;
     }
 
     if ((Command == SI_RESET) || (Command == SI_INFO)) {
-        SIGetConsoleTerminator();
+        if (SIState == SI_STATE_COMMAND) {
+            if (SIGetConsoleTerminator() == false) {
+                return;
+            }
+
+            SIState = SI_STATE_INFO;
+        }
         // Return the info on either 4KiBit or 16KiBit EEPROM.
         // 0x0080	N64	4 Kbit EEPROM	Bitfield: 0x80=Write in progress
         // 0x00C0	N64	16 Kbit EEPROM	Bitfield: 0x80=Write in progress
@@ -712,12 +728,24 @@ inline void ITCM_FUNCTION RunEEPROMEmulator(void)
         SIPutByte(EEPROMType);
         SIPutByte(0x00);
         SIPutDeviceTerminator();
+        SIState = SI_STATE_NONE;
     }
 
     if (Command == EEPROM_READ) {
-        BYTE AddressByte;
-        SIGetBytes(&AddressByte, 1, true);
-        SIGetConsoleTerminator();
+        if (SIState == SI_STATE_COMMAND) {
+            if (SIGetBytes(&AddressByte, 1, false) == false) {
+                return;
+            }
+
+            SIState = SI_STATE_READ_ADDRESS;
+        }
+
+        if (SIState == SI_STATE_READ_ADDRESS) {
+            if (SIGetConsoleTerminator() == false) {
+                return;
+            }
+        }
+
         uint32_t Address = AddressByte * 8;
 #if (SI_USE_DMA == 0)
         OldTimeStamp = DWT->CYCCNT;
@@ -727,24 +755,42 @@ inline void ITCM_FUNCTION RunEEPROMEmulator(void)
         }
 
         SIPutDeviceTerminator();
+        SIState = SI_STATE_NONE;
     }
 
     if (Command == EEPROM_STORE) {
-        BYTE AddressByte;
-        SIGetBytes(&AddressByte, 1, true);
-        if (EEPROMType == 0x80) {
-            AddressByte %= 64;
+        if (SIState == SI_STATE_COMMAND) {
+            if (SIGetBytes(&AddressByte, 1, false) == false) {
+                return;
+            }
+
+            SIState = SI_STATE_WRITE_ADDRESS;
+            if (EEPROMType == 0x80) {
+                AddressByte %= 64;
+            }
         }
 
-        uint32_t Address = AddressByte * 8;
-        SIGetBytes(&(EEPROMStore[Address]), 8, true);
-        SIGetConsoleTerminator();
+        if (SIState == SI_STATE_WRITE_ADDRESS) {
+            uint32_t Address = AddressByte * 8;
+            if (SIGetBytes(&(EEPROMStore[Address]), 8, false) == false) {
+                return;
+            }
+
+            SIState = SI_STATE_WRITE_DATA;
+        }
+
+        if (SIState == SI_STATE_WRITE_DATA) {
+            if (SIGetConsoleTerminator() == false) {
+                return;
+            }
+        }
 
 #if (SI_USE_DMA == 0)
         OldTimeStamp = DWT->CYCCNT;
 #endif
         SIPutByte(0x00); // Output not busy, coz we fast.
         SIPutDeviceTerminator();
+        SIState = SI_STATE_NONE;
     }
 }
 
