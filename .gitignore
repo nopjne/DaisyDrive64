@@ -139,3 +139,4 @@ examples/*/build/
 *.map
 *.json
 /out/
+daisydrive64/build/
