@@ -9,7 +9,7 @@ These pins can be reconfigured through software. This setup attempts to optimize
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/daisypinout.png?raw=true)
 
-![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/n64pinout.png?raw=true)
+![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/n64pinout.JPG?raw=true)
 Gamepak slot pinout. LAUDIO and RAUDIO can be connected to Pin18 and Pin19 respectively, however there may be some hardware required to interface these safely. The values for the input are currently unknown.
 
 Setting up:
