@@ -15,84 +15,55 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 
+uint32_t RomIndex = 0;
+struct RomSetting {
+    const char* RomName;
+    const BYTE BusSpeedOverride;
+    const char EepRomType;
+};
+
 //#define TESTROM 1
 #ifdef TESTROM
 const char* RomName[] = {
-    "testrom.z64",
+    {"testrom.z64",  0x18, EEPROM_4K}
     
 };
 #else
-const char* RomName[] = {
+const RomSetting RomSettings[] = {
     //MENU_ROM_FILE_NAME,
-    "Star Fox 64 (USA) (Rev A).n64",
-    "Harvest Moon 64 (USA).n64",
-    "Conker's Bad Fur Day (USA).n64",
-    "Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", // Need to fix the speed of DOMAIN2 reads.
-    "Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64",
-    "Yoshi's Story (USA) (En,Ja).n64",
-    "Donkey Kong 64 (Japan).n64", // Does not boot.
-    "Super Smash Bros. (USA).n64", // Hangs, need to fix the speed of DOMAIN2 reads.
-    "Paper Mario (USA).n64",
-
-    "Mario Kart 64 (USA).n64", // Works
-    "Super Mario 64 (USA).n64", // Works
-    "Mario Tennis (USA).n64", // Works
-    "Killer Instinct Gold (USA).n64", // Works
-    "Mortal Kombat Trilogy (USA) (Rev B).n64", // Works
-    "007 - GoldenEye (USA).n64", // Works
-    "Resident Evil 2 (USA).n64",  // Works
-    "007 - The World Is Not Enough (USA).n64",  // Works
-    
-    "Mario Tennis 64 (Japan).n64", // Works
-    "Mortal Kombat 4 (USA).n64", // Works
-    "Mortal Kombat Mythologies - Sub-Zero (USA).n64", // Works.
-    "Mario Party 2 (USA).n64", // Works
-    "Mario Party 3 (USA).n64", // Works
-    "Killer Instinct Gold (USA) (Rev B).n64", // Works
-    "Wave Race 64 (USA) (Rev A).n64", // Works
-    "Perfect Dark (USA) (Rev A).n64", // Works
-    "Mario Golf (USA).n64", // Works, need saves.
-    "Star Fox 64 (Japan).n64", // Works, hangs because of EEPROM interfering with PI address latch.
-    "Pilotwings 64 (USA).n64",
-    "Turok - Dinosaur Hunter (USA).n64",
-    "1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64",
-    "Blast Corps (USA).n64",
+    {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
+    {"Donkey Kong 64 (Japan).n64", 0x18, EEPROM_16K}, // Does not boot, needs speed 0x12.
+    {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
+    {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
+    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K},// Need to fix the speed of DOMAIN2 reads.
+    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K},
+    {"Yoshi's Story (USA) (En,Ja).n64", 0x18, EEPROM_16K},
+    {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K},
+    {"Paper Mario (USA).n64", 0x20, EEPROM_16K},
+    {"Mario Kart 64 (USA).n64", 0x18, EEPROM_4K},
+    {"Super Mario 64 (USA).n64", 0x18, EEPROM_4K},
+    {"Mario Tennis (USA).n64", 0x18, EEPROM_16K},
+    {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x18, EEPROM_4K},
+    {"007 - GoldenEye (USA).n64", 0x18, EEPROM_4K},
+    {"Resident Evil 2 (USA).n64", 0x18, EEPROM_4K},
+    {"007 - The World Is Not Enough (USA).n64", 0x18, EEPROM_4K},
+    {"Killer Instinct Gold (USA).n64", 0x18, EEPROM_4K},
+    {"Mario Tennis 64 (Japan).n64", 0x18, EEPROM_16K},
+    {"Mortal Kombat 4 (USA).n64", 0x18, EEPROM_16K},
+    {"Mortal Kombat Mythologies - Sub-Zero (USA).n64", 0x18, EEPROM_16K},
+    {"Mario Party 2 (USA).n64", 0x20, EEPROM_4K},
+    {"Mario Party 3 (USA).n64", 0x20, EEPROM_16K},
+    {"Killer Instinct Gold (USA) (Rev B).n64", 0x18, EEPROM_4K},
+    {"Wave Race 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
+    {"Perfect Dark (USA) (Rev A).n64", 0x20, EEPROM_16K},
+    {"Mario Golf (USA).n64", 0x20, EEPROM_4K},
+    {"Star Fox 64 (Japan).n64", 0x18, EEPROM_4K},
+    {"Pilotwings 64 (USA).n64", 0x18, EEPROM_4K},
+    {"Turok - Dinosaur Hunter (USA).n64", 0x18, EEPROM_4K},
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x18, EEPROM_4K},
+    {"Blast Corps (USA).n64", 0x18, EEPROM_4K},
 };
 #endif
-
-const BYTE EEPROMTypeArray[] = {
-    EEPROM_4K, // SF64
-    EEPROM_4K, // Harvest moon
-    EEPROM_16K, // Conker's
-    EEPROM_4K, // Zelda
-    EEPROM_4K, // Zelda
-    EEPROM_16K, // Yoshi
-    EEPROM_16K, // DK64
-    EEPROM_4K, // SMS64
-    EEPROM_4K, // Paper Mario
-    EEPROM_4K, // MK64
-    EEPROM_4K, // SM64
-    EEPROM_16K, // Mario Tennis
-    EEPROM_4K, // KI
-    EEPROM_4K, // MKT
-    EEPROM_4K, // Golden eye
-    EEPROM_4K, // RE2
-    EEPROM_4K, // World
-    EEPROM_16K, // Tennis
-    EEPROM_16K, // MK4
-    EEPROM_16K, // MK Myth
-    EEPROM_4K, // MP2
-    EEPROM_16K, // MP3
-    EEPROM_4K, // KI
-    EEPROM_4K, // Waverace
-    EEPROM_16K, // PD
-    EEPROM_4K, // MGolf
-    EEPROM_4K, // SF4 JP
-    EEPROM_4K, // Pilotwings
-    EEPROM_4K, // Turok
-    EEPROM_4K, // 1080 snow.
-    EEPROM_4K, // blast corps.
-};
 
 unsigned char *ram = (unsigned char *)0xC0000000;
 using namespace daisy;
@@ -133,6 +104,9 @@ void InitializeInterrupts(void)
     // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
     GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+    NVIC_SetVector(EXTI0_IRQn, (uint32_t)&EXTI0_IRQHandler);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -212,7 +186,6 @@ void SaveFlashRam(const char* Name)
         }
     }
 }
-
 
 void LoadRom(const char* Name)
 {
@@ -334,6 +307,9 @@ void LoadRom(const char* Name)
     // No led on on success.
     GPIOC->BSRR = USER_LED_PORTC << 16;
 
+    // Use the preset patch speed.
+    *(ram + 3) = RomSettings[WRAP_ROM_INDEX(RomIndex)].BusSpeedOverride;
+
     // Patch speed.
 #if (READ_DELAY_NS == 4000)
     *(ram + 3) =  0xFF;
@@ -342,9 +318,11 @@ void LoadRom(const char* Name)
 #elif (READ_DELAY_NS == 1000)
     *(ram + 3) =  0x40;
 #elif (READ_DELAY_NS == 750)
-    *(ram + 3) =  0x39;
+    *(ram + 3) =  0x30;
 #elif (READ_DELAY_NS == 500)
     *(ram + 3) =  0x20;
+#elif (READ_DELAY_NS == 400)
+    *(ram + 3) =  0x19;
 #endif
 }
 
@@ -451,10 +429,9 @@ int main(void)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    uint32_t RomIndex = 0;
-    LoadRom(RomName[RomIndex]);
+    LoadRom(RomSettings[RomIndex].RomName);
     CICEmulatorInit();
-    EEPROMType = EEPROMTypeArray[RomIndex];
+    EEPROMType = RomSettings[RomIndex].EepRomType;
 
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
@@ -484,12 +461,12 @@ int main(void)
         while(Running != false) {
         }
 
-        SaveEEPRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         //SaveFlashRam(RomName[WRAP_ROM_INDEX(RomIndex)]);
         RomIndex += 1;
-        LoadRom(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();
-        EEPROMType = EEPROMTypeArray[WRAP_ROM_INDEX(RomIndex)];
+        EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;
         SI_Reset();
     }
 }

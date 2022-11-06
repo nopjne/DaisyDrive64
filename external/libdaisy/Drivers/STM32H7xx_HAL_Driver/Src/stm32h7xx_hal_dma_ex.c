@@ -571,7 +571,7 @@ HAL_StatusTypeDef HAL_DMAEx_DisableMuxRequestGenerator (DMA_HandleTypeDef *hdma)
   *               the configuration information for the specified DMA Stream.
   * @retval None
   */
-void HAL_DMAEx_MUX_IRQHandler(DMA_HandleTypeDef *hdma)
+inline void HAL_DMAEx_MUX_IRQHandler(DMA_HandleTypeDef *hdma)
 {
   /* Check for DMAMUX Synchronization overrun */
   if((hdma->DMAmuxChannelStatus->CSR & hdma->DMAmuxChannelStatusMask) != 0U)

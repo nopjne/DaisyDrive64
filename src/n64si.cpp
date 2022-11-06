@@ -220,8 +220,8 @@ void InitializeTimersSI(void)
 
     htim3.Instance = TIM3;
 #if OVERCLOCK
-    //htim3.Init.Prescaler = 140 - 1; // 2 ticks per 1us
-    htim3.Init.Prescaler = 135 - 1; // 2 ticks per 1us
+    //htim3.Init.Prescaler = 144 - 1; // 2 ticks per 1us
+    htim3.Init.Prescaler = 139 - 1; // 2 ticks per 1us; 540 / 2 = 270; 270 / 2 = 135; 135 mhz; 1us per 1 mhz; 1
 #else
     htim3.Init.Prescaler = 120; // 2 ticks per 1us
 #endif

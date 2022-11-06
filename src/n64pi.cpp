@@ -693,14 +693,14 @@ void EXTI15_10_IRQHandler(void)
     }
 
     EXTI->PR1 = ALE_H;
-#if (USE_OPEN_DRAIN_OUTPUT == 0)
-    // Switch to Input.
-    SET_PI_INPUT_MODE;
-#else
-    // Switch to Input.
-    GPIOA->ODR = 0xFF;
-    GPIOB->ODR = 0xC3F0;
-#endif
+//#if (USE_OPEN_DRAIN_OUTPUT == 0)
+//    // Switch to Input.
+//    SET_PI_INPUT_MODE;
+//#else
+//    // Switch to Input.
+//    GPIOA->ODR = 0xFF;
+//    GPIOB->ODR = 0xC3F0;
+//#endif
     
     ALE_H_Count += 1;
 }
@@ -735,6 +735,26 @@ void EXTI1_IRQHandler(void)
 #endif
 #endif
 
+
+
+    // TODO: Value can be DMA-ed directly from ram.
+    // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
+    // Then PortA needs to hold the lower-upper 2bits on 10 and 11. Needs 3 DMA channels to realize.
+    // And need soldering to USB_OTG_FS_ID and USB_OTG_FS_D_-
+    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
+    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
+    GPIOA->ODR = Value;
+    GPIOB->ODR = OutB;
+#if (USE_OPEN_DRAIN_OUTPUT == 0)
+        // Switch to output.
+        // TODO: Can this be done through DMA entirely?
+    if (ReadOffset == 0) {
+        SET_PI_OUTPUT_MODE
+    }
+#endif
+    ReadOffset += 2;
+    IntCount += 1;
+
     if ((ReadOffset & 3) == 0) {
         if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
             PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
@@ -754,24 +774,7 @@ void EXTI1_IRQHandler(void)
                 PrefetchRead = 0;
             }
         }
-#if (USE_OPEN_DRAIN_OUTPUT == 0)
-        // Switch to output.
-        // TODO: Can this be done through DMA entirely?
-        SET_PI_OUTPUT_MODE
-#endif
     }
-
-    // TODO: Value can be DMA-ed directly from ram.
-    // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
-    // Then PortA needs to hold the lower-upper 2bits on 10 and 11. Needs 3 DMA channels to realize.
-    // And need soldering to USB_OTG_FS_ID and USB_OTG_FS_D_-
-    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
-    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
-    GPIOA->ODR = Value;
-    GPIOB->ODR = OutB;
-
-    ReadOffset += 2;
-    IntCount += 1;
 
 #if (MODE_SWITCH_ON_RD2 != 0)
     if ((ReadOffset % 4) == 0 && (IntCount != 2)) {
@@ -824,9 +827,9 @@ void EXTI1_IRQHandler(void)
 #endif
 }
 
-inline ITCM_FUNCTION void ConstructAddress(void)
+inline void ConstructAddress(void)
 {
-    SCB_InvalidateDCache_by_Addr(PortABuffer, 16);
+    //SCB->DCIMVAC = 0x38000000;
     if ((PortBBuffer[0] & ALE_H) == 0) {
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
@@ -836,10 +839,36 @@ inline ITCM_FUNCTION void ConstructAddress(void)
                         (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
     }
 
-    ReadOffset = 0;
-    if (ADInputAddress == N64_ROM_BASE) {
-        IntCount = 0;
+    //ReadOffset = 0;
+    //if (ADInputAddress == N64_ROM_BASE) {
+    //    IntCount = 0;
+    //}
+
+    if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
+        PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+    } else {
+        if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+            PrefetchRead = 0;
+        } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
+            PrefetchRead = 0;
+        } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
+            //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
+            PrefetchRead = 0;
+        } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
+            // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
+            // Glitches and static can still be seen/heard while playing.
+            PrefetchRead = *((uint32_t*)(ram + ADInputAddress));
+        } else {
+            PrefetchRead = 0;
+        }
     }
+
+    //GPIOA->ODR = 0xFF;
+    //GPIOB->ODR = 0xC3F0;
+    //GPIOA->ODR = 0x00;
+    //GPIOB->ODR = 0x0000;
+    //SET_PI_OUTPUT_MODE
+
 }
 
 extern "C"
@@ -886,6 +915,31 @@ void BDMA_Channel0_IRQHandler(void)
     if ((DoOp & 1) == 0) {
         ConstructAddress();
     }
+}
+
+extern "C"
+ITCM_FUNCTION
+void EXTI0_IRQHandler(void)
+{
+    EXTI->PR1 = ALE_L;
+    SCB->DCIMVAC = 0x38000000;
+    //while ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR & (1 | (1 << 4))) == 0) {}
+    //((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR;
+    // volatile int x = 0;
+    // while (x-- < 30) {}
+    // if ((PortBBuffer[0] & ALE_H) == 0) {
+    //     // Construct ADInputAddress
+    //     ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+    //                      (ADInputAddress & 0xFFFF0000);
+    // } else {
+    //     ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+    //                     (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
+    // }
+
+    ReadOffset = 0;
+    // if (ADInputAddress == N64_ROM_BASE) {
+    //     IntCount = 0;
+    // }
 }
 
 extern "C"

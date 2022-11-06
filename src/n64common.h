@@ -11,9 +11,10 @@
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
-#define READ_DELAY_NS 1000
+//#define READ_DELAY_NS 1000
 //#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
+//#define READ_DELAY_NS 400
 
 #define N64_ROM_BASE              0x10000000
 #define CART_DOM2_ADDR1_START     0x05000000

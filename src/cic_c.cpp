@@ -122,7 +122,7 @@ volatile uint32_t gBufferReadPtr;
 volatile uint32_t gBufferWritePtr;
 volatile uint32_t gReadReqCount;
 
-BYTE CicReadBuffer[1024];
+BYTE CicReadBuffer[256];
 enum CIC_OPERATION {
     CIC_READ_BIT = 0x80,
     CIC_WRITE_BIT_0 = 0x90,
@@ -427,7 +427,7 @@ void CompareMode(unsigned char isPal)
 
         // Skip the bit that was read.
         gBufferReadPtr += 1;
-        if (gReadReqCount != gReadReqCount) {
+        if (gReadReqCount != gBufferReadPtr) {
             Die();
         }
 

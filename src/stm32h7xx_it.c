@@ -148,12 +148,13 @@ void BDMA_Channel1_IRQHandler(void)
   BDMA_Channel1_IRQHandler_();
 }
 #endif
+#define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
 /**
   * @brief  This function handles DMAMUX2  interrupt request.
   * @param  None
   * @retval None
   */
-void DMAMUX2_OVR_IRQHandler(void)
+ITCM_FUNCTION void DMAMUX2_OVR_IRQHandler(void)
 {
   //while(1) {
   //  int a = 0;
