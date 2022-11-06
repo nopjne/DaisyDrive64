@@ -31,15 +31,15 @@ const char* RomName[] = {
 #else
 const RomSetting RomSettings[] = {
     //MENU_ROM_FILE_NAME,
-    {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
-    {"Donkey Kong 64 (Japan).n64", 0x18, EEPROM_16K}, // Does not boot, needs speed 0x12.
+    {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
+    {"Star Fox 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
     {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K},// Need to fix the speed of DOMAIN2 reads.
-    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K},
+    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K},
-    {"Paper Mario (USA).n64", 0x20, EEPROM_16K},
+    {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Paper Mario (USA).n64", 0x20, EEPROM_16K}, // Runs, Needs flash ram support for saves.
     {"Mario Kart 64 (USA).n64", 0x20, EEPROM_4K},
     {"Super Mario 64 (USA).n64", 0x20, EEPROM_4K},
     {"Mario Tennis (USA).n64", 0x20, EEPROM_16K},
@@ -47,20 +47,20 @@ const RomSetting RomSettings[] = {
     {"007 - GoldenEye (USA).n64", 0x20, EEPROM_4K},
     {"Resident Evil 2 (USA).n64", 0x20, EEPROM_4K},
     {"007 - The World Is Not Enough (USA).n64", 0x20, EEPROM_4K},
-    {"Killer Instinct Gold (USA).n64", 0x20, EEPROM_4K},
+    {"Killer Instinct Gold (USA).n64", 0x18, EEPROM_4K},
     {"Mario Tennis 64 (Japan).n64", 0x20, EEPROM_16K},
     {"Mortal Kombat 4 (USA).n64", 0x20, EEPROM_16K},
     {"Mortal Kombat Mythologies - Sub-Zero (USA).n64", 0x20, EEPROM_16K},
     {"Mario Party 2 (USA).n64", 0x20, EEPROM_4K},
     {"Mario Party 3 (USA).n64", 0x20, EEPROM_16K},
-    {"Killer Instinct Gold (USA) (Rev B).n64", 0x20, EEPROM_4K},
+    {"Killer Instinct Gold (USA) (Rev B).n64", 0x18, EEPROM_4K},
     {"Wave Race 64 (USA) (Rev A).n64", 0x20, EEPROM_4K},
     {"Perfect Dark (USA) (Rev A).n64", 0x20, EEPROM_16K},
-    {"Mario Golf (USA).n64", 0x20, EEPROM_4K},
+    {"Mario Golf (USA).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Star Fox 64 (Japan).n64", 0x18, EEPROM_4K},
     {"Pilotwings 64 (USA).n64", 0x20, EEPROM_4K},
     {"Turok - Dinosaur Hunter (USA).n64", 0x20, EEPROM_4K},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, EEPROM_4K},
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Blast Corps (USA).n64", 0x20, EEPROM_4K},
 };
 #endif

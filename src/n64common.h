@@ -81,7 +81,7 @@ extern unsigned char *ram;
 extern DTCM_DATA volatile uint32_t DMACount;
 extern DTCM_DATA volatile uint32_t IntCount;
 extern DTCM_DATA volatile uint32_t ALE_H_Count;
-extern DTCM_DATA volatile uint32_t ADInputAddress;
+extern DTCM_DATA uint32_t ADInputAddress;
 extern DTCM_DATA uint32_t EepLogIdx;
 extern DTCM_DATA uint32_t OverflowCounter;
 

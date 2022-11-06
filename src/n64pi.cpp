@@ -37,8 +37,9 @@ uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512))
 // Storage for Flash ram.
 SRAM1_DATA BYTE FlashRamStorage[512];
 
-DTCM_DATA volatile uint32_t ADInputAddress = 0;
-DTCM_DATA volatile uint32_t PrefetchRead = 0;
+DTCM_DATA uint32_t ADInputAddress = 0;
+DTCM_DATA uint32_t* ReadPtr = 0;
+DTCM_DATA uint32_t PrefetchRead = 0;
 DTCM_DATA volatile uint32_t ReadOffset = 0;
 DTCM_DATA volatile uint32_t DMACount = 0;
 DTCM_DATA volatile uint32_t ALE_H_Count = 0;
@@ -686,10 +687,6 @@ ITCM_FUNCTION
 void EXTI1_IRQHandler(void)
 {
     EXTI->PR1 = READ_LINE;
-    if (Running == false) {
-        return;
-    }
-
 #if PI_ENABLE_LOGGING
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
@@ -717,24 +714,8 @@ void EXTI1_IRQHandler(void)
     IntCount += 1;
 
     if ((ReadOffset & 3) == 0) {
-        if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
-            PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE) + (ReadOffset & 511)));
-        } else {
-            if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
-                PrefetchRead = 0;
-            } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
-                PrefetchRead = 0;
-            } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
-                //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
-                PrefetchRead = 0;
-            } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
-                // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
-                // Glitches and static can still be seen/heard while playing.
-                PrefetchRead = *((uint32_t*)(ram + ADInputAddress + (ReadOffset & 511)));
-            } else {
-                PrefetchRead = 0;
-            }
-        }
+        ReadPtr += 1;
+        PrefetchRead = *ReadPtr;
     }
 
 #if PI_ENABLE_LOGGING
@@ -765,19 +746,24 @@ inline void ConstructAddress(void)
     }
 
     if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
-        PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+        ReadPtr = ((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+        PrefetchRead = *ReadPtr;
     } else {
         if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+            ReadPtr = (uint32_t*)(ram);
             PrefetchRead = 0;
         } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
+            ReadPtr = (uint32_t*)(ram);
             PrefetchRead = 0;
         } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
             //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
+            ReadPtr = (uint32_t*)(ram);
             PrefetchRead = 0;
         } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
             // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
             // Glitches and static can still be seen/heard while playing.
-            PrefetchRead = *((uint32_t*)(ram + ADInputAddress));
+            ReadPtr = ((uint32_t*)(ram + ADInputAddress));
+            PrefetchRead = *ReadPtr;
         } else {
             PrefetchRead = 0;
         }
