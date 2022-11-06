@@ -32,7 +32,7 @@ const char* RomName[] = {
 const RomSetting RomSettings[] = {
     //MENU_ROM_FILE_NAME,
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
-    {"Star Fox 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
+    {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
     {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
@@ -95,11 +95,8 @@ void InitializeInterrupts(void)
     GPIO_InitTypeDef GPIO_InitStruct;
     // ALEH interrupt setup. -- 
     // This interrupt is used to indicate that ALE_H high, and the mode needs to switch to input.
-    GPIO_InitStruct = {ALE_H, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
-    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
+    GPIO_InitStruct = {ALE_H, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     // ALEL interrupt setup. Needs to cause a DMA transaction. From Perih to Memory.
     GPIO_InitStruct = {ALE_L, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
@@ -117,6 +114,9 @@ void InitializeInterrupts(void)
     // Reset line setup
     GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 10, 0);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void SaveEEPRom(const char* Name)

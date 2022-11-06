@@ -646,40 +646,30 @@ void EXTI4_IRQHandler(void)
 
 extern "C"
 ITCM_FUNCTION
-void EXTI15_10_IRQHandler(void)
+void EXTI15_10_IRQHandler(void) // Reset interrupt.
 {
-    if ((EXTI->PR1 & RESET_LINE) != 0) {
-        // Unset interrupt.
-        EXTI->PR1 = RESET_LINE;
+    // Unset interrupt.
+    EXTI->PR1 = RESET_LINE;
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
-        // Switch to output.
-        SET_PI_OUTPUT_MODE
-        GPIOA->ODR = 0;
-        GPIOB->ODR = 0;
-        // Switch to Input.
-        SET_PI_INPUT_MODE
+    // Switch to output.
+    SET_PI_OUTPUT_MODE
+    GPIOA->ODR = 0;
+    GPIOB->ODR = 0;
+    // Switch to Input.
+    SET_PI_INPUT_MODE
 #else
-        // Switch to Input.
-        GPIOA->ODR = 0xFF;
-        GPIOB->ODR = 0xC3F0;
+    // Switch to Input.
+    GPIOA->ODR = 0xFF;
+    GPIOB->ODR = 0xC3F0;
 #endif
 
-        DMACount = 0;
-        IntCount = 0;
-        ALE_H_Count = 0;
-        ADInputAddress = 0;
-        Running = false;
+    DMACount = 0;
+    IntCount = 0;
+    ALE_H_Count = 0;
+    ADInputAddress = 0;
+    Running = false;
 
-        // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
-        return;
-    }
-
-    if ((EXTI->PR1 & ALE_H) == 0) {
-        return;
-    }
-
-    EXTI->PR1 = ALE_H;
-    ALE_H_Count += 1;
+    // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
 }
 
 extern "C"
@@ -704,21 +694,20 @@ void EXTI1_IRQHandler(void)
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
-        // Switch to output.
-        // TODO: Can this be done through DMA entirely?
+    // Switch to output.
+    // TODO: Can this be done through DMA entirely?
     if (ReadOffset == 0) {
         SET_PI_OUTPUT_MODE
     }
 #endif
     ReadOffset += 2;
-    IntCount += 1;
-
     if ((ReadOffset & 3) == 0) {
         ReadPtr += 1;
         PrefetchRead = *ReadPtr;
     }
 
 #if PI_ENABLE_LOGGING
+    IntCount += 1;  // TODO: Understand why this increment is important for DK booting...
     if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
         IntCount = 3;
     }
@@ -735,7 +724,6 @@ void EXTI1_IRQHandler(void)
 
 inline void ConstructAddress(void)
 {
-    //SCB->DCIMVAC = 0x38000000;
     if ((PortBBuffer[0] & ALE_H) == 0) {
         // Construct ADInputAddress
         ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
