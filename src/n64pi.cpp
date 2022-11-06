@@ -73,7 +73,6 @@ int InitializeDmaChannels(void)
     HAL_DMA_MuxRequestGeneratorConfigTypeDef dmamux_ReqGenParams  = {0};
     __HAL_RCC_BDMA_CLK_ENABLE();
 
-#if (MODE_SWITCH_ON_RD2 == 0)
     // Setup the MODE switching DMA that should execute before the other channels start.
     {
         DMA_Handle_Channel2.Instance                 = BDMA_Channel2;
@@ -224,7 +223,6 @@ int InitializeDmaChannels(void)
         MODERDMA[1] = 0x0CF000BB;
         SCB_CleanDCache_by_Addr(MODERDMA, 8);
     }
-#endif
 
     // Setup the Address capture DMA.
     {
@@ -265,14 +263,8 @@ int InitializeDmaChannels(void)
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 
         // Configure and enable the DMAMUX Request generator.
-#if (MODE_SWITCH_ON_RD2 == 0)
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_DMAMUX2_CH2_EVT;
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;
-#else
-        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
-        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
-#endif
-
         dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel0, &dmamux_ReqGenParams);
@@ -332,14 +324,8 @@ int InitializeDmaChannels(void)
         HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
 
         // Configure and enable the DMAMUX Request generator.
-#if (MODE_SWITCH_ON_RD2 == 0)
         dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_SYNC_DMAMUX2_CH3_EVT;
         dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING;
-#else
-        dmamux_ReqGenParams.SignalID  = HAL_DMAMUX2_REQ_GEN_EXTI0;
-        dmamux_ReqGenParams.Polarity  = HAL_DMAMUX_REQ_GEN_RISING_FALLING;
-#endif
-
         dmamux_ReqGenParams.RequestNumber = 1;
 
         dmares = HAL_DMAEx_ConfigMuxRequestGenerator(&DMA_Handle_Channel1, &dmamux_ReqGenParams);
@@ -536,7 +522,6 @@ static void MX_HRTIM_Init(void)
 
 static void MX_DMA_Init(void)
 {
-
     /* Local variables */
     HAL_DMA_MuxRequestGeneratorConfigTypeDef pRequestGeneratorConfig = {0};
 
@@ -693,15 +678,6 @@ void EXTI15_10_IRQHandler(void)
     }
 
     EXTI->PR1 = ALE_H;
-//#if (USE_OPEN_DRAIN_OUTPUT == 0)
-//    // Switch to Input.
-//    SET_PI_INPUT_MODE;
-//#else
-//    // Switch to Input.
-//    GPIOA->ODR = 0xFF;
-//    GPIOB->ODR = 0xC3F0;
-//#endif
-    
     ALE_H_Count += 1;
 }
 
@@ -721,21 +697,6 @@ void EXTI1_IRQHandler(void)
         LogBuffer[IntCount] = PrefetchRead;
     }
 #endif
-
-#if (MODE_SWITCH_ON_RD2 != 0)
-#if (READ_DELAY_NS >= 500)
-    // TODO: This code is here because the calculated loop at the end of this function needs these instructions to occur.
-    //       Ideally the wait at the end of this function needs to become a property of a timer that sets the mode back to read.
-    //       Potentially using open drain instead of push-pull. The speed of OD over PP needs to be investigated in relation to internal pullups.
-    if ((ReadOffset & 2) == 0) {
-        LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
-    } else {
-        LogBuffer[IntCount] = PrefetchRead;
-    }
-#endif
-#endif
-
-
 
     // TODO: Value can be DMA-ed directly from ram.
     // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
@@ -776,44 +737,8 @@ void EXTI1_IRQHandler(void)
         }
     }
 
-#if (MODE_SWITCH_ON_RD2 != 0)
-    if ((ReadOffset % 4) == 0 && (IntCount != 2)) {
-#if OVERCLOCK
-#if (READ_DELAY_NS == 4000)
-        volatile uint32_t x = 266; // Calculated to offset to ~3964ns. At 540Mhz core (270mhz PLL)
-#elif (READ_DELAY_NS == 2000)
-        volatile uint32_t x = 128;
-#elif (READ_DELAY_NS == 1000)
-        volatile uint32_t x = 59;
-#elif (READ_DELAY_NS == 500)
-        volatile uint32_t x = 26;
-#else
-        const uint32_t x = 0;
-#endif
-#else
-        volatile uint32_t x = 196;
-#endif
-
-        while (x) { x--; }
-#if (USE_OPEN_DRAIN_OUTPUT == 0)
-        // GPIOA->ODR = 0xFF;
-        // GPIOB->ODR = 0xFFFF;
-        GPIOA->ODR = 0x00;
-        GPIOB->ODR = 0x0000;
-        SET_PI_INPUT_MODE;
-#else
-        // Switch to Input.
-        GPIOA->ODR = 0xFF;
-        GPIOB->ODR = 0xC3F0;
-#endif
-    }
-
-
-#endif
-
 #if PI_ENABLE_LOGGING
     if (IntCount >= (((64 - 48) * 1024 * 1024) / 4)) {
-    //if (IntCount >= 3) {
         IntCount = 3;
     }
 #endif
@@ -839,11 +764,6 @@ inline void ConstructAddress(void)
                         (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
     }
 
-    //ReadOffset = 0;
-    //if (ADInputAddress == N64_ROM_BASE) {
-    //    IntCount = 0;
-    //}
-
     if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
         PrefetchRead = *((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else {
@@ -862,13 +782,6 @@ inline void ConstructAddress(void)
             PrefetchRead = 0;
         }
     }
-
-    //GPIOA->ODR = 0xFF;
-    //GPIOB->ODR = 0xC3F0;
-    //GPIOA->ODR = 0x00;
-    //GPIOB->ODR = 0x0000;
-    //SET_PI_OUTPUT_MODE
-
 }
 
 extern "C"
@@ -923,23 +836,7 @@ void EXTI0_IRQHandler(void)
 {
     EXTI->PR1 = ALE_L;
     SCB->DCIMVAC = 0x38000000;
-    //while ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR & (1 | (1 << 4))) == 0) {}
-    //((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR;
-    // volatile int x = 0;
-    // while (x-- < 30) {}
-    // if ((PortBBuffer[0] & ALE_H) == 0) {
-    //     // Construct ADInputAddress
-    //     ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
-    //                      (ADInputAddress & 0xFFFF0000);
-    // } else {
-    //     ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
-    //                     (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
-    // }
-
     ReadOffset = 0;
-    // if (ADInputAddress == N64_ROM_BASE) {
-    //     IntCount = 0;
-    // }
 }
 
 extern "C"
