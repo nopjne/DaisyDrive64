@@ -583,7 +583,7 @@ static void MX_DMA_Init(void)
 
     /* DMA interrupt init */
     /* DMA1_Stream0_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 4, 0);
     HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
 
     /* DMAMUX1_OVR_IRQn interrupt configuration */
@@ -670,6 +670,7 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
     Running = false;
 
     // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
+    //HAL_NVIC_SystemReset();
 }
 
 extern "C"

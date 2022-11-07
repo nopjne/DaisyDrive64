@@ -590,12 +590,13 @@ int cic_init(unsigned int Region, unsigned int Type)
 #define CRC_iQue_1 0xCD19FEF1
 #define CRC_iQue_2 0xB98CED9A
 #define CRC_iQue_3 0xE71C2766
+#define CRC_NUS_7101 0x12706049
+
 void CICEmulatorInit(void)
 {
     volatile uint32_t crc = si_crc32(ram + 0x40, 0x1000 - 0x40);
     switch (crc) {
     case CRC_NUS_6101:
-    case CRC_NUS_7102:
     case CRC_iQue_1:
     case CRC_iQue_2:
     case CRC_iQue_3:
@@ -620,6 +621,10 @@ void CICEmulatorInit(void)
 
     case CRC_NUS_8303:
         cic_init(REGION_NTSC, CIC6102_TYPE);
+    break;
+
+    case CRC_NUS_7101:
+        cic_init(REGION_PAL, CIC7102_TYPE);
     break;
 
     // TODO: do the PAL regions too.

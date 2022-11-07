@@ -22,15 +22,20 @@ struct RomSetting {
     const char EepRomType;
 };
 
-//#define TESTROM 1
-#ifdef TESTROM
-const char* RomName[] = {
-    {"testrom.z64",  0x18, EEPROM_4K}
-    
+#define TESTROM 0
+#if TESTROM
+const RomSetting RomSettings[] = {
+    {"testrom.z64", 0x12, EEPROM_4K}
 };
 #else
 const RomSetting RomSettings[] = {
+    //{"Star Fox 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
+    //{"Killer Instinct Gold (USA).n64", 0x12, EEPROM_4K},
+    //{"Lylat Wars (Europe) (En,Fr,De).n64", 0x18, EEPROM_4K},
+    //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
+#if 1
     //MENU_ROM_FILE_NAME,
+    {"Mario Kart 64 (USA).n64", 0x20, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
@@ -40,7 +45,6 @@ const RomSetting RomSettings[] = {
     {"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
     {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Paper Mario (USA).n64", 0x20, EEPROM_16K}, // Runs, Needs flash ram support for saves.
-    {"Mario Kart 64 (USA).n64", 0x20, EEPROM_4K},
     {"Super Mario 64 (USA).n64", 0x20, EEPROM_4K},
     {"Mario Tennis (USA).n64", 0x20, EEPROM_16K},
     {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x20, EEPROM_4K},
@@ -62,6 +66,7 @@ const RomSetting RomSettings[] = {
     {"Turok - Dinosaur Hunter (USA).n64", 0x20, EEPROM_4K},
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Blast Corps (USA).n64", 0x20, EEPROM_4K},
+#endif
 };
 #endif
 
@@ -107,7 +112,7 @@ void InitializeInterrupts(void)
 
     GPIO_InitStruct = {READ_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 2);
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
     NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
@@ -415,7 +420,7 @@ int main(void)
     GPIO_InitTypeDef PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &PortGPins);
     NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
-    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
     PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
