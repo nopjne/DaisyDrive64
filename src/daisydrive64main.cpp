@@ -33,10 +33,12 @@ const RomSetting RomSettings[] = {
     //{"Killer Instinct Gold (USA).n64", 0x12, EEPROM_4K},
     //{"Lylat Wars (Europe) (En,Fr,De).n64", 0x18, EEPROM_4K},
     //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
+    //{"Mario Kart 64 (USA).n64", 0x18, EEPROM_4K},
 #if 1
     //MENU_ROM_FILE_NAME,
-    {"Mario Kart 64 (USA).n64", 0x20, EEPROM_4K},
+    {"Mario Kart 64 (USA).n64", 0x16, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
+    {"Star Fox 64 (USA).n64", 0x16, EEPROM_4K},
     {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
     {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
@@ -128,7 +130,7 @@ void SaveEEPRom(const char* Name)
 {
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::STANDARD;
+    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
     {
         sd.Init(sd_cfg);
 
@@ -162,7 +164,7 @@ void SaveFlashRam(const char* Name)
 {
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::STANDARD;
+    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
     {
         sd.Init(sd_cfg);
 
@@ -199,7 +201,7 @@ void LoadRom(const char* Name)
     size_t bytesread = 0;
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::STANDARD;
+    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
     {
         sd.Init(sd_cfg);
 
@@ -430,7 +432,7 @@ int main(void)
     GPIO_InitStruct.Pin = GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GP_SPEED;
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -464,6 +466,7 @@ int main(void)
         OverflowCounter = 0;
         StartCICEmulator();
         while(Running != false) {
+            __WFE();
         }
 
         SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);

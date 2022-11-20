@@ -6,7 +6,7 @@
 // Only enable for ROM less than 16MB.
 #define PI_ENABLE_LOGGING 0
 
-#define GP_SPEED GPIO_SPEED_FREQ_LOW
+#define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
 //#define LOG_EEPROM_BYTES 1
 #define SI_USE_DMA 1
 
@@ -27,6 +27,11 @@
 // Cartridge SRAM
 #define CART_DOM2_ADDR2_START     0x08000000
 #define CART_DOM2_ADDR2_END       0x0FFFFFFF
+
+// Menu address range
+#define CART_MENU_ADDR_START      0xB0000000
+#define CART_MENU_ADDR_END        0xB000FFFF
+#define CART_MENU_OFFSET          (46 * 1024 * 1024)
 
 // Port B
 #define S_DAT_LINE (1 << 1)
@@ -72,7 +77,7 @@ extern DTCM_DATA volatile bool Running;
 
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
 extern BYTE EEPROMStore[2048]; // 16KiBit
-extern BYTE EEPROMType;
+extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 extern SRAM1_DATA BYTE FlashRamStorage[512];
 extern unsigned char *ram;

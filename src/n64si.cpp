@@ -6,6 +6,9 @@
 #include "daisydrive64.h"
 #include "stm32h7xx_hal_tim.h"
 
+#define SI_SIGNAL_CAPTURE_FILTER 1
+#define SI_SIGNAL_EEPROM_INPUT_PRESCALER (135 - 1)
+#define SI_SIGNAL_EEPROM_OUTPUT_PRESCALER (138 - 1)
 #define SI_RESET 0xFF // Tx:1 Rx:3
 #define SI_INFO  0x00 // Tx:1 Rx:3
 #define EEPROM_READ 0x04 // Tx:2 Rx:8
@@ -16,7 +19,7 @@
 BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
 DTCM_DATA uint32_t EepLogIdx = 0;
 BYTE EEPROMStore[2048]; // 16KiBit
-BYTE EEPROMType = 0x80;
+volatile BYTE EEPROMType = 0x80;
 
 void ITCM_FUNCTION RunEEPROMEmulator(void);
 //inline bool ITCM_FUNCTION SIPutByte(BYTE In);
@@ -89,6 +92,9 @@ void ITCM_FUNCTION SI_Enable(void)
         (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
         __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
         htim3.Instance->CCER = 0xb000;
+        htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+        htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+        htim3.Instance->EGR = TIM_EGR_UG;
         htim3.Instance->CR1 = 1;
         StartCCR4 = htim3.Instance->CCR4;
     }
@@ -100,15 +106,18 @@ void ITCM_FUNCTION SI_Reset(void)
     htim3.Instance->CR1 = 0;
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
     htim3.Instance->DIER = 0x1000 | TIM_DIER_CC4IE; // DIER
-    htim3.Instance->SR = 0xf, // SR
+    htim3.Instance->SR = 0; //0x1f, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
+    htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+    htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+    htim3.Instance->EGR = TIM_EGR_UG;
 #if 1
     TIM_IC_InitTypeDef sConfigIC = {0};
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
     sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
     sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-    sConfigIC.ICFilter = 2;
+    sConfigIC.ICFilter = SI_SIGNAL_CAPTURE_FILTER;
     if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler();
@@ -156,16 +165,20 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     htim3.Instance->CR1 = 0;
 
-    htim3.Instance->DIER = 0x1000 | TIM_DIER_CC4IE; // DIER
-    htim3.Instance->SR = 0xf, // SR
+    htim3.Instance->DIER = TIM_DIER_CC4DE | TIM_DIER_CC4IE; // DIER
+    htim3.Instance->SR = 0;//0x1f, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
+    htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+    htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
+    htim3.Instance->EGR = TIM_EGR_UG;
+
 #if 1
     TIM_IC_InitTypeDef sConfigIC = {0};
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
     sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
     sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-    sConfigIC.ICFilter = 2;
+    sConfigIC.ICFilter = SI_SIGNAL_CAPTURE_FILTER;
     if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler();
@@ -207,8 +220,17 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     intcount += 1;
 }
 
+volatile uint32_t EepRomCycles = 0;
 extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
+    EepRomCycles += 1;
+    RunEEPROMEmulator();
+}
+
+extern "C" void ITCM_FUNCTION TIM3_IRQHandler(void)
+{
+    EepRomCycles += 1;
+    htim3.Instance->SR = ~htim3.Instance->SR;
     RunEEPROMEmulator();
 }
 
@@ -252,7 +274,7 @@ void InitializeTimersSI(void)
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
     sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
     sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-    sConfigIC.ICFilter = 2;
+    sConfigIC.ICFilter = SI_SIGNAL_CAPTURE_FILTER;
     if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler();
@@ -264,7 +286,7 @@ void InitializeTimersSI(void)
     GPIO_InitStruct.Pin = GPIO_PIN_1;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GP_SPEED;
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -286,6 +308,7 @@ void InitializeTimersSI(void)
         Error_Handler();
     }
     NVIC_SetVector(DMA1_Stream5_IRQn, (uint32_t)&DMA1_Stream7_IRQHandler);
+    HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn);
 
     hdma_tim3_ch4_out.Instance = DMA1_Stream6;
     hdma_tim3_ch4_out.Init.Request = DMA_REQUEST_TIM3_CH4;
@@ -341,7 +364,7 @@ void InitializeTimersSI(void)
         Error_Handler();
     }
 
-    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 15, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 6, 0);
     NVIC_SetVector(DMA1_Stream7_IRQn, (uint32_t)&DMA1_Stream7_IRQHandler);
     HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
     (((DMA_Stream_TypeDef *)(hdma_tim3_input_capture_configure.Instance))->PAR) = (uint32_t)&(htim3.Instance->DMAR);
@@ -353,14 +376,15 @@ void InitializeTimersSI(void)
     __HAL_LINKDMA(&htim3, hdma[TIM_DMA_ID_CC4], hdma_tim3_ch4);
     HAL_TIM_IC_Start_DMA(&htim3, TIM_CHANNEL_4, (uint32_t*)&(SDataBuffer[0]), SI_RINGBUFFER_LENGTH);
 
-    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 15, 15);
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 6, 0);
     HAL_NVIC_DisableIRQ(DMA1_Stream5_IRQn);
     LastTransferCount = SI_RINGBUFFER_LENGTH;
 
-    HAL_NVIC_SetPriority(TIM3_IRQn, 15, 0);
+    HAL_NVIC_SetPriority(TIM3_IRQn, 5, 0);
     htim3.Instance->DIER |= TIM_DIER_CC4IE;
+    //NVIC_SetVector(TIM3_IRQn, (uint32_t)&TIM3_IRQHandlerFast);
     HAL_NVIC_EnableIRQ(TIM3_IRQn);
-    //NVIC_SetVector(TIM3_IRQn, (uint32_t)&TIM3_IRQHandler);
+
 
     // Configure a timer to timeout on SI output completion and put TIM3 back in input mode.
     const uint16_t Tim3InputSettingLocal[] = {
@@ -368,7 +392,7 @@ void InitializeTimersSI(void)
         0x0, // CR2
         0x0, // SMCR
         0x1800, // DIER
-        0x0, // SR
+        0x10, // SR
         0x0, // EGR
         0x0, // CCMR1
         0x2100, // CCMR2
@@ -607,6 +631,10 @@ inline bool SIPutDeviceTerminator(void)
 
     // Stop input mode.
     htim3.Instance->CR1 = 0;
+    htim3.Init.Prescaler = SI_SIGNAL_EEPROM_OUTPUT_PRESCALER;
+    htim3.Instance->PSC = SI_SIGNAL_EEPROM_OUTPUT_PRESCALER;
+    htim3.Instance->EGR = TIM_EGR_UG;
+
     // Reset input capture
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
@@ -618,7 +646,7 @@ inline bool SIPutDeviceTerminator(void)
     //     SI_DMAOutputBuffer, SI_DMAOutputLength
     TIM_OC_InitTypeDef sConfigOC = {0};
     sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
-    sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
     sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
     sConfigOC.Pulse = 4;

@@ -401,7 +401,7 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
         GPIO_InitStruct.Pin = GPIO_PIN_11;
         GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GP_SPEED;
         GPIO_InitStruct.Alternate = GPIO_AF2_HRTIM1;
         HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
@@ -748,6 +748,9 @@ inline void ConstructAddress(void)
             //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
             ReadPtr = (uint32_t*)(ram);
             PrefetchRead = 0;
+        } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
+            ReadPtr = (uint32_t*)(ram + CART_MENU_OFFSET);
+            PrefetchRead = *ReadPtr;
         } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
             // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
             // Glitches and static can still be seen/heard while playing.

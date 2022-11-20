@@ -352,7 +352,7 @@ extern "C" void TIM2_IRQHandler(void)
     HAL_TIM_IRQHandler(&tim_handles[(int)TimerHandle::Config::Peripheral::TIM_2]
                             .tim_hal_handle_);
 }
-extern "C" void TIM3_IRQHandler(void)
+extern "C" void TIM3_IRQHandler_Skip(void)
 {
     HAL_TIM_IRQHandler(&tim_handles[(int)TimerHandle::Config::Peripheral::TIM_3]
                             .tim_hal_handle_);
