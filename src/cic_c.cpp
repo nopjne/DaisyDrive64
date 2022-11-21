@@ -667,8 +667,20 @@ void StartCICEmulator()
 }
 
 unsigned char cmd = 0;
+unsigned int x = 0;
+unsigned int dir = 1;
 int RunCICEmulator(void)
 {
+    if (x > 10) {
+        ((GPIOC->BSRR) = (USER_LED_PORTC));
+        dir = -1;
+    } else if (x == 0) {
+        ((GPIOC->BSRR) = (USER_LED_PORTC) << 16);
+        dir = 1;
+    }
+
+    x += dir;
+
     // read mode (2 bit)
     if (gCicState == CIC_SETUP_CIC_MEMORY) {
         // read the initial values from the PIF
@@ -717,5 +729,6 @@ int RunCICEmulator(void)
             Die();
         }
     }
+
     return 0;
 }

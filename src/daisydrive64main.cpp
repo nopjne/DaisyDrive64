@@ -69,7 +69,7 @@ const RomSetting RomSettings[] = {
     {"Star Fox 64 (Japan).n64", 0x17, EEPROM_4K},
     {"Pilotwings 64 (USA).n64", 0x17, EEPROM_4K},
     {"Turok - Dinosaur Hunter (USA).n64", 0x17, EEPROM_4K},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x17, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x40, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Blast Corps (USA).n64", 0x17, EEPROM_4K},
 #endif
 };
