@@ -37,6 +37,11 @@ uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512))
 // Storage for Flash ram.
 SRAM1_DATA BYTE FlashRamStorage[512];
 
+#define PI_PRECALCULATE_OUT_VALUE 1
+#if (PI_PRECALCULATE_OUT_VALUE != 0)
+DTCM_DATA uint32_t ValueA = 0;
+DTCM_DATA uint32_t ValueB = 0;
+#endif
 DTCM_DATA uint32_t ADInputAddress = 0;
 DTCM_DATA uint32_t* ReadPtr = 0;
 DTCM_DATA uint32_t PrefetchRead = 0;
@@ -648,27 +653,41 @@ extern "C"
 ITCM_FUNCTION
 void EXTI15_10_IRQHandler(void) // Reset interrupt.
 {
+#if 1
+    if ((EXTI->PR1 & N64_NMI) != 0) {
+        EXTI->PR1 = N64_NMI;
+        SI_Reset();
+        InitializeTimersSI();
+        SI_Enable();
+        //return;
+    }
+#endif
     // Unset interrupt.
-    EXTI->PR1 = RESET_LINE;
+    //if ((EXTI->PR1 & RESET_LINE) != 0) {
+    {
+        EXTI->PR1 = RESET_LINE;
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
-    // Switch to output.
-    SET_PI_OUTPUT_MODE
-    GPIOA->ODR = 0;
-    GPIOB->ODR = 0;
-    // Switch to Input.
-    SET_PI_INPUT_MODE
+        // Switch to output.
+        SET_PI_OUTPUT_MODE
+        GPIOA->ODR = 0;
+        GPIOB->ODR = 0;
+        // Switch to Input.
+        SET_PI_INPUT_MODE
 #else
-    // Switch to Input.
-    GPIOA->ODR = 0xFF;
-    GPIOB->ODR = 0xC3F0;
+        // Switch to Input.
+        GPIOA->ODR = 0xFF;
+        GPIOB->ODR = 0xC3F0;
 #endif
 
-    DMACount = 0;
-    IntCount = 0;
-    ALE_H_Count = 0;
-    ADInputAddress = 0;
-    Running = false;
-
+        DMACount = 0;
+        IntCount = 0;
+        ALE_H_Count = 0;
+        ADInputAddress = 0;
+        Running = false;
+        SI_Reset();
+        InitializeTimersSI();
+        SI_Enable();
+    }
     // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
     //HAL_NVIC_SystemReset();
 }
@@ -690,10 +709,16 @@ void EXTI1_IRQHandler(void)
     // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
     // Then PortA needs to hold the lower-upper 2bits on 10 and 11. Needs 3 DMA channels to realize.
     // And need soldering to USB_OTG_FS_ID and USB_OTG_FS_D_-
-    uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
-    uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
+#if (PI_PRECALCULATE_OUT_VALUE == 0)
+    const uint32_t Value = (((ReadOffset & 2) == 0) ? PrefetchRead : (PrefetchRead >> 16));
+    const uint32_t OutB = (((Value >> 4) & 0x03F0) | (Value & 0xC000));
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
+#else
+    GPIOA->ODR = ValueA;
+    GPIOB->ODR = ValueB;
+#endif
+
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
     // Switch to output.
     // TODO: Can this be done through DMA entirely?
@@ -702,10 +727,22 @@ void EXTI1_IRQHandler(void)
     }
 #endif
     ReadOffset += 2;
+#if (PI_PRECALCULATE_OUT_VALUE == 0)
     if ((ReadOffset & 3) == 0) {
         ReadPtr += 1;
         PrefetchRead = *ReadPtr;
     }
+#else
+    if ((ReadOffset & 3) == 0) {
+        ReadPtr += 1;
+        PrefetchRead = *ReadPtr;
+    } 
+
+    ValueA = PrefetchRead;
+    ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    PrefetchRead >>= 16;
+
+#endif
 
 #if PI_ENABLE_LOGGING
     IntCount += 1;  // TODO: Understand why this increment is important for DK booting...
@@ -725,14 +762,14 @@ void EXTI1_IRQHandler(void)
 
 inline void ConstructAddress(void)
 {
-    if ((PortBBuffer[0] & ALE_H) == 0) {
+    //if ((PortBBuffer[0] & ALE_H) == 0) {
         // Construct ADInputAddress
-        ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
-                         (ADInputAddress & 0xFFFF0000);
-    } else {
+    //    ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
+    //                     (ADInputAddress & 0xFFFF0000);
+    //} else {
         ADInputAddress = (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000) |
                         (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
-    }
+    //}
 
     if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
         ReadPtr = ((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
@@ -760,6 +797,12 @@ inline void ConstructAddress(void)
             PrefetchRead = 0;
         }
     }
+
+#if (PI_PRECALCULATE_OUT_VALUE != 0)
+    ValueA = PrefetchRead;
+    ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    PrefetchRead >>= 16;
+#endif
 }
 
 extern "C"

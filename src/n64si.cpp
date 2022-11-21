@@ -6,6 +6,8 @@
 #include "daisydrive64.h"
 #include "stm32h7xx_hal_tim.h"
 
+#define SI_STATE_LOGGING 0
+#define SI_USE_OUTPUT_PRESCALAR 1
 #define SI_SIGNAL_CAPTURE_FILTER 1
 #define SI_SIGNAL_EEPROM_INPUT_PRESCALER (135 - 1)
 #define SI_SIGNAL_EEPROM_OUTPUT_PRESCALER (138 - 1)
@@ -17,6 +19,7 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
+BYTE *const EepromStateLog = (BYTE*)(LogBuffer - 1024 * 1024);
 DTCM_DATA uint32_t EepLogIdx = 0;
 BYTE EEPROMStore[2048]; // 16KiBit
 volatile BYTE EEPROMType = 0x80;
@@ -92,9 +95,11 @@ void ITCM_FUNCTION SI_Enable(void)
         (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) |= DMA_SxCR_EN;
         __HAL_TIM_ENABLE_DMA(&htim3, TIM_DMA_CC4);
         htim3.Instance->CCER = 0xb000;
+#if (SI_USE_OUTPUT_PRESCALAR != 0)
         htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
         htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
         htim3.Instance->EGR = TIM_EGR_UG;
+#endif
         htim3.Instance->CR1 = 1;
         StartCCR4 = htim3.Instance->CCR4;
     }
@@ -109,9 +114,11 @@ void ITCM_FUNCTION SI_Reset(void)
     htim3.Instance->SR = 0; //0x1f, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
+#if (SI_USE_OUTPUT_PRESCALAR != 0)
     htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
     htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
     htim3.Instance->EGR = TIM_EGR_UG;
+#endif
 #if 1
     TIM_IC_InitTypeDef sConfigIC = {0};
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
@@ -169,9 +176,11 @@ extern "C" void ITCM_FUNCTION DMA1_Stream7_IRQHandler(void)
     htim3.Instance->SR = 0;//0x1f, // SR
     htim3.Instance->ARR = 65535;
     htim3.Instance->CCMR2 = 0x2100;
+#if (SI_USE_OUTPUT_PRESCALAR != 0)
     htim3.Init.Prescaler = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
     htim3.Instance->PSC = SI_SIGNAL_EEPROM_INPUT_PRESCALER;
     htim3.Instance->EGR = TIM_EGR_UG;
+#endif
 
 #if 1
     TIM_IC_InitTypeDef sConfigIC = {0};
@@ -229,8 +238,8 @@ extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 extern "C" void ITCM_FUNCTION TIM3_IRQHandler(void)
 {
-    EepRomCycles += 1;
     htim3.Instance->SR = ~htim3.Instance->SR;
+    EepRomCycles += 1;
     RunEEPROMEmulator();
 }
 
@@ -558,7 +567,7 @@ inline BYTE GetSingleByte(uint32_t Offset)
     return Result;
 }
 
-inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
+inline bool SIGetBytes(volatile BYTE *Out, uint32_t ExpectedBytes, bool Block)
 {
     volatile uint32_t TransferCount = LastTransferCount;
     volatile BYTE ByteCount = 0;
@@ -581,7 +590,7 @@ inline bool SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block)
         }
 
         // Ignore the ARR ticks.
-        if (SDataBuffer[SI_RINGBUFFER_LENGTH - LastTransferCount] == SDataBuffer[SI_RINGBUFFER_LENGTH - TransferCount]) {
+        if (SDataBuffer[SI_RINGBUFFER_LENGTH - LastTransferCount] == SDataBuffer[SI_RINGBUFFER_LENGTH - (TransferCount + 1)]) {
             LastTransferCount = TransferCount;
             return false;
         }
@@ -609,7 +618,7 @@ inline bool SIGetConsoleTerminator(void)
 {
     // Wait for data in buffer, 2 edges need to come in before the transfer is considered complete.
     uint32_t TransferCount = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
-    if ((TransferCount - LastTransferCount) < 2) {
+    if ((LastTransferCount - TransferCount) < 2) {
         return false;
     }
 
@@ -631,16 +640,18 @@ inline bool SIPutDeviceTerminator(void)
 
     // Stop input mode.
     htim3.Instance->CR1 = 0;
+#if (SI_USE_OUTPUT_PRESCALAR != 0)
     htim3.Init.Prescaler = SI_SIGNAL_EEPROM_OUTPUT_PRESCALER;
     htim3.Instance->PSC = SI_SIGNAL_EEPROM_OUTPUT_PRESCALER;
     htim3.Instance->EGR = TIM_EGR_UG;
+#endif
 
     // Reset input capture
     __HAL_TIM_DISABLE_DMA(&htim3, TIM_DMA_CC4);
     (((DMA_Stream_TypeDef *)(hdma_tim3_ch4.Instance))->CR) &= ~DMA_SxCR_EN;
     ((DMA_Base_Registers *)(hdma_tim3_ch4.StreamBaseAddress))->IFCR = 0x3FUL << (hdma_tim3_ch4.StreamIndex & 0x1FU);
     ((DMA_Stream_TypeDef*)hdma_tim3_ch4.Instance)->NDTR = SI_RINGBUFFER_LENGTH;
-    LastTransferCount = SI_RINGBUFFER_LENGTH;
+    //LastTransferCount = SI_RINGBUFFER_LENGTH;
 
     // Program the TIM3 timer into output compare mode and setup DMA
     //     SI_DMAOutputBuffer, SI_DMAOutputLength
@@ -721,30 +732,46 @@ enum SI_STATE {
     SI_STATE_READ_ADDRESS,
     SI_STATE_WRITE_ADDRESS,
     SI_STATE_WRITE_DATA,
+    SI_STATE_IN_PROCESS,
 };
 uint32_t SIState = SI_STATE_NONE;
 
-BYTE Command = 0;
+volatile BYTE Command = 0;
 BYTE AddressByte = 0;
+#if (SI_STATE_LOGGING != 0)
+inline void LogState(bool err)
+{
+    EepromStateLog[EepLogIdx++ % (1024 * 1024)] = SIState | Command << 4 | ((err != false) ? 0x80 : 0);
+    EepromStateLog[EepLogIdx++ % (1024 * 1024)] = LastTransferCount;
+    EepromStateLog[EepLogIdx++ % (1024 * 1024)] = ((DMA_Stream_TypeDef*)0x40020088)->NDTR;
+}
+#else 
+#define LogState(x)
+#endif
+
 void RunEEPROMEmulator(void)
 {
     if (SIState == SI_STATE_NONE) {
         // Check state.
         bool result = SIGetBytes(&Command, 1, false);
         if ((Running == false) || (result == false)) {
+            LogState(true);
             return;
         }
 
         SIState = SI_STATE_COMMAND;
+        LogState(false);
     }
 
     if ((Command == SI_RESET) || (Command == SI_INFO)) {
         if (SIState == SI_STATE_COMMAND) {
             if (SIGetConsoleTerminator() == false) {
+                LogState(true);
                 return;
             }
 
             SIState = SI_STATE_INFO;
+            LogState(false);
         }
         // Return the info on either 4KiBit or 16KiBit EEPROM.
         // 0x0080	N64	4 Kbit EEPROM	Bitfield: 0x80=Write in progress
@@ -757,19 +784,23 @@ void RunEEPROMEmulator(void)
         SIPutByte(0x00);
         SIPutDeviceTerminator();
         SIState = SI_STATE_NONE;
+        LogState(false);
     }
 
     if (Command == EEPROM_READ) {
         if (SIState == SI_STATE_COMMAND) {
             if (SIGetBytes(&AddressByte, 1, false) == false) {
+                LogState(true);
                 return;
             }
 
             SIState = SI_STATE_READ_ADDRESS;
+            LogState(false);
         }
 
         if (SIState == SI_STATE_READ_ADDRESS) {
             if (SIGetConsoleTerminator() == false) {
+                LogState(true);
                 return;
             }
         }
@@ -784,15 +815,18 @@ void RunEEPROMEmulator(void)
 
         SIPutDeviceTerminator();
         SIState = SI_STATE_NONE;
+        LogState(false);
     }
 
     if (Command == EEPROM_STORE) {
         if (SIState == SI_STATE_COMMAND) {
             if (SIGetBytes(&AddressByte, 1, false) == false) {
+                LogState(true);
                 return;
             }
 
             SIState = SI_STATE_WRITE_ADDRESS;
+            LogState(false);
             if (EEPROMType == 0x80) {
                 AddressByte %= 64;
             }
@@ -801,14 +835,17 @@ void RunEEPROMEmulator(void)
         if (SIState == SI_STATE_WRITE_ADDRESS) {
             uint32_t Address = AddressByte * 8;
             if (SIGetBytes(&(EEPROMStore[Address]), 8, false) == false) {
+                LogState(true);
                 return;
             }
 
             SIState = SI_STATE_WRITE_DATA;
+            LogState(false);
         }
 
         if (SIState == SI_STATE_WRITE_DATA) {
             if (SIGetConsoleTerminator() == false) {
+                LogState(true);
                 return;
             }
         }
@@ -819,6 +856,7 @@ void RunEEPROMEmulator(void)
         SIPutByte(0x00); // Output not busy, coz we fast.
         SIPutDeviceTerminator();
         SIState = SI_STATE_NONE;
+        LogState(false);
     }
 }
 

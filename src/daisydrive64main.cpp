@@ -25,7 +25,7 @@ struct RomSetting {
 #define TESTROM 0
 #if TESTROM
 const RomSetting RomSettings[] = {
-    {"testrom.z64", 0x12, EEPROM_4K}
+    {"testrom.z64", 0x12, EEPROM_16K}
 };
 #else
 const RomSetting RomSettings[] = {
@@ -34,40 +34,43 @@ const RomSetting RomSettings[] = {
     //{"Lylat Wars (Europe) (En,Fr,De).n64", 0x18, EEPROM_4K},
     //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
     //{"Mario Kart 64 (USA).n64", 0x18, EEPROM_4K},
+    //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
+    //{"Donkey Kong 64 (USA).n64", 0x15, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
+    //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
 #if 1
     //MENU_ROM_FILE_NAME,
-    {"Mario Kart 64 (USA).n64", 0x16, EEPROM_4K},
+    {"Mario Kart 64 (USA).n64", 0x17, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
-    {"Star Fox 64 (USA).n64", 0x16, EEPROM_4K},
+    {"Star Fox 64 (USA).n64", 0x17, EEPROM_4K},
     {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
-    {"Harvest Moon 64 (USA).n64", 0x18, EEPROM_4K},
-    {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
+    {"Harvest Moon 64 (USA).n64", 0x17, EEPROM_4K},
+    {"Conker's Bad Fur Day (USA).n64", 0x19, EEPROM_16K},
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
+    {"Yoshi's Story (USA) (En,Ja).n64", 0x17, EEPROM_16K},
     {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Paper Mario (USA).n64", 0x20, EEPROM_16K}, // Runs, Needs flash ram support for saves.
-    {"Super Mario 64 (USA).n64", 0x20, EEPROM_4K},
-    {"Mario Tennis (USA).n64", 0x20, EEPROM_16K},
-    {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x20, EEPROM_4K},
-    {"007 - GoldenEye (USA).n64", 0x20, EEPROM_4K},
-    {"Resident Evil 2 (USA).n64", 0x20, EEPROM_4K},
-    {"007 - The World Is Not Enough (USA).n64", 0x20, EEPROM_4K},
-    {"Killer Instinct Gold (USA).n64", 0x18, EEPROM_4K},
-    {"Mario Tennis 64 (Japan).n64", 0x20, EEPROM_16K},
-    {"Mortal Kombat 4 (USA).n64", 0x20, EEPROM_16K},
-    {"Mortal Kombat Mythologies - Sub-Zero (USA).n64", 0x20, EEPROM_16K},
-    {"Mario Party 2 (USA).n64", 0x20, EEPROM_4K},
-    {"Mario Party 3 (USA).n64", 0x20, EEPROM_16K},
-    {"Killer Instinct Gold (USA) (Rev B).n64", 0x18, EEPROM_4K},
-    {"Wave Race 64 (USA) (Rev A).n64", 0x20, EEPROM_4K},
-    {"Perfect Dark (USA) (Rev A).n64", 0x20, EEPROM_16K},
-    {"Mario Golf (USA).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Star Fox 64 (Japan).n64", 0x18, EEPROM_4K},
-    {"Pilotwings 64 (USA).n64", 0x20, EEPROM_4K},
-    {"Turok - Dinosaur Hunter (USA).n64", 0x20, EEPROM_4K},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Blast Corps (USA).n64", 0x20, EEPROM_4K},
+    {"Super Mario 64 (USA).n64", 0x17, EEPROM_4K},
+    {"Mario Tennis (USA).n64", 0x17, EEPROM_16K},
+    {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x17, EEPROM_4K},
+    {"007 - GoldenEye (USA).n64", 0x17, EEPROM_4K},
+    {"Resident Evil 2 (USA).n64", 0x17, EEPROM_4K},
+    {"007 - The World Is Not Enough (USA).n64", 0x17, EEPROM_4K},
+    {"Killer Instinct Gold (USA).n64", 0x17, EEPROM_4K},
+    {"Mario Tennis 64 (Japan).n64", 0x17, EEPROM_16K},
+    {"Mortal Kombat 4 (USA).n64", 0x17, EEPROM_16K},
+    {"Mortal Kombat Mythologies - Sub-Zero (USA).n64", 0x17, EEPROM_16K},
+    {"Mario Party 2 (USA).n64", 0x17, EEPROM_4K},
+    {"Mario Party 3 (USA).n64", 0x17, EEPROM_16K},
+    {"Killer Instinct Gold (USA) (Rev B).n64", 0x17, EEPROM_4K},
+    {"Wave Race 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
+    {"Perfect Dark (USA) (Rev A).n64", 0x17, EEPROM_16K},
+    {"Mario Golf (USA).n64", 0x17, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Star Fox 64 (Japan).n64", 0x17, EEPROM_4K},
+    {"Pilotwings 64 (USA).n64", 0x17, EEPROM_4K},
+    {"Turok - Dinosaur Hunter (USA).n64", 0x17, EEPROM_4K},
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x17, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Blast Corps (USA).n64", 0x17, EEPROM_4K},
 #endif
 };
 #endif
@@ -118,7 +121,10 @@ void InitializeInterrupts(void)
     NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
-    // Reset line setup
+    // NMI Reset line setup
+    GPIO_InitStruct = {N64_NMI, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
     GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
     NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
@@ -466,7 +472,7 @@ int main(void)
         OverflowCounter = 0;
         StartCICEmulator();
         while(Running != false) {
-            __WFE();
+            //__WFE();
         }
 
         SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
