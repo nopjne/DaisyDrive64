@@ -49,7 +49,7 @@ const RomSetting RomSettings[] = {
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
     {"Yoshi's Story (USA) (En,Ja).n64", 0x17, EEPROM_16K},
     {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Paper Mario (USA).n64", 0x20, EEPROM_16K}, // Runs, Needs flash ram support for saves.
+    {"Paper Mario (USA).n64", 0x40, EEPROM_16K}, // Runs, Needs flash ram support for saves.
     {"Super Mario 64 (USA).n64", 0x17, EEPROM_4K},
     {"Mario Tennis (USA).n64", 0x17, EEPROM_16K},
     {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x17, EEPROM_4K},
