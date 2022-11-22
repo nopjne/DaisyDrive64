@@ -14,6 +14,7 @@
 #endif
 
 #define MENU_ROM_FILE_NAME "menu.n64"
+#define N64_MIN_PRELOAD 0x200000
 
 uint32_t RomIndex = 0;
 struct RomSetting {
@@ -38,15 +39,15 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M},
-    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M},
-    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
-    {"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
-#if 0
+    //{"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M},
+    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M},
+    //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
+    //{"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
+#if 1
     //MENU_ROM_FILE_NAME,
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
@@ -91,6 +92,8 @@ uint32_t RomMaxSize = 0;
 SdmmcHandler   sd;
 FatFSInterface fsi;
 FIL            SDFile;
+FILINFO        gFileInfo;
+bool           gByteSwap = false;
 
 static DaisySeed hw;
 
@@ -146,7 +149,10 @@ void SaveEEPRom(const char* Name)
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
     sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
-    {
+
+    int retry = 5;
+    while (retry != 0) {
+        retry -= 1;
         sd.Init(sd_cfg);
 
         // Links libdaisy i/o to fatfs driver.
@@ -166,13 +172,15 @@ void SaveEEPRom(const char* Name)
             f_close(&SDFile);
 
             if (byteswritten != sizeof(EEPROMStore)) {
-                // Let the user know something went wrong.
-                BlinkAndDie(1000, 500);
+                continue;
             }
-        } else {
-            BlinkAndDie(2000, 500);
+
+            return;
         }
     }
+
+    // Let the user know something went wrong.
+    BlinkAndDie(1000, 500);
 }
 
 void SaveFlashRam(const char* Name)
@@ -180,7 +188,10 @@ void SaveFlashRam(const char* Name)
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
     sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
-    {
+
+    int retry = 5;
+    while (retry != 0) {
+        retry -= 1;
         sd.Init(sd_cfg);
 
         // Links libdaisy i/o to fatfs driver.
@@ -191,7 +202,7 @@ void SaveFlashRam(const char* Name)
             BlinkAndDie(500, 100);
         }
 
-        // Open the eeprom save file for the requested rom.
+        // Open the flash/sram save file for the requested rom.
         char SaveName[265];
         sprintf(SaveName, "%s.fla", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
@@ -200,13 +211,15 @@ void SaveFlashRam(const char* Name)
             f_close(&SDFile);
 
             if (byteswritten != sizeof(FlashRamStorage)) {
-                // Let the user know something went wrong.
-                BlinkAndDie(1000, 500);
+                continue;
             }
-        } else {
-            BlinkAndDie(2000, 500);
+
+            return;
         }
     }
+
+    // Let the user know something went wrong.
+    BlinkAndDie(2000, 500);
 }
 
 void LoadRom(const char* Name)
@@ -297,21 +310,21 @@ void LoadRom(const char* Name)
 
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
-            FILINFO FileInfo;
-            FRESULT result = f_stat(Name, &FileInfo);
+            FRESULT result = f_stat(Name, &gFileInfo);
             if (result != FR_OK) {
                 BlinkAndDie(100, 500);
             }
 
-            result = f_read(&SDFile, ram, FileInfo.fsize, &bytesread);
+            uint32_t IntroReadSize = std::min<size_t>(N64_MIN_PRELOAD, gFileInfo.fsize);
+            result = f_read(&SDFile, ram, IntroReadSize, &bytesread);
             if (result != FR_OK) {
                 BlinkAndDie(200, 200);
             }
 
-            f_close(&SDFile);
+            //f_close(&SDFile);
 
             // Blink led on error.
-            if (bytesread != FileInfo.fsize) {
+            if (bytesread != IntroReadSize) {
                 BlinkAndDie(500, 500);
             }
 
@@ -320,7 +333,9 @@ void LoadRom(const char* Name)
             // If extension is z64, byte swap.
             // TODO: Setup DMA to do this, could use FIFO to speed things up.
             uint32_t NameLength = strlen(Name);
+            gByteSwap = false;
             if (Name[NameLength - 3] == 'z') {
+                gByteSwap = true;
                 for (uint32_t i = 0; i < RomMaxSize; i += 2) {
                     *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
                 }
@@ -338,9 +353,6 @@ void LoadRom(const char* Name)
     *(ram + 3) = RomSettings[WRAP_ROM_INDEX(RomIndex)].BusSpeedOverride;
 #endif
 
-    uint16_t pre = *((uint16_t*) ram);
-    uint8_t valA = pre;
-    uint8_t valB = pre >> 8;
     // Patch speed.
 #if (READ_DELAY_NS == 4000)
     *(ram + 3) =  0xFF;
@@ -355,6 +367,30 @@ void LoadRom(const char* Name)
 #elif (READ_DELAY_NS == 400)
     *(ram + 3) =  0x19;
 #endif
+}
+
+void ContinueRomLoad(void)
+{
+    size_t bytesread = 0;
+    size_t ReadSize =  (gFileInfo.fsize - N64_MIN_PRELOAD);
+    if (ReadSize < gFileInfo.fsize)
+    {
+        FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
+        if ((bytesread != ReadSize) || (result != F_OK)) {
+            BlinkAndDie(500, 500);
+        }
+
+        RomMaxSize += ReadSize;
+    }
+
+    f_close(&SDFile);
+
+    // If extension is z64, byte swap.
+    if (gByteSwap != false) {
+        for (uint32_t i = N64_MIN_PRELOAD; i < RomMaxSize; i += 2) {
+            *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
+        }
+    }
 }
 
 inline void DaisyDriveN64Reset(void)
@@ -460,13 +496,13 @@ int main(void)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    LoadRom(RomSettings[RomIndex].RomName);
-    CICEmulatorInit();
-    EEPROMType = RomSettings[RomIndex].EepRomType;
-
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
+
+    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    CICEmulatorInit();
+    EEPROMType = RomSettings[RomIndex].EepRomType;
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
@@ -492,6 +528,7 @@ int main(void)
         Running = true;
         OverflowCounter = 0;
         StartCICEmulator();
+        ContinueRomLoad();
         while(Running != false) {
             //__WFE();
         }
