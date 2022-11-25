@@ -30,6 +30,7 @@ const RomSetting RomSettings[] = {
 #else
 const RomSetting RomSettings[] = {
     //{"Star Fox 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
+    //{"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     //{"Killer Instinct Gold (USA).n64", 0x12, EEPROM_4K},
     //{"Lylat Wars (Europe) (En,Fr,De).n64", 0x18, EEPROM_4K},
     //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
@@ -37,16 +38,15 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x12, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x40, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-#if 1
+    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+#if 0
     //MENU_ROM_FILE_NAME,
     {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     {"Star Fox 64 (USA).n64", 0x17, EEPROM_4K},
     {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x17, EEPROM_4K},
-    {"Conker's Bad Fur Day (USA).n64", 0x19, EEPROM_16K},
+    {"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Yoshi's Story (USA) (En,Ja).n64", 0x17, EEPROM_16K},
@@ -323,6 +323,9 @@ void LoadRom(const char* Name)
                 for (uint32_t i = 0; i < RomMaxSize; i += 2) {
                     *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
                 }
+                //for (uint32_t i = 0; i < RomMaxSize; i += 4) {
+                //    *((uint32_t*)(ram + i)) = __bswap32(*((uint32_t*)(ram + i)));
+                //}
             }
 
         } else {
@@ -335,6 +338,9 @@ void LoadRom(const char* Name)
     // Use the preset patch speed.
     *(ram + 3) = RomSettings[WRAP_ROM_INDEX(RomIndex)].BusSpeedOverride;
 
+    uint16_t pre = *((uint16_t*) ram);
+    uint8_t valA = pre;
+    uint8_t valB = pre >> 8;
     // Patch speed.
 #if (READ_DELAY_NS == 4000)
     *(ram + 3) =  0xFF;

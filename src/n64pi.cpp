@@ -39,12 +39,13 @@ BYTE FlashRamStorage[FLASHRAM_SIZE];
 
 #define PI_PRECALCULATE_OUT_VALUE 1
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
-DTCM_DATA uint32_t ValueA = 0;
-DTCM_DATA uint32_t ValueB = 0;
+DTCM_DATA volatile uint16_t ValueA = 0;
+DTCM_DATA volatile uint16_t ValueB = 0;
+#else
+DTCM_DATA uint16_t PrefetchRead = 0;
 #endif
 DTCM_DATA uint32_t ADInputAddress = 0;
-DTCM_DATA uint32_t* ReadPtr = 0;
-DTCM_DATA uint32_t PrefetchRead = 0;
+DTCM_DATA uint16_t* ReadPtr = 0;
 DTCM_DATA volatile uint32_t ReadOffset = 0;
 DTCM_DATA volatile uint32_t DMACount = 0;
 DTCM_DATA volatile uint32_t ALE_H_Count = 0;
@@ -642,11 +643,10 @@ void EXTI4_IRQHandler(void)
 {
     // SRAM/FRAM handler
     EXTI->PR1 = WRITE_LINE;
-    SET_PI_INPUT_MODE
-    uint32_t ValueB = GPIOB->IDR;
-    uint32_t Address = ADInputAddress - CART_DOM2_ADDR2_START;
-    //*((uint16_t*)(FlashRamStorage + Address + (ReadOffset & 511))) = (GPIOA->IDR & 0xFE) | ((ValueB & 0x03F0) << 4) | (ValueB & 0xC000);
-    ReadOffset += 2;
+    const uint32_t ValueInB = GPIOB->IDR;
+    const uint32_t ValueInA = GPIOA->IDR;
+    *ReadPtr = ValueInB | ValueInA;
+    ReadPtr += 1;
 }
 
 extern "C"
@@ -733,14 +733,10 @@ void EXTI1_IRQHandler(void)
         PrefetchRead = *ReadPtr;
     }
 #else
-    if ((ReadOffset & 3) == 0) {
-        ReadPtr += 1;
-        PrefetchRead = *ReadPtr;
-    } 
-
-    ValueA = PrefetchRead;
+    ReadPtr += 1;
+    const uint16_t PrefetchRead = *ReadPtr;
+    ValueA = PrefetchRead & 0xFF;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
-    PrefetchRead >>= 16;
 
 #endif
 
@@ -772,36 +768,30 @@ inline void ConstructAddress(void)
     //}
 
     if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
-        ReadPtr = ((uint32_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
-        PrefetchRead = *ReadPtr;
+        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else {
         if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
-            ReadPtr = (uint32_t*)(ram);
-            PrefetchRead = 0;
+            ReadPtr = (uint16_t*)(ram);
         } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
-            ReadPtr = (uint32_t*)(ram);
-            PrefetchRead = 0;
+            ReadPtr = (uint16_t*)(ram);
         } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
             //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
-            ReadPtr = (uint32_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
-            PrefetchRead = 0;
+            ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
         } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
-            ReadPtr = (uint32_t*)(ram + CART_MENU_OFFSET);
-            PrefetchRead = *ReadPtr;
+            ReadPtr = (uint16_t*)(ram + CART_MENU_OFFSET);
         } else if ( (ADInputAddress <= RomMaxSize) ) { // HACK: Getting addresses that are missing the high byte, happens often.
             // When this issue occurs attempt to return something, this seems to stabilize the games where they run longer without freezing.
             // Glitches and static can still be seen/heard while playing.
-            ReadPtr = ((uint32_t*)(ram + ADInputAddress));
-            PrefetchRead = *ReadPtr;
+            ReadPtr = ((uint16_t*)(ram + ADInputAddress));
         } else {
-            PrefetchRead = 0;
+            ReadPtr = ((uint16_t*)(FlashRamStorage));
         }
     }
 
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
-    ValueA = PrefetchRead;
+    const uint16_t PrefetchRead = *ReadPtr;
+    ValueA = PrefetchRead & 0xFF;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
-    PrefetchRead >>= 16;
 #endif
 }
 
