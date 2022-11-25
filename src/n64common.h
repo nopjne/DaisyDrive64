@@ -15,6 +15,7 @@
 //#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
 //#define READ_DELAY_NS 400
+//#define ALLOW_BUS_SPEED_OVERRIDE
 
 #define N64_ROM_BASE              0x10000000
 #define CART_DOM2_ADDR1_START     0x05000000

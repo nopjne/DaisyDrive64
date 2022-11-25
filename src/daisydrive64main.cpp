@@ -38,8 +38,8 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-#if 0
+    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x12, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+#if 1
     //MENU_ROM_FILE_NAME,
     {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
@@ -56,7 +56,7 @@ const RomSetting RomSettings[] = {
     {"Mario Tennis (USA).n64", 0x17, EEPROM_16K},
     {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x17, EEPROM_4K},
     {"007 - GoldenEye (USA).n64", 0x17, EEPROM_4K},
-    {"Resident Evil 2 (USA).n64", 0x17, EEPROM_4K},
+    {"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M},
     {"007 - The World Is Not Enough (USA).n64", 0x17, EEPROM_4K},
     {"Killer Instinct Gold (USA).n64", 0x17, EEPROM_4K},
     {"Mario Tennis 64 (Japan).n64", 0x17, EEPROM_16K},
@@ -189,8 +189,7 @@ void SaveFlashRam(const char* Name)
         sprintf(SaveName, "%s.fla", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
             UINT byteswritten;
-            memcpy(ram, FlashRamStorage, sizeof(FlashRamStorage));
-            f_write(&SDFile, ram, sizeof(FlashRamStorage), &byteswritten);
+            f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
             f_close(&SDFile);
 
             if (byteswritten != sizeof(FlashRamStorage)) {
@@ -254,17 +253,14 @@ void LoadRom(const char* Name)
                 f_close(&SDFile);
             }
         } else {
-
-#if 1
             // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
             char SaveName[265];
             sprintf(SaveName, "%s.fla", Name);
             if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
                 if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
                     memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
-                    memcpy(ram, FlashRamStorage, sizeof(FlashRamStorage));
                     UINT byteswritten;
-                    f_write(&SDFile, ram, sizeof(FlashRamStorage), &byteswritten);
+                    f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
                     f_close(&SDFile);
 
                     if (byteswritten != sizeof(FlashRamStorage)) {
@@ -283,15 +279,13 @@ void LoadRom(const char* Name)
                     BlinkAndDie(200, 300);
                 }
 
-                result = f_read(&SDFile, ram, FileInfo.fsize, &bytesread);
-                memcpy(FlashRamStorage, ram, sizeof(FlashRamStorage));
+                result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
                 if (result != FR_OK) {
                     BlinkAndDie(200, 300);
                 }
 
                 f_close(&SDFile);
             }
-#endif
         }
 
         // Read requested rom from the SD Card.
@@ -323,9 +317,6 @@ void LoadRom(const char* Name)
                 for (uint32_t i = 0; i < RomMaxSize; i += 2) {
                     *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
                 }
-                //for (uint32_t i = 0; i < RomMaxSize; i += 4) {
-                //    *((uint32_t*)(ram + i)) = __bswap32(*((uint32_t*)(ram + i)));
-                //}
             }
 
         } else {
@@ -336,7 +327,9 @@ void LoadRom(const char* Name)
     GPIOC->BSRR = USER_LED_PORTC << 16;
 
     // Use the preset patch speed.
+#ifdef ALLOW_BUS_SPEED_OVERRIDE
     *(ram + 3) = RomSettings[WRAP_ROM_INDEX(RomIndex)].BusSpeedOverride;
+#endif
 
     uint16_t pre = *((uint16_t*) ram);
     uint8_t valA = pre;
@@ -485,7 +478,10 @@ int main(void)
             DaisyDriveN64Reset();
         }
 
-        SI_Enable();
+        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
+            SI_Enable();
+        }
+
         Running = true;
         OverflowCounter = 0;
         StartCICEmulator();
@@ -493,7 +489,7 @@ int main(void)
             //__WFE();
         }
 
-        if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
+        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
             SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         } else {
             SaveFlashRam(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
@@ -503,6 +499,8 @@ int main(void)
         LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();
         EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;
-        SI_Reset();
+        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
+            SI_Reset();
+        }
     }
 }
