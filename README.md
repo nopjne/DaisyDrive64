@@ -40,30 +40,32 @@ Once I got the Daisy Seed board I learned the difference between the speed of th
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/wires.jpg?raw=true)
 
 Things that are implemented:
-	1. SD card reading and writing. (Roms are to be stored on an SD card and are loaded by the FW)
-	2. N64 PI interface at 1/4th the speed (Domain1 reads). Using DMA address latching, interrupts for RD responses.
-	3. EEPROM emulation for game saves. Using LPTIM3 and DMA. The emulation runs in an interrupt routine.
-	4. CIC emulation and detection. CIC is detected through a CRC, CIC_CLK is being monitored from an interrupt.
-	5. Early rom endianness detection.
+    1. SD card reading and writing. (Roms are to be stored on an SD card and are loaded by the FW)
+    2. N64 PI interface at SDK speed (Domain1 reads). Using DMA address latching, interrupts for RD responses.
+    3. EEPROM emulation for game saves. Using LPTIM3 and DMA. The emulation runs in an interrupt routine.
+    4. CIC emulation and detection. CIC is detected through a CRC, CIC_CLK is being monitored from an interrupt.
+    5. Early rom endianness detection.
 
 Things that need to be implemented:
-	1. PI RD through DMA. (There is still a device that can kick off DMA, HRTIM_EEV4 on Pin 8)
-	2. Flash Ram emulation (Domain2 reads + writes) This is tricky because there is only 92ns between the latch and wr/rd.
-	3. Run CIC in an interrupt entirely, should allow the core to be used for other work.
-	4. Reduce NDTR reads for the EEPROM emulator, the emulation should not spin in the interrupt but have a state machine.
+    1. PI RD through DMA. (There is still a device that can kick off DMA, HRTIM_EEV4 on Pin 8)
+    2. Flash Ram emulation (Domain2 reads + writes) This is tricky because there is only 92ns between the latch and wr/rd.
+    3. Implement a menu. (an N64 binary that will help select which rom to use)
+    4. 64DD support.
+    5. RTC, Animal Forest needs the RTC. The MCU has support for an RTC but has no way of keeping time.
+    6. Async SD load. (Only the first 1MB is needed to boot) The rest can be loaded over time during boot. This will enable instant boot.
+    7. N64 power, depends on Async SD load, because there will not be enough time to load a full rom. (May need to be fed from 5V)
 	
 Things that would be nice to have:
-	1. Implement a menu. (an N64 binary that will help select which rom to use)
-	2. Patch support. Allow patches to be applied on the fly and save to a different save file.
-	3. EEPROM revisions. Allow past eeprom state to be retrievable.
-	4. Improve rom endianness detection.
+    1. Patch support. Allow patches to be applied on the fly and save to a different save file.
+    2. EEPROM revisions. Allow past eeprom state to be retrievable.
+    3. Improve rom endianness detection.
 	
-Most commercial roms run and save without issues, however there are still issues due to running the bus 1/4th the speed and the missing Flash RAM support. There are only ~30 titles that need Flash Ram support.
+Most commercial roms run and save without issues, however there are still issues due to the missing Flash RAM support. There are only ~30 titles that need Flash Ram support, these games will play but will not save.
 As a bootstrap this project relied on the RPI Pico to do CIC emulation and Flash Emulation thanks to PicoCart64 by Konrad Beckmann https://github.com/kbeckmann/PicoCart64
+Please join the following discord to participate in the DaisyDrive64 development: https://discord.gg/2Gb3jWqqja
 
 Known issues:
-	1. DK64 does not boot.
-	2. SF64 has the tendency to lock up.
-	3. OOT random freezes.
-        4. SMB Freezes when reading Flash.
-        5. Stability issues when CIC is emulated from the daisy.
+    1. Flash ram games do not save.
+    2. The DRAM has been tuned but it is unclear whether that is stable.
+    3. Currently the MCU is overclocked to 540Mhz this may not be needed and generates more heat than necessary.
+    4. The DaisyDrive64 needs to be powered by USB.
