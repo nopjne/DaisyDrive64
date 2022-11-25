@@ -139,4 +139,6 @@ examples/*/build/
 *.map
 *.json
 /out/
-daisydrive64/build/
+src/build/*
+external/libdaisy/build/*
+external/libdaisy/tests/*

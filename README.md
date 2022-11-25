@@ -1,11 +1,13 @@
 All rights reserved. Right now this project is in a development stage and not ready for any consumers.
 
 DaisyDrive64 is a N64 Cartridge Emulator that uses a Daisy Seed MCU board utilizing an STM32H750 (ARM Cortex-M7).
+(These MCU boards can be found here: https://www.electro-smith.com/daisy/daisy)
 
-To interface with the N64 the DaisyDrive64 currently can use the PicoCart64 with breakout wires or can be wired to the Game Pak port directly. While there has not been a board created, the below connection diagram should be used.
+To interface with the N64 the DaisyDrive64 currently can use the PicoCart64 with breakout wires or can be wired to the Game Pak port directly. Please use the below connection diagram, while boards are being finalized.
 
-For now the DaisyDrive64 needs to be powered by USB and is not to be powered by the N64, this is also necessary so the Cortex M7 to load a rom off the SD card and into the 64MB ram that is connected through an FMC interface.
-These pins can be reconfigured through software. This setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
+For now the DaisyDrive64 needs to be powered by USB and is not to be powered by the N64, this is also necessary for the Cortex M7 to load a rom off the SD card and into the 64MB ram that is connected through an FMC interface. It's something that will be less important when a menu is created/ported for the DaisyDrive64.
+
+The DaisySeed (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/daisypinout.png?raw=true)
 
@@ -13,18 +15,16 @@ These pins can be reconfigured through software. This setup attempts to optimize
 Gamepak slot pinout. LAUDIO and RAUDIO can be connected to Pin18 and Pin19 respectively, however there may be some hardware required to interface these safely. The values for the input are currently unknown.
 
 Setting up:
-	1. Follow the setup instructions from 1. Setting Up Your Development Environment · electro-smith/DaisyWiki Wiki · GitHub
-	2. Clone the DaisyDrive64 source somewhere. [cloneroot]
+	1. Follow the setup instructions from 1. Setting Up Your Development Environment · https://github.com/electro-smith/DaisyWiki/wiki/1.-Setting-Up-Your-Development-Environment
+	2. Clone the DaisyDrive64 source somewhere.
 
 Building the project:
-	1. cd [cloneroot]
-        2. make
-        3. cd [cloneroot]/daisydrive64
-	4. make
+	1. make -C external/libdaisy
+        2. make -C src
 
 Executing (USB uploading):
 	1. Build
-	2. Upload the daisydrive64.elf to the USB drive through the method mentioned in the electro-smith environment setup.
+	2. Upload the src/build/daisydrive64.elf to the USB drive through the method mentioned in the electro-smith environment setup.
 
 Executing debugger probe
 	1. Build
