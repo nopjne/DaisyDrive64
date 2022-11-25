@@ -76,10 +76,11 @@ void RunEEPROMEmulator(void);
 extern DTCM_DATA volatile bool Running;
 
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
+#define FLASHRAM_SIZE (128 * 1024)
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
-extern SRAM1_DATA BYTE FlashRamStorage[512];
+extern BYTE FlashRamStorage[FLASHRAM_SIZE];
 extern unsigned char *ram;
 
 
@@ -100,6 +101,8 @@ extern DTCM_DATA uint32_t OverflowCounter;
 
 #define EEPROM_4K 0x80
 #define EEPROM_16K 0xC0
+#define SAVE_SRAM 0xFE
+#define SAVE_FLASH_1M 0xFF
 #if 0
     constexpr Pin D25 = Pin(PORTA, 0); // AD0  // Could be used for DMA but upsets the contiguity of the bits.
     constexpr Pin D24 = Pin(PORTA, 1); // AD1

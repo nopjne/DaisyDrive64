@@ -35,21 +35,23 @@ const RomSetting RomSettings[] = {
     //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
     //{"Mario Kart 64 (USA).n64", 0x18, EEPROM_4K},
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
-    //{"Donkey Kong 64 (USA).n64", 0x15, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
+    //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
+    //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x12, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x40, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
 #if 1
     //MENU_ROM_FILE_NAME,
-    {"Mario Kart 64 (USA).n64", 0x17, EEPROM_4K},
+    {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     {"Star Fox 64 (USA).n64", 0x17, EEPROM_4K},
     {"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
     {"Harvest Moon 64 (USA).n64", 0x17, EEPROM_4K},
     {"Conker's Bad Fur Day (USA).n64", 0x19, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Yoshi's Story (USA) (En,Ja).n64", 0x17, EEPROM_16K},
-    {"Super Smash Bros. (USA).n64", 0x18, EEPROM_4K}, // Runs, Needs flash ram support for saves.
-    {"Paper Mario (USA).n64", 0x40, EEPROM_16K}, // Runs, Needs flash ram support for saves.
+    {"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    {"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Super Mario 64 (USA).n64", 0x17, EEPROM_4K},
     {"Mario Tennis (USA).n64", 0x17, EEPROM_16K},
     {"Mortal Kombat Trilogy (USA) (Rev B).n64", 0x17, EEPROM_4K},
@@ -65,11 +67,11 @@ const RomSetting RomSettings[] = {
     {"Killer Instinct Gold (USA) (Rev B).n64", 0x17, EEPROM_4K},
     {"Wave Race 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
     {"Perfect Dark (USA) (Rev A).n64", 0x17, EEPROM_16K},
-    {"Mario Golf (USA).n64", 0x17, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Star Fox 64 (Japan).n64", 0x17, EEPROM_4K},
     {"Pilotwings 64 (USA).n64", 0x17, EEPROM_4K},
     {"Turok - Dinosaur Hunter (USA).n64", 0x17, EEPROM_4K},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x40, EEPROM_4K}, // Runs, Needs flash ram support for saves.
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Blast Corps (USA).n64", 0x17, EEPROM_4K},
 #endif
 };
@@ -187,7 +189,8 @@ void SaveFlashRam(const char* Name)
         sprintf(SaveName, "%s.fla", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
             UINT byteswritten;
-            f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+            memcpy(ram, FlashRamStorage, sizeof(FlashRamStorage));
+            f_write(&SDFile, ram, sizeof(FlashRamStorage), &byteswritten);
             f_close(&SDFile);
 
             if (byteswritten != sizeof(FlashRamStorage)) {
@@ -220,67 +223,76 @@ void LoadRom(const char* Name)
         }
 
         // Open the eeprom save file for the requested rom.
-        char SaveName[265];
-        sprintf(SaveName, "%s.eep", Name);
-        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                memset(EEPROMStore, 0, sizeof(EEPROMStore));
-                UINT byteswritten;
-                f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
-                f_close(&SDFile);
+        if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
+            char SaveName[265];
+            sprintf(SaveName, "%s.eep", Name);
+            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                    memset(EEPROMStore, 0, sizeof(EEPROMStore));
+                    UINT byteswritten;
+                    f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
+                    f_close(&SDFile);
 
-                if (byteswritten != sizeof(EEPROMStore)) {
-                    // Let the user know something went wrong.
-                    BlinkAndDie(1000, 500);
+                    if (byteswritten != sizeof(EEPROMStore)) {
+                        // Let the user know something went wrong.
+                        BlinkAndDie(1000, 500);
+                    }
                 }
-            }
 
-        } else {
-            FILINFO FileInfo;
-            volatile FRESULT result = f_stat(SaveName, &FileInfo);
-            if (FileInfo.fsize != sizeof(EEPROMStore)) {
-                BlinkAndDie(200, 300);
-            }
-
-            result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
-            if (result != FR_OK) {
-                BlinkAndDie(200, 300);
-            }
-
-            f_close(&SDFile);
-        }
-
-#if 0
-        // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
-        sprintf(SaveName, "%s.fla", Name);
-        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
-                UINT byteswritten;
-                f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
-                f_close(&SDFile);
-
-                if (byteswritten != sizeof(FlashRamStorage)) {
-                    // Let the user know something went wrong.
-                    BlinkAndDie(1000, 500);
+            } else {
+                FILINFO FileInfo;
+                volatile FRESULT result = f_stat(SaveName, &FileInfo);
+                if (FileInfo.fsize != sizeof(EEPROMStore)) {
+                    BlinkAndDie(200, 300);
                 }
-            }
 
+                result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
+                if (result != FR_OK) {
+                    BlinkAndDie(200, 300);
+                }
+
+                f_close(&SDFile);
+            }
         } else {
-            FILINFO FileInfo;
-            FRESULT result = f_stat(SaveName, &FileInfo);
-            if (FileInfo.fsize != sizeof(FlashRamStorage)) {
-                BlinkAndDie(200, 300);
-            }
 
-            result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
-            if (result != FR_OK) {
-                BlinkAndDie(200, 300);
-            }
+#if 1
+            // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
+            char SaveName[265];
+            sprintf(SaveName, "%s.fla", Name);
+            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                    memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
+                    memcpy(ram, FlashRamStorage, sizeof(FlashRamStorage));
+                    UINT byteswritten;
+                    f_write(&SDFile, ram, sizeof(FlashRamStorage), &byteswritten);
+                    f_close(&SDFile);
 
-            f_close(&SDFile);
-        }
+                    if (byteswritten != sizeof(FlashRamStorage)) {
+                        f_unlink(SaveName);
+                        // Let the user know something went wrong.
+                        BlinkAndDie(1000, 500);
+                    }
+                }
+
+            } else {
+                FILINFO FileInfo;
+                FRESULT result = f_stat(SaveName, &FileInfo);
+                if (FileInfo.fsize != sizeof(FlashRamStorage)) {
+                    f_close(&SDFile);
+                    f_unlink(SaveName);
+                    BlinkAndDie(200, 300);
+                }
+
+                result = f_read(&SDFile, ram, FileInfo.fsize, &bytesread);
+                memcpy(FlashRamStorage, ram, sizeof(FlashRamStorage));
+                if (result != FR_OK) {
+                    BlinkAndDie(200, 300);
+                }
+
+                f_close(&SDFile);
+            }
 #endif
+        }
 
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
@@ -475,8 +487,12 @@ int main(void)
             //__WFE();
         }
 
-        SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
-        //SaveFlashRam(RomName[WRAP_ROM_INDEX(RomIndex)]);
+        if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
+            SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+        } else {
+            SaveFlashRam(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+        }
+
         RomIndex += 1;
         LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();

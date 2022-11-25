@@ -35,7 +35,7 @@ uint32_t *const DMAOutBBuffer = (uint32_t*)(Sram4Buffer + 32 + 8);
 uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512));
 
 // Storage for Flash ram.
-SRAM1_DATA BYTE FlashRamStorage[512];
+BYTE FlashRamStorage[FLASHRAM_SIZE];
 
 #define PI_PRECALCULATE_OUT_VALUE 1
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
@@ -783,7 +783,7 @@ inline void ConstructAddress(void)
             PrefetchRead = 0;
         } else if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
             //PrefetchRead = *((uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START) + (ReadOffset & 511)));
-            ReadPtr = (uint32_t*)(ram);
+            ReadPtr = (uint32_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
             PrefetchRead = 0;
         } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
             ReadPtr = (uint32_t*)(ram + CART_MENU_OFFSET);
