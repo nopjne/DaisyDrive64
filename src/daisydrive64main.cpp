@@ -38,14 +38,14 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M},
-    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M},
-    {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    //{"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M},
+    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M},
+    //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
-    {"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, does not save.
-    {"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
+    //{"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
+    //"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
 #if 0
     //MENU_ROM_FILE_NAME,
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.

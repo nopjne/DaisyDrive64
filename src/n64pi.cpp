@@ -51,7 +51,7 @@ DTCM_DATA uint16_t PrefetchRead = 0;
 DTCM_DATA uint32_t ADInputAddress = 0;
 DTCM_DATA uint16_t* ReadPtr = 0;
 DTCM_DATA uint32_t ReadOffset = 0;
-DTCM_DATA volatile uint32_t DMACount = 0;
+DTCM_DATA uint32_t DMACount = 0;
 DTCM_DATA volatile uint32_t ALE_H_Count = 0;
 DTCM_DATA volatile uint32_t IntCount = 0;
 DTCM_DATA volatile bool Running = false;
@@ -738,8 +738,8 @@ void EXTI1_IRQHandler(void)
     if (ReadOffset == 0) {
         SET_PI_OUTPUT_MODE
     }
-#endif
     ReadOffset += 2;
+#endif
 #if (PI_PRECALCULATE_OUT_VALUE == 0)
     if ((ReadOffset & 3) == 0) {
         ReadPtr += 1;

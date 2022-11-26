@@ -77,7 +77,7 @@ void RunEEPROMEmulator(void);
 extern DTCM_DATA volatile bool Running;
 
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
-#define FLASHRAM_SIZE (128 * 1024)
+#define FLASHRAM_SIZE (128 * 1024 + 8)
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
@@ -85,7 +85,7 @@ extern BYTE FlashRamStorage[FLASHRAM_SIZE];
 extern unsigned char *ram;
 
 
-extern DTCM_DATA volatile uint32_t DMACount;
+extern DTCM_DATA uint32_t DMACount;
 extern DTCM_DATA volatile uint32_t IntCount;
 extern DTCM_DATA volatile uint32_t ALE_H_Count;
 extern DTCM_DATA uint32_t ADInputAddress;
