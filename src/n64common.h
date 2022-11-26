@@ -11,7 +11,7 @@
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
-//#define READ_DELAY_NS 1000
+//#define READ_DELAY_NS 4000
 //#define READ_DELAY_NS 750
 //#define READ_DELAY_NS 500
 //#define READ_DELAY_NS 400

@@ -4,7 +4,7 @@
         {
             "name": "SWD Debug",
             "cwd": "C:/Programming/n64/daisy_mcu/",
-            "executable": "C:/Programming/n64/daisy_mcu/daisydrive64/build/daisydrive64.elf",
+            "executable": "C:/Programming/n64/daisy_mcu/src/build/daisydrive64.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
