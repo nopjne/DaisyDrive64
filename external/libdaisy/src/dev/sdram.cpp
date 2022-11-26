@@ -90,7 +90,7 @@ SdramHandle::Result SdramHandle::PeriphInit()
     SdramTiming.SelfRefreshTime      = 4;
     SdramTiming.RowCycleDelay        = 6; // started at 7
     SdramTiming.WriteRecoveryTime    = 3;
-    SdramTiming.RPDelay              = 12;
+    SdramTiming.RPDelay              = 2;
     SdramTiming.RCDDelay             = 2; // started at 2
     //    SdramTiming.LoadToActiveDelay = 16;
     //    SdramTiming.ExitSelfRefreshDelay = 16;
