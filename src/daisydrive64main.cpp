@@ -49,6 +49,8 @@ const RomSetting RomSettings[] = {
     //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
 #if 1
     //MENU_ROM_FILE_NAME,
+    {"testrom.z64", 0x12, EEPROM_16K},
+    {"Mario Kart 64 (Japan).n64", 0x12, EEPROM_4K},
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
@@ -241,73 +243,6 @@ void LoadRom(const char* Name)
             BlinkAndDie(500, 100);
         }
 
-        // Open the eeprom save file for the requested rom.
-        if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
-            char SaveName[265];
-            sprintf(SaveName, "%s.eep", Name);
-            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                    memset(EEPROMStore, 0, sizeof(EEPROMStore));
-                    UINT byteswritten;
-                    f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
-                    f_close(&SDFile);
-
-                    if (byteswritten != sizeof(EEPROMStore)) {
-                        // Let the user know something went wrong.
-                        BlinkAndDie(1000, 500);
-                    }
-                }
-
-            } else {
-                FILINFO FileInfo;
-                volatile FRESULT result = f_stat(SaveName, &FileInfo);
-                if (FileInfo.fsize != sizeof(EEPROMStore)) {
-                    BlinkAndDie(200, 300);
-                }
-
-                result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
-                if (result != FR_OK) {
-                    BlinkAndDie(200, 300);
-                }
-
-                f_close(&SDFile);
-            }
-        } else {
-            // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
-            char SaveName[265];
-            sprintf(SaveName, "%s.fla", Name);
-            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                    memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
-                    UINT byteswritten;
-                    f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
-                    f_close(&SDFile);
-
-                    if (byteswritten != sizeof(FlashRamStorage)) {
-                        f_unlink(SaveName);
-                        // Let the user know something went wrong.
-                        BlinkAndDie(1000, 500);
-                    }
-                }
-
-            } else {
-                FILINFO FileInfo;
-                FRESULT result = f_stat(SaveName, &FileInfo);
-                if (FileInfo.fsize != sizeof(FlashRamStorage)) {
-                    f_close(&SDFile);
-                    f_unlink(SaveName);
-                    BlinkAndDie(200, 300);
-                }
-
-                result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
-                if (result != FR_OK) {
-                    BlinkAndDie(200, 300);
-                }
-
-                f_close(&SDFile);
-            }
-        }
-
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
             FRESULT result = f_stat(Name, &gFileInfo);
@@ -391,6 +326,74 @@ void ContinueRomLoad(void)
             *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
         }
     }
+
+    // Open the eeprom save file for the requested rom.
+    const char* Name = RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName;
+    if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
+        char SaveName[265];
+        sprintf(SaveName, "%s.eep", Name);
+        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                memset(EEPROMStore, 0, sizeof(EEPROMStore));
+                UINT byteswritten;
+                f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
+                f_close(&SDFile);
+
+                if (byteswritten != sizeof(EEPROMStore)) {
+                    // Let the user know something went wrong.
+                    BlinkAndDie(1000, 500);
+                }
+            }
+
+        } else {
+            FILINFO FileInfo;
+            volatile FRESULT result = f_stat(SaveName, &FileInfo);
+            if (FileInfo.fsize != sizeof(EEPROMStore)) {
+                BlinkAndDie(200, 300);
+            }
+
+            result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
+            if (result != FR_OK) {
+                BlinkAndDie(200, 300);
+            }
+
+            f_close(&SDFile);
+        }
+    } else {
+        // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
+        char SaveName[265];
+        sprintf(SaveName, "%s.fla", Name);
+        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
+                UINT byteswritten;
+                f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+                f_close(&SDFile);
+
+                if (byteswritten != sizeof(FlashRamStorage)) {
+                    f_unlink(SaveName);
+                    // Let the user know something went wrong.
+                    BlinkAndDie(1000, 500);
+                }
+            }
+
+        } else {
+            FILINFO FileInfo;
+            FRESULT result = f_stat(SaveName, &FileInfo);
+            if (FileInfo.fsize != sizeof(FlashRamStorage)) {
+                f_close(&SDFile);
+                f_unlink(SaveName);
+                BlinkAndDie(200, 300);
+            }
+
+            result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
+            if (result != FR_OK) {
+                BlinkAndDie(200, 300);
+            }
+
+            f_close(&SDFile);
+        }
+    }
 }
 
 inline void DaisyDriveN64Reset(void)
@@ -422,24 +425,42 @@ void SITest();
 
 int main(void)
 {
-    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
-    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
-    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+    __HAL_RCC_GPIOG_CLK_ENABLE();
+    GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    GPIOG->BSRR = CIC_DAT;
 
-    // Init hardware
+    PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+// Init hardware
 #if OVERCLOCK
     hw.Init(true);
 #else
     hw.Init(false);
 #endif
 
+    GPIO_InitTypeDef PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &PortCPins);
+
+    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    CICEmulatorInit();
+
+    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
+    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
+    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+
     TimerCtrl = SysTick->CTRL;
+    SysTick->CTRL = 0;
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
+    
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
     // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
@@ -463,30 +484,18 @@ int main(void)
     GPIOB->ODR = 0xC3F0;
 #endif
 
-    GPIO_InitTypeDef PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
     PortCPins = {S_DAT_LINE, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
     GPIOC->BSRR = S_DAT_LINE;
 
-    PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &PortCPins);
-
     GPIO_InitTypeDef ResetLinePin = {RESET_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &ResetLinePin);
 
     GPIO_InitTypeDef ALE_L_Pin = {ALE_L, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &ALE_L_Pin);
-
-    GPIO_InitTypeDef PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOG, &PortGPins);
-    NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
-    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
-    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-    PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOG, &PortGPins);
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_1;
@@ -500,18 +509,12 @@ int main(void)
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
 
-    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
-    CICEmulatorInit();
     EEPROMType = RomSettings[RomIndex].EepRomType;
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
-    GPIOG->BSRR = CIC_DAT;
-    SysTick->CTRL = TimerCtrl;
-    //System::Delay(2);
     EXTI->PR1 = RESET_LINE;
     while (RESET_IS_LOW) { }
-    SysTick->CTRL = 0;
 
     InitializeInterrupts();
     InitializeTimersPI();

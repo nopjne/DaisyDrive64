@@ -61,6 +61,7 @@
 #define RESET_IS_LOW ((GPIOD->IDR & RESET_LINE) == 0)
 
 void CICEmulatorInit(void);
+void CICEmulatorInitFast(void);
 void StartCICEmulator(void);
 int RunCICEmulator(void);
 int InitializeDmaChannels(void);
