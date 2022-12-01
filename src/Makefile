@@ -6,7 +6,7 @@ TARGET = DaisyDrive64
 LDSCRIPT ?= Linkerscript.ld
 
 # Sources
-CPP_SOURCES = daisydrive64main.cpp cic_c.cpp n64pi.cpp n64si.cpp
+CPP_SOURCES = daisydrive64main.cpp cic_c.cpp n64pi.cpp n64si.cpp flashram.cpp
 C_SOURCES = stm32h7xx_it.c ../external/libdaisy/Middlewares/Third_Party/FatFs/src/option/unicode.c
 
 # Includes FatFS source files within project.

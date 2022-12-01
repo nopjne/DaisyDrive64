@@ -15,6 +15,7 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 
+uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
 struct RomSetting {
     const char* RomName;
@@ -25,6 +26,7 @@ struct RomSetting {
 #define TESTROM 0
 #if TESTROM
 const RomSetting RomSettings[] = {
+    
     {"testrom.z64", 0x12, EEPROM_16K}
 };
 #else
@@ -38,23 +40,29 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    //{"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M},
-    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_FLASH_1M},
+    {"savetestv.z64", 0x12, SAVE_FLASH_1M},
+    {"savetestv.z64", 0x12, EEPROM_16K},
+    {"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
+    {"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
+    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM},
+    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_SRAM},
+    //{"OS64P.z64", 0x12, SAVE_SRAM},
     //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
+    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
     //{"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
-    //"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
-    //{"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, does not save.
+    //{"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
     //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
 #if 0
     //MENU_ROM_FILE_NAME,
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
+    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
+    {"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
     {"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"Mario Golf (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    {"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M},
+    {"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
+    {"Resident Evil 2 (USA).n64", 0x17, SAVE_SRAM},
     {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"Donkey Kong 64 (USA).n64", 0x16, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     {"Star Fox 64 (USA).n64", 0x17, EEPROM_4K},
@@ -280,7 +288,8 @@ void LoadRom(const char* Name)
             } else {
                 FILINFO FileInfo;
                 FRESULT result = f_stat(SaveName, &FileInfo);
-                if (FileInfo.fsize != sizeof(FlashRamStorage)) {
+                if ((FileInfo.fsize != (sizeof(FlashRamStorage) - 8)) &&
+                    (FileInfo.fsize != sizeof(FlashRamStorage))) {
                     f_close(&SDFile);
                     f_unlink(SaveName);
                     BlinkAndDie(200, 300);
@@ -289,6 +298,12 @@ void LoadRom(const char* Name)
                 result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
                 if (result != FR_OK) {
                     BlinkAndDie(200, 300);
+                }
+
+                if (CurrentRomSaveType == SAVE_FLASH_1M) {
+                    ((uint32_t*)FlashRamStorage)[0] = 0x1111800F;
+                    ((uint32_t*)FlashRamStorage)[1] = 0x000000C2;
+                    
                 }
 
                 f_close(&SDFile);
@@ -383,6 +398,7 @@ extern "C" const unsigned char itcm_text_end;
 extern "C" const unsigned char itcm_data;
 
 void SITest();
+extern void * g_pfnVectors;
 
 int main(void)
 {
@@ -460,9 +476,10 @@ int main(void)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+    EEPROMType = RomSettings[RomIndex].EepRomType;
+    CurrentRomSaveType = EEPROMType;
     LoadRom(RomSettings[RomIndex].RomName);
     CICEmulatorInit();
-    EEPROMType = RomSettings[RomIndex].EepRomType;
 
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
@@ -496,7 +513,7 @@ int main(void)
             //__WFE();
         }
 
-        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
+        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
             SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         } else {
             SaveFlashRam(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
@@ -506,7 +523,8 @@ int main(void)
         LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();
         EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;
-        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
+        CurrentRomSaveType = EEPROMType;
+        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
             SI_Reset();
         }
     }

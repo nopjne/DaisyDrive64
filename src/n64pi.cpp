@@ -6,6 +6,9 @@
 #include "stm32h7xx_ll_bus.h"
 #include "n64common.h"
 #include "daisydrive64.h"
+#include "flashram.h"
+
+extern uint32_t CurrentRomSaveType;
 
 //#define HANDLE_ADDRESS_CONSTRUCTION_IN_ISR
 DTCM_DATA DMA_HandleTypeDef DMA_Handle_Channel0; // AD capture.
@@ -384,6 +387,10 @@ int InitializeDmaChannels(void)
     GPIO_InitTypeDef WritePin = {WRITE_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &WritePin);
     NVIC_SetVector(EXTI4_IRQn, (uint32_t)&EXTI4_IRQHandler);
+    if (CurrentRomSaveType == SAVE_FLASH_1M) {
+        //NVIC_SetVector(EXTI4_IRQn, (uint32_t)&FlashRAMWrite0);
+    }
+
     HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 #endif
@@ -658,6 +665,7 @@ void EXTI4_IRQHandler(void)
         ReadPtr = (uint16_t*)(FlashRamStorage);
     }
 
+    //*((uint32_t*)FlashRamStorage) = 0x80011111;
     *ReadPtr = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
     ReadPtr += 1;
 }
@@ -771,17 +779,65 @@ void EXTI1_IRQHandler(void)
 #endif
 }
 
+extern "C"
+ITCM_FUNCTION
+void ReadISRNoPrefetch(void)
+{
+    EXTI->PR1 = READ_LINE;
+    const uint16_t PrefetchRead = *ReadPtr;
+    __DMB();
+    GPIOA->ODR = PrefetchRead;
+    GPIOB->ODR = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    ReadPtr += 1;
+}
+
+extern "C"
+ITCM_FUNCTION
+void ReadISRNoPrefetchFirst(void)
+{
+    EXTI->PR1 = READ_LINE;
+    const uint16_t PrefetchRead = *ReadPtr;
+    __DMB();
+    GPIOA->ODR = PrefetchRead;
+    GPIOB->ODR = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    SET_PI_OUTPUT_MODE
+    ReadPtr += 1;
+    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&ReadISRNoPrefetch);
+}
+
 inline void ConstructAddress(void)
 {
-    if (ADInputAddress >= CART_DOM2_ADDR2_START && ADInputAddress <= CART_DOM2_ADDR2_END) {
-        ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
+    if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
+        //ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
+        //if (CurrentRomSaveType == SAVE_FLASH_1M) {
+        //    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&FlashRAMReadFirst);
+        //} else {
+            if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
+                ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
+            } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (3 << 18))) {
+                ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (3 << 18)) + (sizeof(FlashRamStorage) / 4) * 3));
+            } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (2 << 18))) {
+                ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (2 << 18)) + (sizeof(FlashRamStorage) / 4) * 2));
+            } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (1 << 18))) {
+                ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (1 << 18)) + (sizeof(FlashRamStorage) / 4) * 1));
+            }
+
+            //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+            //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&ReadISRNoPrefetchFirst);
+            //SCB_InvalidateICache();
+        //}
+        //return;
     } else if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
+        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
+        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
+        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)(ram + CART_MENU_OFFSET);
     } else {
         ReadPtr = (uint16_t*)&NullMem;
