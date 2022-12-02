@@ -339,7 +339,7 @@ int InitializeDmaChannels(void)
         // NVIC configuration for DMA transfer complete interrupt.
         HAL_NVIC_SetPriority(BDMA_Channel1_IRQn, 0, 0);
 #ifndef HANDLE_ADDRESS_CONSTRUCTION_IN_ISR
-        HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
+        //HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
 #endif
 
         // Configure and enable the DMAMUX Request generator.
@@ -662,7 +662,7 @@ void EXTI4_IRQHandler(void)
     const uint32_t ValueInB = GPIOB->IDR;
     const uint32_t ValueInA = GPIOA->IDR;
     if ((ReadPtr < (uint16_t*)FlashRamStorage) || (ReadPtr >= (uint16_t*)(FlashRamStorage + sizeof(FlashRamStorage)))) {
-        ReadPtr = (uint16_t*)(FlashRamStorage);
+        ReadPtr = (uint16_t*)(FlashRamStorage + 1232);
     }
 
     //*((uint32_t*)FlashRamStorage) = 0x80011111;
@@ -745,8 +745,9 @@ void EXTI1_IRQHandler(void)
     // TODO: Can this be done through DMA entirely?
     if (ReadOffset == 0) {
         SET_PI_OUTPUT_MODE
+        ReadOffset += 2;
     }
-    ReadOffset += 2;
+
 #endif
 #if (PI_PRECALCULATE_OUT_VALUE == 0)
     if ((ReadOffset & 3) == 0) {
@@ -756,11 +757,10 @@ void EXTI1_IRQHandler(void)
 #else
 
     ReadPtr += 1;
-    const uint16_t PrefetchRead = *ReadPtr;
     __DMB();
+    const uint16_t PrefetchRead = *ReadPtr;
     ValueA = PrefetchRead;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
-
 #endif
 
 #if PI_ENABLE_LOGGING
@@ -812,6 +812,7 @@ inline void ConstructAddress(void)
         //if (CurrentRomSaveType == SAVE_FLASH_1M) {
         //    NVIC_SetVector(EXTI1_IRQn, (uint32_t)&FlashRAMReadFirst);
         //} else {
+            //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
             if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
                 ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
             } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (3 << 18))) {
@@ -828,16 +829,16 @@ inline void ConstructAddress(void)
         //}
         //return;
     } else if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
-        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
-        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
-        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
-        NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)(ram + CART_MENU_OFFSET);
     } else {
         ReadPtr = (uint16_t*)&NullMem;
@@ -869,18 +870,19 @@ void BDMA_Channel1_IRQHandler(void)
 #endif
 
     ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
+    ADInputAddress = (ADInputAddress & 0xFFFF) | (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
     ADInputAddress = (ADInputAddress & 0xFFFF0000) | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
-    const uint32_t DoOp = (DMACount += 1);
-    if ((DoOp & 1) == 0) {
+    //const uint32_t DoOp = (DMACount += 1);
+    //if ((DoOp & 1) == 0) {
         ConstructAddress();
-    }
+    //}
 }
 
 extern "C"
 ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
-#if 1
+#if 0
     if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
         return;
     }
@@ -895,11 +897,12 @@ void BDMA_Channel0_IRQHandler(void)
 #endif
 
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
-    ADInputAddress = (ADInputAddress & 0xFFFF) | (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
-    const uint32_t DoOp = (DMACount += 1);
-    if ((DoOp & 1) == 0) {
+    ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
+                     | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
+    //const uint32_t DoOp = (DMACount += 1);
+    //if ((DoOp & 1) == 0) {
         ConstructAddress();
-    }
+    //}
 }
 
 extern "C"
