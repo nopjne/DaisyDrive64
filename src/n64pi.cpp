@@ -7,6 +7,7 @@
 #include "n64common.h"
 #include "daisydrive64.h"
 #include "flashram.h"
+#include "menu.h"
 
 extern uint32_t CurrentRomSaveType;
 
@@ -839,7 +840,12 @@ inline void ConstructAddress(void)
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = (uint16_t*)(ram + CART_MENU_OFFSET);
+        ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_MENU_OFFSET));
+        if (((uint32_t*)ReadPtr) == &(MenuBase[REG_EXECUTE_FUNCTION])) {
+            MenuBase[REG_STATUS] |= DAISY_STATUS_BIT_DMA_BUSY;
+            SCB->STIR = DAISY_MENU_INTERRUPT;
+        }
+
     } else {
         ReadPtr = (uint16_t*)&NullMem;
     }
@@ -910,6 +916,7 @@ ITCM_FUNCTION
 void EXTI0_IRQHandler(void)
 {
     EXTI->PR1 = ALE_L;
+    // Invalidate the data cache by address.
     SCB->DCIMVAC = (uint32_t)PortABuffer;
 #if HANDLE_ADDRESS_CONSTRUCTION_IN_ISR
     while ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR & ((1<<4) | 1)) != ((1<<4) | 1)) {

@@ -943,7 +943,7 @@ extern "C" void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
             HAL_GPIO_Init(port, &GPIO_InitStruct);
         }
         /* QUADSPI interrupt Init */
-        HAL_NVIC_SetPriority(QUADSPI_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(QUADSPI_IRQn, 14, 0);
         HAL_NVIC_EnableIRQ(QUADSPI_IRQn);
     }
 }

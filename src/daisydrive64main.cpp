@@ -8,6 +8,7 @@
 #include "stm32h7xx_hal_dma.h"
 #include "n64common.h"
 #include "daisydrive64.h"
+#include "menu.h"
 
 #ifndef _FS_EXFAT
 #error EXFAT FS NEEDS TO BE ENABLED
@@ -41,12 +42,12 @@ const RomSetting RomSettings[] = {
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
     {"savetestv.z64", 0x12, SAVE_FLASH_1M},
-    {"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
     {"savetestv.z64", 0x12, EEPROM_16K},
-    {"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
     {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_SRAM},
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM},
+    {"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
+    {"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
+    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
     
     
     //{"OS64P.z64", 0x12, SAVE_SRAM},
@@ -480,6 +481,7 @@ int main(void)
 
     EEPROMType = RomSettings[RomIndex].EepRomType;
     CurrentRomSaveType = EEPROMType;
+    //InitMenuFunctions();
     LoadRom(RomSettings[RomIndex].RomName);
     CICEmulatorInit();
 

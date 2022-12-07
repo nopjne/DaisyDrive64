@@ -2,6 +2,7 @@
 #define DTCM_DATA  __attribute__((section(".dtcmram_bss")))
 #define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
 #define SRAM1_DATA __attribute__((section(".sram1_bss")))
+#define QSPI_FLASH __attribute__((section(".qspiflash_text")))
 
 // Only enable for ROM less than 16MB.
 #define PI_ENABLE_LOGGING 0
@@ -73,6 +74,8 @@ extern "C" ITCM_FUNCTION void EXTI15_10_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
 void RunEEPROMEmulator(void);
+
+void BlinkAndDie(int wait1, int wait2);
 
 extern DTCM_DATA volatile bool Running;
 

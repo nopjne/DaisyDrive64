@@ -1,0 +1,1561 @@
+User : 3 2 options.c:63 configuration_output_handler(): debug_level: 3
+User : 4 2 options.c:63 configuration_output_handler(): 
+Debug: 5 2 command.c:166 script_debug(): command - ocd_find interface/stlink.cfg
+Debug: 6 2 configuration.c:99 find_file(): found /usr/local/share/openocd/scripts/interface/stlink.cfg
+Debug: 7 2 command.c:166 script_debug(): command - adapter driver hla
+Debug: 8 2 command.c:166 script_debug(): command - hla_layout stlink
+Debug: 9 2 hla_interface.c:256 hl_interface_handle_layout_command(): hl_interface_handle_layout_command
+Debug: 10 2 command.c:166 script_debug(): command - hla_device_desc ST-LINK
+Debug: 11 3 hla_interface.c:230 hl_interface_handle_device_desc_command(): hl_interface_handle_device_desc_command
+Debug: 12 11 command.c:166 script_debug(): command - hla_vid_pid 0x0483 0x3744 0x0483 0x3748 0x0483 0x374b 0x0483 0x374d 0x0483 0x374e 0x0483 0x374f 0x0483 0x3752 0x0483 0x3753 0x0483 0x3754
+Debug: 13 11 command.c:166 script_debug(): command - ocd_find ./qspi_init2.cfg
+Debug: 14 11 configuration.c:99 find_file(): found ./qspi_init2.cfg
+Debug: 15 11 command.c:166 script_debug(): command - ocd_find target/stm32h7x.cfg
+Debug: 16 12 configuration.c:99 find_file(): found /usr/local/share/openocd/scripts/target/stm32h7x.cfg
+Debug: 17 12 command.c:166 script_debug(): command - ocd_find target/swj-dp.tcl
+Debug: 18 12 configuration.c:99 find_file(): found /usr/local/share/openocd/scripts/target/swj-dp.tcl
+Debug: 19 12 command.c:166 script_debug(): command - transport select
+Info : 20 13 transport.c:276 jim_transport_select(): auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Debug: 21 13 hla_transport.c:202 hl_swd_transport_select(): hl_swd_transport_select
+Debug: 22 13 command.c:166 script_debug(): command - ocd_find mem_helper.tcl
+Debug: 23 13 configuration.c:99 find_file(): found /usr/local/share/openocd/scripts/mem_helper.tcl
+Debug: 24 13 command.c:166 script_debug(): command - add_usage_text mrw address
+Debug: 25 13 command.c:166 script_debug(): command - add_help_text mrw Returns value of word in memory.
+Debug: 26 13 command.c:166 script_debug(): command - add_usage_text mrh address
+Debug: 27 13 command.c:166 script_debug(): command - add_help_text mrh Returns value of halfword in memory.
+Debug: 28 13 command.c:166 script_debug(): command - add_usage_text mrb address
+Debug: 29 13 command.c:166 script_debug(): command - add_help_text mrb Returns value of byte in memory.
+Debug: 30 13 command.c:166 script_debug(): command - add_usage_text mmw address setbits clearbits
+Debug: 31 13 command.c:166 script_debug(): command - add_help_text mmw Modify word in memory. new_val = (old_val & ~clearbits) | setbits;
+Debug: 32 13 command.c:166 script_debug(): command - transport select
+Debug: 33 13 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 34 13 command.c:166 script_debug(): command - transport select
+Debug: 35 13 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 36 13 command.c:166 script_debug(): command - transport select
+Debug: 37 13 command.c:166 script_debug(): command - expr  [ string first "swd" $_TRANSPORT ] != -1 
+Debug: 38 13 command.c:166 script_debug(): command - swd newdap stm32h7x cpu -irlen 4 -ircapture 0x1 -irmask 0xf -expected-id 0x6ba02477
+Debug: 39 13 hla_tcl.c:110 jim_hl_newtap_cmd(): Creating New Tap, Chip: stm32h7x, Tap: cpu, Dotted: stm32h7x.cpu, 8 params
+Debug: 40 13 hla_tcl.c:121 jim_hl_newtap_cmd(): Processing option: -irlen
+Debug: 41 13 hla_tcl.c:121 jim_hl_newtap_cmd(): Processing option: -ircapture
+Debug: 42 13 hla_tcl.c:121 jim_hl_newtap_cmd(): Processing option: -irmask
+Debug: 43 13 hla_tcl.c:121 jim_hl_newtap_cmd(): Processing option: -expected-id
+Debug: 44 13 core.c:1468 jtag_tap_init(): Created Tap: stm32h7x.cpu @ abs position 0, irlen 0, capture: 0x0 mask: 0x0
+Debug: 45 13 command.c:166 script_debug(): command - dap create stm32h7x.dap -chain-position stm32h7x.cpu
+Debug: 46 13 command.c:166 script_debug(): command - transport select
+Debug: 47 13 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 48 13 command.c:166 script_debug(): command - transport select
+Debug: 49 13 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 50 13 command.c:166 script_debug(): command - target create stm32h7x.cpu0 cortex_m -endian little -dap stm32h7x.dap -ap-num 0
+Info : 51 13 target.c:5743 target_create(): The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+Debug: 52 13 hla_target.c:204 adapter_target_create(): adapter_target_create
+Debug: 53 13 hla_target.c:174 adapter_init_arch_info(): adapter_init_arch_info
+Debug: 54 13 command.c:300 register_command(): command 'rtt' is already registered
+Debug: 55 14 command.c:300 register_command(): command 'tpiu' is already registered
+Debug: 56 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -work-area-phys 0x20000000 -work-area-size 0x10000 -work-area-backup 0
+Debug: 57 14 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 58 14 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 59 14 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 60 14 command.c:166 script_debug(): command - flash bank stm32h7x.bank1.cpu0 stm32h7x 0x08000000 0 0 0 stm32h7x.cpu0
+Debug: 61 14 tcl.c:1316 handle_flash_bank_command(): 'stm32h7x' driver usage field missing
+Debug: 62 14 command.c:166 script_debug(): command - targets stm32h7x.cpu0
+Debug: 63 14 command.c:166 script_debug(): command - flash list
+Debug: 64 14 command.c:166 script_debug(): command - flash bank stm32h7x.qspi stmqspi 0x90000000 0 0 0 stm32h7x.cpu0 0x52005000
+Debug: 65 14 stmqspi.c:221 stmqspi_flash_bank_command(): stmqspi_flash_bank_command
+Debug: 66 14 tcl.c:1316 handle_flash_bank_command(): 'stmqspi' driver usage field missing
+Debug: 67 14 command.c:166 script_debug(): command - adapter speed 1800
+Debug: 68 14 adapter.c:178 adapter_config_khz(): handle adapter khz
+Debug: 69 14 adapter.c:142 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 70 14 adapter.c:142 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 71 14 command.c:166 script_debug(): command - adapter srst delay 100
+Debug: 72 14 command.c:166 script_debug(): command - transport select
+Debug: 73 14 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 74 14 command.c:166 script_debug(): command - reset_config srst_nogate
+Debug: 75 14 command.c:166 script_debug(): command - transport select
+Debug: 76 14 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 77 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event examine-end 
+	# Enable D3 and D1 DBG clocks
+	# DBGMCU_CR |= D3DBGCKEN | D1DBGCKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00600000 0
+
+	# Enable debug during low power modes (uses more power)
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D1 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000007 0
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D2 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000038 0
+
+	# Stop watchdog counters during halt
+	# DBGMCU_APB3FZ1 |= WWDG1
+	stm32h7x_dbgmcu_mmw 0x034 0x00000040 0
+	# DBGMCU_APB1LFZ1 |= WWDG2
+	stm32h7x_dbgmcu_mmw 0x03C 0x00000800 0
+	# DBGMCU_APB4FZ1 |= WDGLSD1 | WDGLSD2
+	stm32h7x_dbgmcu_mmw 0x054 0x000C0000 0
+
+	# Enable clock for tracing
+	# DBGMCU_CR |= TRACECLKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00100000 0
+
+	# RM0399 (id 0x450) M7+M4 with SWO Funnel
+	# RM0433 (id 0x450) M7 with SWO Funnel
+	# RM0455 (id 0x480) M7 without SWO Funnel
+	# RM0468 (id 0x483) M7 without SWO Funnel
+	# Enable CM7 and CM4 slave ports in SWO trace Funnel
+	# Works ok also on devices single core and without SWO funnel
+	# Hack, use stm32h7x_dbgmcu_mmw with big offset to control SWTF
+	# SWTF_CTRL |= ENS0 | ENS1
+	stm32h7x_dbgmcu_mmw 0x3000 0x00000003 0
+
+Debug: 78 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event reset-init 
+	# Clock after reset is HSI at 64 MHz, no need of PLL
+	adapter speed 4000
+
+Debug: 79 14 command.c:166 script_debug(): command - targets stm32h7x.cpu0
+Debug: 80 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event reset-end 
+    
+	 #global QUADSPI
+     #
+	 #mmw 0x52002000 0x00000004 0x0000000B	;# FLASH_ACR: 4 WS for 192 MHZ HCLK
+     #
+	 #mmw 0x58024400 0x00000001 0x00000018	;# RCC_CR: HSIDIV=1, HSI on
+	 #mmw 0x58024410 0x10000000 0xEE000007	;# RCC_CFGR: MCO2=system, MCO2PRE=8, HSI as system clock
+	 #mww 0x58024418 0x00000040				;# RCC_D1CFGR: D1CPRE=1, D1PPRE=2, HPRE=1
+	 #mww 0x5802441C 0x00000440				;# RCC_D2CFGR: D2PPRE2=2, D2PPRE1=2
+	 #mww 0x58024420 0x00000040				;# RCC_D3CFGR: D3PPRE=2
+	 #mww 0x58024428 0x00000040				;# RCC_PPLCKSELR: DIVM3=0, DIVM2=0, DIVM1=4, PLLSRC=HSI
+	 #mmw 0x5802442C 0x0001000C 0x00000002	;# RCC_PLLCFGR: PLL1RGE=8MHz to 16MHz, PLL1VCOSEL=wide
+	 #mww 0x58024430 0x01070217				;# RCC_PLL1DIVR: 192 MHz: DIVR1=2, DIVQ=8, DIVP1=2, DIVN1=24
+	 #mmw 0x58024400 0x01000000 0				;# RCC_CR: PLL1ON=1
+	 #sleep 1
+	 #mmw 0x58024410 0x00000003 0				;# RCC_CFGR: PLL1 as system clock
+	 #sleep 1
+     #
+	 #adapter speed 24000
+
+	#if { $QUADSPI } {
+        
+
+    qspi_init 1
+    echo "init done"
+    flash probe 1
+    echo "Setting stmqspi configuration"
+    #flash 1 issi stmqspi 0x90000000 0 0 0 0 0xA0001000
+    #stmqspi set bank_id name          total_size page_size read_cmd fread_cmd pprg_cmd mass_erase_cmd sector_size sector_erase_cmd
+    #stmqspi  set 1       issi          0x800000   0x100     0x03     0x0B      0x02     0xC7           0x1000      0xd7
+    stmqspi  set 1       issi          0x800000   0x100     0x03     0x0B      0x02     0xC7           0x1000      0x20
+		#32blit_qspi_init 1
+        #hxa-001_qspi_init 1
+	#}
+
+Debug: 81 14 command.c:166 script_debug(): command - init
+Debug: 82 14 command.c:166 script_debug(): command - target init
+Debug: 83 14 command.c:166 script_debug(): command - target names
+Debug: 84 14 command.c:166 script_debug(): command - stm32h7x.cpu0 cget -event gdb-flash-erase-start
+Debug: 85 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event gdb-flash-erase-start reset init
+Debug: 86 14 command.c:166 script_debug(): command - stm32h7x.cpu0 cget -event gdb-flash-write-end
+Debug: 87 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event gdb-flash-write-end reset halt
+Debug: 88 14 command.c:166 script_debug(): command - stm32h7x.cpu0 cget -event gdb-attach
+Debug: 89 14 command.c:166 script_debug(): command - stm32h7x.cpu0 configure -event gdb-attach halt 1000
+Debug: 90 14 target.c:1650 handle_target_init_command(): Initializing targets...
+Debug: 91 14 hla_target.c:194 adapter_init_target(): adapter_init_target
+Debug: 92 14 semihosting_common.c:99 semihosting_common_init():  
+Debug: 93 14 hla_interface.c:123 hl_interface_init(): hl_interface_init
+Debug: 94 14 hla_layout.c:95 hl_layout_init(): hl_layout_init
+Debug: 95 14 adapter.c:142 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 96 14 adapter.c:146 adapter_khz_to_speed(): have adapter set up
+Debug: 97 14 adapter.c:142 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 98 14 adapter.c:146 adapter_khz_to_speed(): have adapter set up
+Info : 99 14 adapter.c:107 adapter_init(): clock speed 1800 kHz
+Debug: 100 14 openocd.c:143 handle_init_command(): Debug Adapter init complete
+Debug: 101 14 command.c:166 script_debug(): command - transport init
+Debug: 102 14 transport.c:230 handle_transport_init(): handle_transport_init
+Debug: 103 14 hla_transport.c:154 hl_transport_init(): hl_transport_init
+Debug: 104 14 hla_transport.c:171 hl_transport_init(): current transport hla_swd
+Debug: 105 14 hla_interface.c:56 hl_interface_open(): hl_interface_open
+Debug: 106 14 hla_layout.c:40 hl_layout_open(): hl_layout_open
+Debug: 107 14 stlink_usb.c:3682 stlink_open(): stlink_open
+Debug: 108 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x3744 serial: 
+Debug: 109 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x3748 serial: 
+Debug: 110 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x374b serial: 
+Debug: 111 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x374d serial: 
+Debug: 112 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x374e serial: 
+Debug: 113 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x374f serial: 
+Debug: 114 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x3752 serial: 
+Debug: 115 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x3753 serial: 
+Debug: 116 14 stlink_usb.c:3694 stlink_open(): transport: 4 vid: 0x0483 pid: 0x3754 serial: 
+Info : 117 32 stlink_usb.c:1428 stlink_usb_version(): STLINK V2J39S7 (API v2) VID:PID 0483:3748
+Debug: 118 33 stlink_usb.c:1653 stlink_usb_exit_mode(): MODE: 0x01
+Info : 119 34 stlink_usb.c:1464 stlink_usb_check_voltage(): Target voltage: 3.161629
+Debug: 120 34 stlink_usb.c:1721 stlink_usb_init_mode(): MODE: 0x01
+Debug: 121 34 stlink_usb.c:3087 stlink_dump_speed_map(): Supported clock speeds are:
+Debug: 122 34 stlink_usb.c:3090 stlink_dump_speed_map(): 4000 kHz
+Debug: 123 34 stlink_usb.c:3090 stlink_dump_speed_map(): 1800 kHz
+Debug: 124 34 stlink_usb.c:3090 stlink_dump_speed_map(): 1200 kHz
+Debug: 125 34 stlink_usb.c:3090 stlink_dump_speed_map(): 950 kHz
+Debug: 126 34 stlink_usb.c:3090 stlink_dump_speed_map(): 480 kHz
+Debug: 127 34 stlink_usb.c:3090 stlink_dump_speed_map(): 240 kHz
+Debug: 128 34 stlink_usb.c:3090 stlink_dump_speed_map(): 125 kHz
+Debug: 129 34 stlink_usb.c:3090 stlink_dump_speed_map(): 100 kHz
+Debug: 130 34 stlink_usb.c:3090 stlink_dump_speed_map(): 50 kHz
+Debug: 131 34 stlink_usb.c:3090 stlink_dump_speed_map(): 25 kHz
+Debug: 132 34 stlink_usb.c:3090 stlink_dump_speed_map(): 15 kHz
+Debug: 133 34 stlink_usb.c:3090 stlink_dump_speed_map(): 5 kHz
+Debug: 134 37 stlink_usb.c:1781 stlink_usb_init_mode(): MODE: 0x02
+Debug: 135 38 stlink_usb.c:4077 stlink_usb_open_ap(): AP 0 enabled
+Debug: 136 39 stlink_usb.c:3770 stlink_open(): Using TAR autoincrement: 1024
+Debug: 137 40 core.c:634 adapter_system_reset(): SRST line released
+Debug: 138 193 hla_interface.c:81 hl_interface_init_target(): hl_interface_init_target
+Debug: 139 194 stlink_usb.c:2014 stlink_usb_idcode(): IDCODE: 0x6BA02477
+Debug: 140 194 command.c:166 script_debug(): command - dap init
+Debug: 141 194 arm_dap.c:107 dap_init_all(): Initializing all DAPs ...
+Debug: 142 194 openocd.c:160 handle_init_command(): Examining targets...
+Debug: 143 194 target.c:1836 target_call_event_callbacks(): target event 19 (examine-start) for core stm32h7x.cpu0
+Debug: 144 194 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000ed00 4 1
+Debug: 145 195 target.c:2615 target_read_u32(): address: 0xe000ed00, value: 0x411fc271
+Info : 146 195 cortex_m.c:2328 cortex_m_examine(): stm32h7x.cpu0: Cortex-M7 r1p1 processor detected
+Debug: 147 195 cortex_m.c:2344 cortex_m_examine(): cpuid: 0x411fc271
+Debug: 148 195 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000ef40 4 1
+Debug: 149 197 target.c:2615 target_read_u32(): address: 0xe000ef40, value: 0x10110221
+Debug: 150 197 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000ef44 4 1
+Debug: 151 198 target.c:2615 target_read_u32(): address: 0xe000ef44, value: 0x12000011
+Debug: 152 198 cortex_m.c:2364 cortex_m_examine(): Cortex-M7 floating point feature FPv5_DP found
+Debug: 153 198 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000edf0 4 1
+Debug: 154 200 target.c:2615 target_read_u32(): address: 0xe000edf0, value: 0x00030003
+Debug: 155 200 target.c:2703 target_write_u32(): address: 0xe000edfc, value: 0x01000000
+Debug: 156 200 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe000edfc 4 1
+Debug: 157 201 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe0002000 4 1
+Debug: 158 202 target.c:2615 target_read_u32(): address: 0xe0002000, value: 0x10000080
+Debug: 159 202 target.c:2703 target_write_u32(): address: 0xe0002008, value: 0x00000000
+Debug: 160 202 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002008 4 1
+Debug: 161 204 target.c:2703 target_write_u32(): address: 0xe000200c, value: 0x00000000
+Debug: 162 204 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe000200c 4 1
+Debug: 163 205 target.c:2703 target_write_u32(): address: 0xe0002010, value: 0x00000000
+Debug: 164 205 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002010 4 1
+Debug: 165 206 target.c:2703 target_write_u32(): address: 0xe0002014, value: 0x00000000
+Debug: 166 206 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002014 4 1
+Debug: 167 206 target.c:2703 target_write_u32(): address: 0xe0002018, value: 0x00000000
+Debug: 168 206 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002018 4 1
+Debug: 169 207 target.c:2703 target_write_u32(): address: 0xe000201c, value: 0x00000000
+Debug: 170 207 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe000201c 4 1
+Debug: 171 207 target.c:2703 target_write_u32(): address: 0xe0002020, value: 0x00000000
+Debug: 172 207 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002020 4 1
+Debug: 173 208 target.c:2703 target_write_u32(): address: 0xe0002024, value: 0x00000000
+Debug: 174 208 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0002024 4 1
+Debug: 175 208 cortex_m.c:2434 cortex_m_examine(): FPB fpcr 0x10000080, numcode 8, numlit 0
+Debug: 176 208 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe0001000 4 1
+Debug: 177 209 target.c:2615 target_read_u32(): address: 0xe0001000, value: 0x40000000
+Debug: 178 209 cortex_m.c:2167 cortex_m_dwt_setup(): DWT_CTRL: 0x40000000
+Debug: 179 209 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe0001fbc 4 1
+Debug: 180 209 target.c:2615 target_read_u32(): address: 0xe0001fbc, value: 0x00000000
+Debug: 181 209 cortex_m.c:2174 cortex_m_dwt_setup(): DWT_DEVARCH: 0x0
+Debug: 182 209 target.c:2703 target_write_u32(): address: 0xe0001028, value: 0x00000000
+Debug: 183 209 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0001028 4 1
+Debug: 184 210 target.c:2703 target_write_u32(): address: 0xe0001038, value: 0x00000000
+Debug: 185 210 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0001038 4 1
+Debug: 186 210 target.c:2703 target_write_u32(): address: 0xe0001048, value: 0x00000000
+Debug: 187 211 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0001048 4 1
+Debug: 188 211 target.c:2703 target_write_u32(): address: 0xe0001058, value: 0x00000000
+Debug: 189 211 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe0001058 4 1
+Debug: 190 211 cortex_m.c:2221 cortex_m_dwt_setup(): DWT dwtcr 0x40000000, comp 4, watch/trigger
+Info : 191 211 cortex_m.c:2444 cortex_m_examine(): stm32h7x.cpu0: target has 8 breakpoints, 4 watchpoints
+Debug: 192 211 target.c:1836 target_call_event_callbacks(): target event 21 (examine-end) for core stm32h7x.cpu0
+Debug: 193 211 target.c:4811 target_handle_event(): target(0): stm32h7x.cpu0 (hla_target) event: 21 (examine-end) action: 
+	# Enable D3 and D1 DBG clocks
+	# DBGMCU_CR |= D3DBGCKEN | D1DBGCKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00600000 0
+
+	# Enable debug during low power modes (uses more power)
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D1 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000007 0
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D2 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000038 0
+
+	# Stop watchdog counters during halt
+	# DBGMCU_APB3FZ1 |= WWDG1
+	stm32h7x_dbgmcu_mmw 0x034 0x00000040 0
+	# DBGMCU_APB1LFZ1 |= WWDG2
+	stm32h7x_dbgmcu_mmw 0x03C 0x00000800 0
+	# DBGMCU_APB4FZ1 |= WDGLSD1 | WDGLSD2
+	stm32h7x_dbgmcu_mmw 0x054 0x000C0000 0
+
+	# Enable clock for tracing
+	# DBGMCU_CR |= TRACECLKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00100000 0
+
+	# RM0399 (id 0x450) M7+M4 with SWO Funnel
+	# RM0433 (id 0x450) M7 with SWO Funnel
+	# RM0455 (id 0x480) M7 without SWO Funnel
+	# RM0468 (id 0x483) M7 without SWO Funnel
+	# Enable CM7 and CM4 slave ports in SWO trace Funnel
+	# Works ok also on devices single core and without SWO funnel
+	# Hack, use stm32h7x_dbgmcu_mmw with big offset to control SWTF
+	# SWTF_CTRL |= ENS0 | ENS1
+	stm32h7x_dbgmcu_mmw 0x3000 0x00000003 0
+
+Debug: 194 211 command.c:166 script_debug(): command - transport select
+Debug: 195 212 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000edf8 4 1
+Debug: 196 212 target.c:2615 target_read_u32(): address: 0xe000edf8, value: 0x00000000
+Debug: 197 213 armv7m.c:379 armv7m_read_core_reg(): read r0 value 0x00010000
+Debug: 198 213 armv7m.c:379 armv7m_read_core_reg(): read r1 value 0x20004074
+Debug: 199 214 armv7m.c:379 armv7m_read_core_reg(): read r2 value 0x080148e0
+Debug: 200 214 armv7m.c:379 armv7m_read_core_reg(): read r3 value 0x00000000
+Debug: 201 215 armv7m.c:379 armv7m_read_core_reg(): read r4 value 0x00000020
+Debug: 202 216 armv7m.c:379 armv7m_read_core_reg(): read r5 value 0x52002000
+Debug: 203 216 armv7m.c:379 armv7m_read_core_reg(): read r6 value 0x20000954
+Debug: 204 217 armv7m.c:379 armv7m_read_core_reg(): read r7 value 0x00010000
+Debug: 205 217 armv7m.c:379 armv7m_read_core_reg(): read r8 value 0x07ee0000
+Debug: 206 218 armv7m.c:379 armv7m_read_core_reg(): read r9 value 0x00000000
+Debug: 207 218 armv7m.c:379 armv7m_read_core_reg(): read r10 value 0x00000000
+Debug: 208 219 armv7m.c:379 armv7m_read_core_reg(): read r11 value 0x00000000
+Debug: 209 220 armv7m.c:379 armv7m_read_core_reg(): read r12 value 0x00000000
+Debug: 210 220 armv7m.c:379 armv7m_read_core_reg(): read sp value 0x20020000
+Debug: 211 221 armv7m.c:379 armv7m_read_core_reg(): read lr value 0xffffffff
+Debug: 212 221 armv7m.c:379 armv7m_read_core_reg(): read pc value 0x20000064
+Debug: 213 222 armv7m.c:379 armv7m_read_core_reg(): read xPSR value 0x61000000
+Debug: 214 222 armv7m.c:379 armv7m_read_core_reg(): read msp value 0x20020000
+Debug: 215 223 armv7m.c:379 armv7m_read_core_reg(): read psp value 0x00000000
+Debug: 216 224 armv7m.c:379 armv7m_read_core_reg(): read pmsk_bpri_fltmsk_ctrl value 0x00000000
+Debug: 217 225 armv7m.c:377 armv7m_read_core_reg(): read d0 value 0x0000000000000000
+Debug: 218 226 armv7m.c:377 armv7m_read_core_reg(): read d1 value 0x0000000000000000
+Debug: 219 227 armv7m.c:377 armv7m_read_core_reg(): read d2 value 0x0000000000000000
+Debug: 220 228 armv7m.c:377 armv7m_read_core_reg(): read d3 value 0x0000000000000000
+Debug: 221 229 armv7m.c:377 armv7m_read_core_reg(): read d4 value 0x0000000000000000
+Debug: 222 231 armv7m.c:377 armv7m_read_core_reg(): read d5 value 0x0000000000000000
+Debug: 223 232 armv7m.c:377 armv7m_read_core_reg(): read d6 value 0x0000000000000000
+Debug: 224 233 armv7m.c:377 armv7m_read_core_reg(): read d7 value 0xffffffff00000000
+Debug: 225 234 armv7m.c:377 armv7m_read_core_reg(): read d8 value 0x0000000000000000
+Debug: 226 235 armv7m.c:377 armv7m_read_core_reg(): read d9 value 0x0000000000000000
+Debug: 227 236 armv7m.c:377 armv7m_read_core_reg(): read d10 value 0x0000000000000000
+Debug: 228 237 armv7m.c:377 armv7m_read_core_reg(): read d11 value 0x0000000000000000
+Debug: 229 238 armv7m.c:377 armv7m_read_core_reg(): read d12 value 0x0000000000000000
+Debug: 230 239 armv7m.c:377 armv7m_read_core_reg(): read d13 value 0x0000000000000000
+Debug: 231 240 armv7m.c:377 armv7m_read_core_reg(): read d14 value 0x0000000000000000
+Debug: 232 241 armv7m.c:377 armv7m_read_core_reg(): read d15 value 0xffffffff00000000
+Debug: 233 242 armv7m.c:379 armv7m_read_core_reg(): read fpscr value 0x00000000
+Debug: 234 242 hla_target.c:289 adapter_debug_entry(): entered debug state in core mode: Thread at PC 0x20000064, target->state: halted
+Debug: 235 242 target.c:1836 target_call_event_callbacks(): target event 0 (gdb-halt) for core stm32h7x.cpu0
+Debug: 236 242 target.c:1836 target_call_event_callbacks(): target event 1 (halted) for core stm32h7x.cpu0
+Debug: 237 242 hla_target.c:334 adapter_poll(): halted: PC: 0x20000064
+Debug: 238 242 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 239 243 command.c:166 script_debug(): command - target current
+Debug: 240 243 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 241 243 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 242 244 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 243 244 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 244 245 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 245 245 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 246 246 command.c:166 script_debug(): command - transport select
+Debug: 247 246 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 248 246 command.c:166 script_debug(): command - target current
+Debug: 249 246 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 250 247 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 251 247 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 252 248 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 253 248 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 254 248 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 255 249 command.c:166 script_debug(): command - transport select
+Debug: 256 249 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 257 249 command.c:166 script_debug(): command - target current
+Debug: 258 250 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 259 250 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 260 250 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 261 251 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 262 251 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 263 252 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 264 252 command.c:166 script_debug(): command - transport select
+Debug: 265 252 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 266 253 command.c:166 script_debug(): command - target current
+Debug: 267 253 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 268 253 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508020 1
+Debug: 269 254 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001034 4 1
+Debug: 270 254 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 271 254 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508020 64
+Debug: 272 255 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001034 4 1
+Debug: 273 255 command.c:166 script_debug(): command - transport select
+Debug: 274 255 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 275 256 command.c:166 script_debug(): command - target current
+Debug: 276 256 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 277 256 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508028 1
+Debug: 278 257 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c00103c 4 1
+Debug: 279 257 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 280 257 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508028 2048
+Debug: 281 258 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c00103c 4 1
+Debug: 282 258 command.c:166 script_debug(): command - transport select
+Debug: 283 259 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 284 259 command.c:166 script_debug(): command - target current
+Debug: 285 259 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 286 260 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508052 1
+Debug: 287 260 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001054 4 1
+Debug: 288 261 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 289 261 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508052 786432
+Debug: 290 261 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001054 4 1
+Debug: 291 262 command.c:166 script_debug(): command - transport select
+Debug: 292 262 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 293 262 command.c:166 script_debug(): command - target current
+Debug: 294 263 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 295 263 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 296 263 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 297 264 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 298 264 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 299 264 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 300 265 command.c:166 script_debug(): command - transport select
+Debug: 301 265 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 302 265 command.c:166 script_debug(): command - target current
+Debug: 303 266 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 304 266 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543520256 1
+Debug: 305 266 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c004000 4 1
+Debug: 306 267 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 307 267 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543520256 771
+Debug: 308 268 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c004000 4 1
+Debug: 309 268 command.c:166 script_debug(): command - flash init
+Debug: 310 268 tcl.c:1386 handle_flash_init_command(): Initializing flash devices...
+Debug: 311 269 command.c:166 script_debug(): command - nand init
+Debug: 312 269 tcl.c:498 handle_nand_init_command(): Initializing NAND devices...
+Debug: 313 269 command.c:166 script_debug(): command - pld init
+Debug: 314 269 pld.c:205 handle_pld_init_command(): Initializing PLDs...
+Debug: 315 269 command.c:166 script_debug(): command - tpiu init
+Info : 316 270 gdb_server.c:3539 gdb_target_start(): starting gdb server for stm32h7x.cpu0 on 3333
+Info : 317 271 server.c:311 add_service(): Listening on port 3333 for gdb connections
+Debug: 318 271 command.c:166 script_debug(): command - reset_config none
+User : 319 272 options.c:63 configuration_output_handler(): none separate
+User : 320 272 options.c:63 configuration_output_handler(): 
+Debug: 321 272 command.c:166 script_debug(): command - reset halt
+Debug: 322 272 target.c:1855 target_call_reset_callbacks(): target reset 2 (halt)
+Debug: 323 272 command.c:166 script_debug(): command - expr [catch {ocd_process_reset_inner $MODE} result] == 0
+Debug: 324 272 command.c:166 script_debug(): command - target names
+Debug: 325 272 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-start
+Debug: 326 272 command.c:166 script_debug(): command - transport select
+Debug: 327 272 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 328 272 command.c:166 script_debug(): command - transport select
+Debug: 329 272 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 330 272 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event examine-start
+Debug: 331 272 command.c:166 script_debug(): command - stm32h7x.cpu0 arp_examine allow-defer
+Debug: 332 272 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event examine-end
+Debug: 333 272 target.c:4811 target_handle_event(): target(0): stm32h7x.cpu0 (hla_target) event: 21 (examine-end) action: 
+	# Enable D3 and D1 DBG clocks
+	# DBGMCU_CR |= D3DBGCKEN | D1DBGCKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00600000 0
+
+	# Enable debug during low power modes (uses more power)
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D1 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000007 0
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP D2 Domain
+	stm32h7x_dbgmcu_mmw 0x004 0x00000038 0
+
+	# Stop watchdog counters during halt
+	# DBGMCU_APB3FZ1 |= WWDG1
+	stm32h7x_dbgmcu_mmw 0x034 0x00000040 0
+	# DBGMCU_APB1LFZ1 |= WWDG2
+	stm32h7x_dbgmcu_mmw 0x03C 0x00000800 0
+	# DBGMCU_APB4FZ1 |= WDGLSD1 | WDGLSD2
+	stm32h7x_dbgmcu_mmw 0x054 0x000C0000 0
+
+	# Enable clock for tracing
+	# DBGMCU_CR |= TRACECLKEN
+	stm32h7x_dbgmcu_mmw 0x004 0x00100000 0
+
+	# RM0399 (id 0x450) M7+M4 with SWO Funnel
+	# RM0433 (id 0x450) M7 with SWO Funnel
+	# RM0455 (id 0x480) M7 without SWO Funnel
+	# RM0468 (id 0x483) M7 without SWO Funnel
+	# Enable CM7 and CM4 slave ports in SWO trace Funnel
+	# Works ok also on devices single core and without SWO funnel
+	# Hack, use stm32h7x_dbgmcu_mmw with big offset to control SWTF
+	# SWTF_CTRL |= ENS0 | ENS1
+	stm32h7x_dbgmcu_mmw 0x3000 0x00000003 0
+
+Debug: 334 272 command.c:166 script_debug(): command - transport select
+Debug: 335 272 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 336 272 command.c:166 script_debug(): command - target current
+Debug: 337 272 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 338 272 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 339 272 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 340 273 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 341 273 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 342 273 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 343 273 command.c:166 script_debug(): command - transport select
+Debug: 344 273 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 345 273 command.c:166 script_debug(): command - target current
+Debug: 346 273 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 347 273 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 348 273 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 349 274 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 350 274 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 351 274 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 352 275 command.c:166 script_debug(): command - transport select
+Debug: 353 275 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 354 275 command.c:166 script_debug(): command - target current
+Debug: 355 275 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 356 275 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 357 275 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 358 275 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 359 275 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 360 275 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 361 276 command.c:166 script_debug(): command - transport select
+Debug: 362 276 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 363 276 command.c:166 script_debug(): command - target current
+Debug: 364 276 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 365 276 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508020 1
+Debug: 366 276 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001034 4 1
+Debug: 367 276 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 368 276 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508020 64
+Debug: 369 276 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001034 4 1
+Debug: 370 277 command.c:166 script_debug(): command - transport select
+Debug: 371 277 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 372 277 command.c:166 script_debug(): command - target current
+Debug: 373 277 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 374 277 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508028 1
+Debug: 375 277 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c00103c 4 1
+Debug: 376 277 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 377 277 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508028 2048
+Debug: 378 277 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c00103c 4 1
+Debug: 379 278 command.c:166 script_debug(): command - transport select
+Debug: 380 278 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 381 278 command.c:166 script_debug(): command - target current
+Debug: 382 278 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 383 278 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543508052 1
+Debug: 384 278 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001054 4 1
+Debug: 385 278 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 386 278 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543508052 786432
+Debug: 387 278 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001054 4 1
+Debug: 388 279 command.c:166 script_debug(): command - transport select
+Debug: 389 279 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 390 279 command.c:166 script_debug(): command - target current
+Debug: 391 279 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 392 279 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543507972 1
+Debug: 393 279 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001004 4 1
+Debug: 394 279 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 395 279 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543507972 7340095
+Debug: 396 279 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c001004 4 1
+Debug: 397 280 command.c:166 script_debug(): command - transport select
+Debug: 398 280 command.c:166 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 399 280 command.c:166 script_debug(): command - target current
+Debug: 400 280 command.c:166 script_debug(): command - expr 0x5C001000 + $reg_offset
+Debug: 401 280 command.c:166 script_debug(): command - stm32h7x.cpu0 mem2array value 32 1543520256 1
+Debug: 402 280 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c004000 4 1
+Debug: 403 280 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 404 280 command.c:166 script_debug(): command - stm32h7x.cpu0 mww 1543520256 771
+Debug: 405 280 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5c004000 4 1
+Debug: 406 281 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-assert-pre
+Debug: 407 281 command.c:166 script_debug(): command - transport select
+Debug: 408 281 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 409 281 command.c:166 script_debug(): command - stm32h7x.cpu0 arp_reset assert 1
+Debug: 410 281 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 411 281 hla_target.c:347 hl_assert_reset(): hl_assert_reset
+Debug: 412 283 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-assert-post
+Debug: 413 283 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-deassert-pre
+Debug: 414 283 command.c:166 script_debug(): command - transport select
+Debug: 415 283 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 416 283 command.c:166 script_debug(): command - stm32h7x.cpu0 arp_reset deassert 1
+Debug: 417 283 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 418 283 hla_target.c:406 hl_deassert_reset(): hl_deassert_reset
+Debug: 419 283 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-deassert-post
+Debug: 420 283 command.c:166 script_debug(): command - transport select
+Debug: 421 283 command.c:166 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 422 283 command.c:166 script_debug(): command - stm32h7x.cpu0 was_examined
+Debug: 423 283 command.c:166 script_debug(): command - stm32h7x.cpu0 arp_waitstate halted 1000
+Debug: 424 283 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000edf8 4 1
+Debug: 425 284 target.c:2615 target_read_u32(): address: 0xe000edf8, value: 0x00000000
+Debug: 426 284 armv7m.c:379 armv7m_read_core_reg(): read r0 value 0x00000000
+Debug: 427 285 armv7m.c:379 armv7m_read_core_reg(): read r1 value 0x00000000
+Debug: 428 286 armv7m.c:379 armv7m_read_core_reg(): read r2 value 0x00000000
+Debug: 429 286 armv7m.c:379 armv7m_read_core_reg(): read r3 value 0x00000000
+Debug: 430 287 armv7m.c:379 armv7m_read_core_reg(): read r4 value 0x00000000
+Debug: 431 287 armv7m.c:379 armv7m_read_core_reg(): read r5 value 0x00000000
+Debug: 432 288 armv7m.c:379 armv7m_read_core_reg(): read r6 value 0x00000000
+Debug: 433 288 armv7m.c:379 armv7m_read_core_reg(): read r7 value 0x00000000
+Debug: 434 289 armv7m.c:379 armv7m_read_core_reg(): read r8 value 0x00000000
+Debug: 435 289 armv7m.c:379 armv7m_read_core_reg(): read r9 value 0x00000000
+Debug: 436 290 armv7m.c:379 armv7m_read_core_reg(): read r10 value 0x00000000
+Debug: 437 290 armv7m.c:379 armv7m_read_core_reg(): read r11 value 0x00000000
+Debug: 438 291 armv7m.c:379 armv7m_read_core_reg(): read r12 value 0x00000000
+Debug: 439 291 armv7m.c:379 armv7m_read_core_reg(): read sp value 0x20020000
+Debug: 440 292 armv7m.c:379 armv7m_read_core_reg(): read lr value 0xffffffff
+Debug: 441 293 armv7m.c:379 armv7m_read_core_reg(): read pc value 0x08000790
+Debug: 442 293 armv7m.c:379 armv7m_read_core_reg(): read xPSR value 0x01000000
+Debug: 443 294 armv7m.c:379 armv7m_read_core_reg(): read msp value 0x20020000
+Debug: 444 294 armv7m.c:379 armv7m_read_core_reg(): read psp value 0x00000000
+Debug: 445 295 armv7m.c:379 armv7m_read_core_reg(): read pmsk_bpri_fltmsk_ctrl value 0x00000000
+Debug: 446 296 armv7m.c:377 armv7m_read_core_reg(): read d0 value 0x0000000000000000
+Debug: 447 297 armv7m.c:377 armv7m_read_core_reg(): read d1 value 0x0000000000000000
+Debug: 448 298 armv7m.c:377 armv7m_read_core_reg(): read d2 value 0x0000000000000000
+Debug: 449 299 armv7m.c:377 armv7m_read_core_reg(): read d3 value 0x0000000000000000
+Debug: 450 300 armv7m.c:377 armv7m_read_core_reg(): read d4 value 0x0000000000000000
+Debug: 451 301 armv7m.c:377 armv7m_read_core_reg(): read d5 value 0x0000000000000000
+Debug: 452 302 armv7m.c:377 armv7m_read_core_reg(): read d6 value 0x0000000000000000
+Debug: 453 304 armv7m.c:377 armv7m_read_core_reg(): read d7 value 0xffffffff00000000
+Debug: 454 305 armv7m.c:377 armv7m_read_core_reg(): read d8 value 0x0000000000000000
+Debug: 455 306 armv7m.c:377 armv7m_read_core_reg(): read d9 value 0x0000000000000000
+Debug: 456 307 armv7m.c:377 armv7m_read_core_reg(): read d10 value 0x0000000000000000
+Debug: 457 308 armv7m.c:377 armv7m_read_core_reg(): read d11 value 0x0000000000000000
+Debug: 458 309 armv7m.c:377 armv7m_read_core_reg(): read d12 value 0x0000000000000000
+Debug: 459 310 armv7m.c:377 armv7m_read_core_reg(): read d13 value 0x0000000000000000
+Debug: 460 311 armv7m.c:377 armv7m_read_core_reg(): read d14 value 0x0000000000000000
+Debug: 461 312 armv7m.c:377 armv7m_read_core_reg(): read d15 value 0xffffffff00000000
+Debug: 462 313 armv7m.c:379 armv7m_read_core_reg(): read fpscr value 0x00000000
+Debug: 463 313 hla_target.c:289 adapter_debug_entry(): entered debug state in core mode: Thread at PC 0x08000790, target->state: halted
+Debug: 464 313 target.c:1836 target_call_event_callbacks(): target event 0 (gdb-halt) for core stm32h7x.cpu0
+Debug: 465 313 target.c:1836 target_call_event_callbacks(): target event 1 (halted) for core stm32h7x.cpu0
+User : 466 313 armv7m.c:740 armv7m_arch_state(): target halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08000790 msp: 0x20020000
+Debug: 467 313 hla_target.c:334 adapter_poll(): halted: PC: 0x08000790
+Debug: 468 313 command.c:166 script_debug(): command - stm32h7x.cpu0 curstate
+Debug: 469 313 command.c:166 script_debug(): command - stm32h7x.cpu0 invoke-event reset-end
+Debug: 470 313 target.c:4811 target_handle_event(): target(0): stm32h7x.cpu0 (hla_target) event: 16 (reset-end) action: 
+    
+	 #global QUADSPI
+     #
+	 #mmw 0x52002000 0x00000004 0x0000000B	;# FLASH_ACR: 4 WS for 192 MHZ HCLK
+     #
+	 #mmw 0x58024400 0x00000001 0x00000018	;# RCC_CR: HSIDIV=1, HSI on
+	 #mmw 0x58024410 0x10000000 0xEE000007	;# RCC_CFGR: MCO2=system, MCO2PRE=8, HSI as system clock
+	 #mww 0x58024418 0x00000040				;# RCC_D1CFGR: D1CPRE=1, D1PPRE=2, HPRE=1
+	 #mww 0x5802441C 0x00000440				;# RCC_D2CFGR: D2PPRE2=2, D2PPRE1=2
+	 #mww 0x58024420 0x00000040				;# RCC_D3CFGR: D3PPRE=2
+	 #mww 0x58024428 0x00000040				;# RCC_PPLCKSELR: DIVM3=0, DIVM2=0, DIVM1=4, PLLSRC=HSI
+	 #mmw 0x5802442C 0x0001000C 0x00000002	;# RCC_PLLCFGR: PLL1RGE=8MHz to 16MHz, PLL1VCOSEL=wide
+	 #mww 0x58024430 0x01070217				;# RCC_PLL1DIVR: 192 MHz: DIVR1=2, DIVQ=8, DIVP1=2, DIVN1=24
+	 #mmw 0x58024400 0x01000000 0				;# RCC_CR: PLL1ON=1
+	 #sleep 1
+	 #mmw 0x58024410 0x00000003 0				;# RCC_CFGR: PLL1 as system clock
+	 #sleep 1
+     #
+	 #adapter speed 24000
+
+	#if { $QUADSPI } {
+        
+
+    qspi_init 1
+    echo "init done"
+    flash probe 1
+    echo "Setting stmqspi configuration"
+    #flash 1 issi stmqspi 0x90000000 0 0 0 0 0xA0001000
+    #stmqspi set bank_id name          total_size page_size read_cmd fread_cmd pprg_cmd mass_erase_cmd sector_size sector_erase_cmd
+    #stmqspi  set 1       issi          0x800000   0x100     0x03     0x0B      0x02     0xC7           0x1000      0xd7
+    stmqspi  set 1       issi          0x800000   0x100     0x03     0x0B      0x02     0xC7           0x1000      0x20
+		#32blit_qspi_init 1
+        #hxa-001_qspi_init 1
+	#}
+
+Debug: 471 313 command.c:166 script_debug(): command - mem2array value 32 0x580244E0 1
+Debug: 472 313 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x580244e0 4 1
+Debug: 473 314 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 474 314 command.c:166 script_debug(): command - mww 0x580244E0 2047
+Debug: 475 314 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x580244e0 4 1
+Debug: 476 314 command.c:166 script_debug(): command - mem2array value 32 0x580244D4 1
+Debug: 477 314 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x580244d4 4 1
+Debug: 478 315 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 479 315 command.c:166 script_debug(): command - mww 0x580244D4 16384
+Debug: 480 315 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x580244d4 4 1
+Debug: 481 315 command.c:166 script_debug(): command - sleep 1
+Debug: 482 316 command.c:166 script_debug(): command - mem2array value 32 0x58021400 1
+Debug: 483 316 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021400 4 1
+Debug: 484 317 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 485 317 command.c:166 script_debug(): command - mww 0x58021400 4293570559
+Debug: 486 317 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021400 4 1
+Debug: 487 317 command.c:166 script_debug(): command - mem2array value 32 0x58021408 1
+Debug: 488 317 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021408 4 1
+Debug: 489 318 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 490 318 command.c:166 script_debug(): command - mww 0x58021408 4190208
+Debug: 491 318 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021408 4 1
+Debug: 492 318 command.c:166 script_debug(): command - mem2array value 32 0x5802140C 1
+Debug: 493 318 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5802140c 4 1
+Debug: 494 319 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 495 319 command.c:166 script_debug(): command - mww 0x5802140C 0
+Debug: 496 319 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5802140c 4 1
+Debug: 497 319 command.c:166 script_debug(): command - mem2array value 32 0x58021420 1
+Debug: 498 319 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021420 4 1
+Debug: 499 320 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 500 320 command.c:166 script_debug(): command - mww 0x58021420 2566914048
+Debug: 501 320 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021420 4 1
+Debug: 502 320 command.c:166 script_debug(): command - mem2array value 32 0x58021424 1
+Debug: 503 320 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021424 4 1
+Debug: 504 321 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 505 321 command.c:166 script_debug(): command - mww 0x58021424 2474
+Debug: 506 321 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021424 4 1
+Debug: 507 321 command.c:166 script_debug(): command - mem2array value 32 0x58021800 1
+Debug: 508 321 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021800 4 1
+Debug: 509 322 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 510 322 command.c:166 script_debug(): command - mww 0x58021800 4294963199
+Debug: 511 322 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021800 4 1
+Debug: 512 322 command.c:166 script_debug(): command - mem2array value 32 0x58021808 1
+Debug: 513 322 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021808 4 1
+Debug: 514 323 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 515 323 command.c:166 script_debug(): command - mww 0x58021808 12288
+Debug: 516 323 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021808 4 1
+Debug: 517 323 command.c:166 script_debug(): command - mem2array value 32 0x5802180C 1
+Debug: 518 323 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5802180c 4 1
+Debug: 519 324 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 520 324 command.c:166 script_debug(): command - mww 0x5802180C 0
+Debug: 521 324 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5802180c 4 1
+Debug: 522 324 command.c:166 script_debug(): command - mem2array value 32 0x58021820 1
+Debug: 523 324 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x58021820 4 1
+Debug: 524 325 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 525 325 command.c:166 script_debug(): command - mww 0x58021820 167772160
+Debug: 526 325 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x58021820 4 1
+Debug: 527 325 command.c:166 script_debug(): command - mww 0x52005000 0x01000000
+Debug: 528 325 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 529 326 command.c:166 script_debug(): command - mww 0x52005004 0x00160100
+Debug: 530 326 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005004 4 1
+Debug: 531 326 command.c:166 script_debug(): command - mww 0x52005014 0x0D002503
+Debug: 532 326 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 533 327 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 534 327 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 535 327 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 536 327 command.c:166 script_debug(): command - mww 0x52005000 16777217
+Debug: 537 327 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 538 328 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 539 328 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 540 328 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 541 328 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 542 328 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 543 329 command.c:166 script_debug(): command - mww 0x52005014 0x000003F5
+Debug: 544 329 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 545 329 command.c:166 script_debug(): command - sleep 1
+Debug: 546 331 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 547 331 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 548 332 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 549 332 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 550 332 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 551 332 command.c:166 script_debug(): command - mww 0x52005014 0x00000106
+Debug: 552 333 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 553 333 command.c:166 script_debug(): command - sleep 1
+Debug: 554 347 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 555 347 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 556 347 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 557 347 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 558 347 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 559 348 command.c:166 script_debug(): command - mww 0x52005010 0x00000001
+Debug: 560 348 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 561 348 command.c:166 script_debug(): command - mww 0x52005014 0x01000181
+Debug: 562 348 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 563 349 command.c:166 script_debug(): command - mwh 0x52005020 0xABAB
+Debug: 564 349 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005020 2 1
+Debug: 565 349 command.c:166 script_debug(): command - sleep 1
+Debug: 566 362 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 567 362 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 568 362 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 569 362 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 570 362 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 571 363 command.c:166 script_debug(): command - mww 0x52005014 0x00000106
+Debug: 572 363 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 573 363 command.c:166 script_debug(): command - sleep 1
+Debug: 574 377 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 575 377 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 576 378 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 577 378 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 578 378 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 579 379 command.c:166 script_debug(): command - mww 0x52005010 0x00000001
+Debug: 580 379 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 581 380 command.c:166 script_debug(): command - mww 0x52005014 0x01000161
+Debug: 582 380 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 583 380 command.c:166 script_debug(): command - mwh 0x52005020 0x3F3F
+Debug: 584 380 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005020 2 1
+Debug: 585 381 command.c:166 script_debug(): command - sleep 1
+Debug: 586 393 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 587 393 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 588 394 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 589 394 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 590 394 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 591 395 command.c:166 script_debug(): command - mww 0x52005014 0x00000135
+Debug: 592 395 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 593 396 command.c:166 script_debug(): command - mem2array value 32 0x52005000 1
+Debug: 594 396 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 595 397 command.c:166 script_debug(): command - expr ($old & ~$clearbits) | $setbits
+Debug: 596 397 command.c:166 script_debug(): command - mww 0x52005000 16777219
+Debug: 597 397 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 598 398 command.c:166 script_debug(): command - mww 0x52005014 0x0F283FEC
+Debug: 599 398 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 600 398 command.c:166 script_debug(): command - echo init done
+User : 601 398 command.c:696 handle_echo(): init done
+Debug: 602 398 command.c:166 script_debug(): command - flash probe 1
+Debug: 603 398 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 604 399 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 605 399 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 606 399 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 607 399 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 608 400 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 609 400 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 610 400 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 611 400 target.c:2703 target_write_u32(): address: 0x5200501c, value: 0xaef1510e
+Debug: 612 400 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200501c 4 1
+Debug: 613 401 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5200501c 4 1
+Debug: 614 401 target.c:2615 target_read_u32(): address: 0x5200501c, value: 0xaef1510e
+Debug: 615 401 target.c:2703 target_write_u32(): address: 0x5200501c, value: 0x00000000
+Debug: 616 401 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200501c 4 1
+Debug: 617 402 stmqspi.c:2127 stmqspi_probe(): QSPI_ABR register present
+Debug: 618 402 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 619 402 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 620 402 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005014 4 1
+Debug: 621 403 target.c:2615 target_read_u32(): address: 0x52005014, value: 0x0f283fec
+Debug: 622 403 stmqspi.c:2184 stmqspi_probe(): QSPI at 0x90000000, io_base at 0x52005000, QSPI_CR 0x01000001, QSPI_CCR 0x0f283fec, 4-byte addr
+Debug: 623 403 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 624 403 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 625 403 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 626 403 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 627 404 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 628 404 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 629 404 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 630 404 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 631 405 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 632 405 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000000
+Debug: 633 405 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 634 405 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 635 406 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x00000001
+Debug: 636 406 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 637 406 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07003305
+Debug: 638 406 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 639 407 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 640 407 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000226
+Debug: 641 407 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 642 408 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x52
+Debug: 643 408 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 644 408 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x42
+Debug: 645 408 stmqspi.c:399 read_status_reg(): flash status regs: 0x0052
+Debug: 646 408 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 647 409 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 648 409 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 649 409 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 650 409 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x0000000f
+Debug: 651 409 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 652 410 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x070033af
+Debug: 653 410 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 654 410 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 655 411 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00001026
+Debug: 656 411 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 657 411 target.c:2661 target_read_u8(): address: 0x52005020, value: 0xfd
+Debug: 658 411 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 659 412 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x60
+Debug: 660 412 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 661 412 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x17
+Debug: 662 412 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 663 413 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x9d
+Debug: 664 413 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 665 413 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x60
+Debug: 666 413 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 667 414 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x17
+Debug: 668 414 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 669 414 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x9d
+Debug: 670 414 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 671 415 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x60
+Debug: 672 415 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 673 415 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x17
+Debug: 674 415 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 675 416 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x9d
+Debug: 676 416 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 677 416 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x60
+Debug: 678 416 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 679 417 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x17
+Debug: 680 417 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 681 417 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x9d
+Debug: 682 417 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 683 418 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x60
+Debug: 684 418 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 685 418 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x17
+Debug: 686 418 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 687 419 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x9d
+Debug: 688 419 stmqspi.c:2206 stmqspi_probe(): id1 0x1760fd, id2 0x000000
+Debug: 689 419 stmqspi.c:1748 find_sfdp_dummy(): find_sfdp_dummy: len=3, dual=0, flash1=1
+Debug: 690 419 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 691 419 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 692 419 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 693 420 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 694 420 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 695 420 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 696 420 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 697 420 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 698 421 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x0000003f
+Debug: 699 421 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 700 421 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07002f5a
+Debug: 701 421 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 702 422 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000000
+Debug: 703 422 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 704 422 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 705 423 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 706 423 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 707 423 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 708 423 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 709 424 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 710 424 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 711 425 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 712 425 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 713 425 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x53
+Debug: 714 425 stmqspi.c:1799 find_sfdp_dummy(): start of SFDP header for flash1 after 4 dummy bytes
+Debug: 715 425 stmqspi.c:1869 read_sfdp_block(): read_sfdp_block: addr=0x00000000 words=0x00000002 dummy=4
+Debug: 716 425 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 717 425 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 718 426 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 719 426 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 720 426 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 721 426 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 722 427 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 723 427 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 724 427 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x0000000b
+Debug: 725 427 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 726 427 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07002f5a
+Debug: 727 428 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 728 428 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000000
+Debug: 729 428 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 730 429 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 731 429 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 732 429 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 733 430 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 734 430 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 735 430 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 736 430 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 737 431 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 738 431 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 739 431 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x50444653
+Debug: 740 431 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x50444653
+Debug: 741 431 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 742 432 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xff010106
+Debug: 743 432 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xff010106
+Debug: 744 432 sfdp.c:87 spi_sfdp(): header 0x50444653 0xff010106
+Debug: 745 432 sfdp.c:100 spi_sfdp(): parameter headers: 2
+Debug: 746 432 stmqspi.c:1869 read_sfdp_block(): read_sfdp_block: addr=0x00000008 words=0x00000004 dummy=4
+Debug: 747 432 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 748 432 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 749 432 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 750 433 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 751 433 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 752 433 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 753 433 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 754 433 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 755 434 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x00000013
+Debug: 756 434 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 757 434 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07002f5a
+Debug: 758 434 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 759 435 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000008
+Debug: 760 435 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 761 435 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 762 436 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x88
+Debug: 763 436 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 764 436 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x88
+Debug: 765 436 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 766 437 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x88
+Debug: 767 437 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 768 437 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x88
+Debug: 769 437 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 770 438 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x10010600
+Debug: 771 438 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x10010600
+Debug: 772 438 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 773 438 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xff000030
+Debug: 774 438 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xff000030
+Debug: 775 438 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 776 439 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x0301059d
+Debug: 777 439 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x0301059d
+Debug: 778 439 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 779 439 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x02000080
+Debug: 780 439 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x02000080
+Debug: 781 439 sfdp.c:117 spi_sfdp(): pheader 0 len=0x10 id=0xff00 ptr=0x000030
+Debug: 782 439 stmqspi.c:1869 read_sfdp_block(): read_sfdp_block: addr=0x00000030 words=0x00000010 dummy=4
+Debug: 783 440 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 784 440 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 785 440 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 786 440 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 787 440 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 788 440 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 789 441 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 790 441 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 791 441 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x00000043
+Debug: 792 441 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 793 442 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07002f5a
+Debug: 794 442 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 795 442 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000030
+Debug: 796 442 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 797 443 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 798 443 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 799 443 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 800 444 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 801 444 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 802 444 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 803 444 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 804 445 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 805 445 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 806 445 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xfff920e5
+Debug: 807 445 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xfff920e5
+Debug: 808 445 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 809 446 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x03ffffff
+Debug: 810 446 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x03ffffff
+Debug: 811 446 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 812 446 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x6b08eb44
+Debug: 813 446 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x6b08eb44
+Debug: 814 446 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 815 447 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xbb803b08
+Debug: 816 447 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xbb803b08
+Debug: 817 447 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 818 447 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xfffffffe
+Debug: 819 447 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xfffffffe
+Debug: 820 447 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 821 448 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xff00ffff
+Debug: 822 448 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xff00ffff
+Debug: 823 448 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 824 448 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xeb44ffff
+Debug: 825 448 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xeb44ffff
+Debug: 826 448 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 827 449 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x520f200c
+Debug: 828 449 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x520f200c
+Debug: 829 449 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 830 449 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xff00d810
+Debug: 831 449 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xff00d810
+Debug: 832 449 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 833 450 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x00c94a23
+Debug: 834 450 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x00c94a23
+Debug: 835 450 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 836 450 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xc311d882
+Debug: 837 450 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xc311d882
+Debug: 838 450 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 839 451 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x4668cdcc
+Debug: 840 451 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x4668cdcc
+Debug: 841 451 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 842 451 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x757a757a
+Debug: 843 451 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x757a757a
+Debug: 844 451 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 845 452 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x5cd5a2f7
+Debug: 846 452 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x5cd5a2f7
+Debug: 847 452 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 848 452 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xff2c424a
+Debug: 849 452 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xff2c424a
+Debug: 850 452 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 851 453 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x80c030f0
+Debug: 852 453 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x80c030f0
+Debug: 853 453 sfdp.c:132 spi_sfdp(): word 01 0xFFF920E5
+Debug: 854 453 sfdp.c:132 spi_sfdp(): word 02 0x03FFFFFF
+Debug: 855 453 sfdp.c:132 spi_sfdp(): word 03 0x6B08EB44
+Debug: 856 453 sfdp.c:132 spi_sfdp(): word 04 0xBB803B08
+Debug: 857 453 sfdp.c:132 spi_sfdp(): word 05 0xFFFFFFFE
+Debug: 858 453 sfdp.c:132 spi_sfdp(): word 06 0xFF00FFFF
+Debug: 859 453 sfdp.c:132 spi_sfdp(): word 07 0xEB44FFFF
+Debug: 860 453 sfdp.c:132 spi_sfdp(): word 08 0x520F200C
+Debug: 861 453 sfdp.c:132 spi_sfdp(): word 09 0xFF00D810
+Debug: 862 453 sfdp.c:132 spi_sfdp(): word 10 0x00C94A23
+Debug: 863 453 sfdp.c:132 spi_sfdp(): word 11 0xC311D882
+Debug: 864 453 sfdp.c:132 spi_sfdp(): word 12 0x4668CDCC
+Debug: 865 453 sfdp.c:132 spi_sfdp(): word 13 0x757A757A
+Debug: 866 453 sfdp.c:132 spi_sfdp(): word 14 0x5CD5A2F7
+Debug: 867 453 sfdp.c:132 spi_sfdp(): word 15 0xFF2C424A
+Debug: 868 453 sfdp.c:132 spi_sfdp(): word 16 0x80C030F0
+Debug: 869 453 sfdp.c:144 spi_sfdp(): basic flash parameter table
+Debug: 870 453 sfdp.c:117 spi_sfdp(): pheader 1 len=0x03 id=0x029d ptr=0x000080
+Debug: 871 453 stmqspi.c:1869 read_sfdp_block(): read_sfdp_block: addr=0x00000080 words=0x00000003 dummy=4
+Debug: 872 453 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 873 453 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 874 453 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 875 454 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 876 454 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 877 454 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 878 455 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 879 455 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 880 455 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x0000000f
+Debug: 881 455 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 882 455 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07002f5a
+Debug: 883 455 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 884 456 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000080
+Debug: 885 456 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 886 456 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 887 457 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 888 457 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 889 457 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 890 457 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 891 458 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 892 458 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 893 458 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x00
+Debug: 894 458 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 895 459 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x23003600
+Debug: 896 459 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x23003600
+Debug: 897 459 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 898 459 target.c:2615 target_read_u32(): address: 0x52005020, value: 0x64c0f99e
+Debug: 899 459 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0x64c0f99e
+Debug: 900 459 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 4 1
+Debug: 901 460 target.c:2615 target_read_u32(): address: 0x52005020, value: 0xffffec8f
+Debug: 902 460 stmqspi.c:1941 read_sfdp_block(): raw SFDP data 0xffffec8f
+Debug: 903 460 sfdp.c:132 spi_sfdp(): word 01 0x23003600
+Debug: 904 460 sfdp.c:132 spi_sfdp(): word 02 0x64C0F99E
+Debug: 905 460 sfdp.c:132 spi_sfdp(): word 03 0xFFFFEC8F
+Debug: 906 460 sfdp.c:244 spi_sfdp(): unimplemented parameter table id=0x029d
+Info : 907 460 sfdp.c:251 spi_sfdp(): valid SFDP detected
+Info : 908 460 stmqspi.c:2244 stmqspi_probe(): flash1 'sfdp' id = 0x1760fd size = 8192kbytes
+Debug: 909 460 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005004 4 1
+Debug: 910 460 target.c:2615 target_read_u32(): address: 0x52005004, value: 0x00160100
+Debug: 911 460 stmqspi.c:2342 stmqspi_probe(): FSIZE = 0x0016
+Debug: 912 460 stmqspi.c:2344 stmqspi_probe(): FSIZE in DCR(1) matches actual capacity. Beware of silicon bug in H7, L4+, MP1.
+Debug: 913 460 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000000
+Debug: 914 460 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 915 461 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 916 461 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 917 461 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 918 461 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 919 462 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 920 462 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 921 462 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 922 462 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 923 463 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 924 463 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 925 463 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x0f283fec
+Debug: 926 463 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 927 464 command.c:166 script_debug(): command - echo Setting stmqspi configuration
+User : 928 464 command.c:696 handle_echo(): Setting stmqspi configuration
+Debug: 929 464 command.c:166 script_debug(): command - stmqspi set 1 issi 0x800000 0x100 0x03 0x0B 0x02 0xC7 0x1000 0x20
+Debug: 930 464 stmqspi.c:629 stmqspi_handle_set(): stmqspi_handle_set
+Debug: 931 464 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005004 4 1
+Debug: 932 464 target.c:2615 target_read_u32(): address: 0x52005004, value: 0x00160100
+Debug: 933 464 stmqspi.c:744 stmqspi_handle_set(): FSIZE = 0x0016
+Debug: 934 464 stmqspi.c:746 stmqspi_handle_set(): FSIZE in DCR(1) matches actual capacity. Beware of silicon bug in H7, L4+, MP1.
+Info : 935 464 stmqspi.c:771 stmqspi_handle_set(): flash 'issi' id = unknown
+chip size = 8192kbytes, bank size = 8192kbytes
+Debug: 936 465 command.c:166 script_debug(): command - flash write_image erase build/daisydrive64.elf
+Debug: 937 465 configuration.c:99 find_file(): found build/daisydrive64.elf
+Debug: 938 465 image.c:76 autodetect_image_type(): ELF image detected.
+Debug: 939 465 configuration.c:99 find_file(): found build/daisydrive64.elf
+Debug: 940 466 image.c:641 image_elf_read_headers(): ELF32 image detected.
+Debug: 941 466 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5c001000 4 1
+Debug: 942 466 target.c:2615 target_read_u32(): address: 0x5c001000, value: 0x20036450
+Debug: 943 466 stm32h7x.c:774 stm32x_probe(): device id = 0x20036450
+Info : 944 466 stm32h7x.c:786 stm32x_probe(): Device: STM32H74x/75x
+Debug: 945 466 stm32h7x.c:798 stm32x_probe(): flash_regs_base: 0x52002000
+Debug: 946 466 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x1ff1e880 2 1
+Debug: 947 467 target.c:2639 target_read_u16(): address: 0x1ff1e880, value: 0x0080
+Info : 948 467 stm32h7x.c:813 stm32x_probe(): flash size probed value 128k
+Info : 949 467 stm32h7x.c:857 stm32x_probe(): STM32H7 flash has a single bank
+Info : 950 467 stm32h7x.c:869 stm32x_probe(): Bank (0) size is 128 kb, base address is 0x08000000
+Info : 951 467 core.c:837 flash_write_unlock_verify(): Padding image section 0 at 0x08000298 with 8 bytes
+Info : 952 467 core.c:876 flash_write_unlock_verify(): Padding image section 4 at 0x080148dc with 4 bytes (bank write end alignment)
+Debug: 953 467 core.c:933 flash_write_unlock_verify(): image_read_section: section = 0, t_section_num = 0, section_offset = 0, buffer_idx = 0, size_read = 664
+Debug: 954 467 image.c:670 image_elf32_read_section(): load segment 0 at 0x0 (sz = 0x298)
+Debug: 955 467 image.c:676 image_elf32_read_section(): read elf: size = 0x298 at 0x10000
+Debug: 956 467 core.c:933 flash_write_unlock_verify(): image_read_section: section = 1, t_section_num = 1, section_offset = 0, buffer_idx = 672, size_read = 78796
+Debug: 957 467 image.c:670 image_elf32_read_section(): load segment 1 at 0x0 (sz = 0x133cc)
+Debug: 958 467 image.c:676 image_elf32_read_section(): read elf: size = 0x133cc at 0x102a0
+Debug: 959 467 core.c:933 flash_write_unlock_verify(): image_read_section: section = 2, t_section_num = 2, section_offset = 0, buffer_idx = 79468, size_read = 140
+Debug: 960 467 image.c:670 image_elf32_read_section(): load segment 2 at 0x0 (sz = 0x8c)
+Debug: 961 467 image.c:676 image_elf32_read_section(): read elf: size = 0x8c at 0x30000
+Debug: 962 467 core.c:933 flash_write_unlock_verify(): image_read_section: section = 3, t_section_num = 3, section_offset = 0, buffer_idx = 79608, size_read = 3040
+Debug: 963 467 image.c:670 image_elf32_read_section(): load segment 3 at 0x0 (sz = 0xbe0)
+Debug: 964 467 image.c:676 image_elf32_read_section(): read elf: size = 0xbe0 at 0x30298
+Debug: 965 467 core.c:933 flash_write_unlock_verify(): image_read_section: section = 4, t_section_num = 4, section_offset = 0, buffer_idx = 82648, size_read = 1540
+Debug: 966 467 image.c:670 image_elf32_read_section(): load segment 4 at 0x0 (sz = 0x604)
+Debug: 967 467 image.c:676 image_elf32_read_section(): read elf: size = 0x604 at 0x40000
+Warn : 968 467 core.c:552 flash_iterate_address_range_inner(): Adding extra erase range, 0x080148e0 .. 0x0801ffff
+Debug: 969 467 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5200200c 4 1
+Debug: 970 467 target.c:2615 target_read_u32(): address: 0x5200200c, value: 0x00000031
+Debug: 971 467 target.c:2703 target_write_u32(): address: 0x52002004, value: 0x45670123
+Debug: 972 467 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52002004 4 1
+Debug: 973 468 target.c:2703 target_write_u32(): address: 0x52002004, value: 0xcdef89ab
+Debug: 974 468 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52002004 4 1
+Debug: 975 468 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5200200c 4 1
+Debug: 976 469 target.c:2615 target_read_u32(): address: 0x5200200c, value: 0x00000030
+Debug: 977 469 stm32h7x.c:501 stm32x_erase(): erase sector 0
+Debug: 978 469 target.c:2703 target_write_u32(): address: 0x5200200c, value: 0x00000034
+Debug: 979 469 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200200c 4 1
+Debug: 980 469 target.c:2703 target_write_u32(): address: 0x5200200c, value: 0x000000b4
+Debug: 981 469 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200200c 4 1
+Debug: 982 470 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 983 470 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 984 485 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 985 486 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 986 500 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 987 502 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 989 516 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 990 517 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 991 531 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 992 533 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 993 547 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 994 550 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 995 563 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 996 566 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 997 578 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 998 579 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 999 593 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1000 594 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1001 609 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1002 611 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1003 624 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1004 626 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1005 640 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1006 641 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1007 655 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1008 657 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1009 671 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1010 672 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1011 687 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1012 688 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1013 701 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1014 703 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1015 717 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1016 718 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1017 733 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1018 734 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1019 748 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1020 750 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1021 764 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1022 766 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1023 780 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1024 782 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1025 795 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1026 797 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1027 811 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1028 812 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1029 827 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1030 828 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1031 842 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1032 844 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1033 857 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1034 859 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1035 874 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1036 876 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1037 889 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1038 890 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1039 905 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1040 906 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1041 921 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1042 922 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1043 936 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1044 938 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1045 952 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1046 954 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1047 967 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1048 969 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1049 983 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1050 985 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1051 999 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1052 1000 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1053 1014 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1054 1017 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1056 1030 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1057 1031 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1058 1046 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1059 1048 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1060 1062 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1061 1063 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1062 1077 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1063 1079 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1064 1092 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1065 1094 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1066 1108 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1067 1110 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1068 1123 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1069 1125 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1070 1139 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1071 1140 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1072 1154 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1073 1156 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1074 1170 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1075 1172 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1076 1185 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1077 1187 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1078 1202 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1079 1203 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1080 1217 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1081 1219 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1082 1234 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1083 1235 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1084 1249 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1085 1251 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1086 1264 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1087 1266 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00000005
+Debug: 1088 1281 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52002010 4 1
+Debug: 1089 1282 target.c:2615 target_read_u32(): address: 0x52002010, value: 0x00010000
+Debug: 1090 1282 target.c:2703 target_write_u32(): address: 0x5200200c, value: 0x00000001
+Debug: 1091 1282 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200200c 4 1
+Debug: 1092 1284 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5200200c 4 1
+Debug: 1093 1285 target.c:2615 target_read_u32(): address: 0x5200200c, value: 0x00000001
+Debug: 1094 1285 target.c:2703 target_write_u32(): address: 0x52002004, value: 0x45670123
+Debug: 1095 1285 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52002004 4 1
+Debug: 1096 1287 target.c:2703 target_write_u32(): address: 0x52002004, value: 0xcdef89ab
+Debug: 1097 1287 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52002004 4 1
+Debug: 1098 1288 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x5200200c 4 1
+Debug: 1099 1289 target.c:2615 target_read_u32(): address: 0x5200200c, value: 0x00000000
+Debug: 1100 1289 target.c:2041 target_alloc_working_area_try(): MMU disabled, using physical address for working memory 0x20000000
+Debug: 1101 1289 target.c:2096 target_alloc_working_area_try(): allocated new working area of 108 bytes at address 0x20000000
+Debug: 1102 1289 target.c:1962 print_wa_layout():  * 0x20000000-0x2000006b (108 bytes)
+Debug: 1103 1289 target.c:1962 print_wa_layout():    0x2000006c-0x2000ffff (65428 bytes)
+Debug: 1104 1289 target.c:2401 target_write_buffer(): writing buffer of 108 byte at 0x20000000
+Debug: 1105 1289 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000000 4 27
+Debug: 1106 1291 target.c:2096 target_alloc_working_area_try(): allocated new working area of 16392 bytes at address 0x2000006c
+Debug: 1107 1291 target.c:1962 print_wa_layout():  * 0x20000000-0x2000006b (108 bytes)
+Debug: 1108 1291 target.c:1962 print_wa_layout():  * 0x2000006c-0x20004073 (16392 bytes)
+Debug: 1109 1291 target.c:1962 print_wa_layout():    0x20004074-0x2000ffff (49036 bytes)
+Debug: 1110 1291 stm32h7x.c:614 stm32x_write_block(): target_alloc_working_area_try : buffer_size -> 0x4008
+Debug: 1111 1291 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1112 1291 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1113 1292 target.c:2703 target_write_u32(): address: 0x20000070, value: 0x20000074
+Debug: 1114 1292 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000070 4 1
+Debug: 1115 1293 target.c:1836 target_call_event_callbacks(): target event 3 (resume-start) for core stm32h7x.cpu0
+Debug: 1116 1293 hla_target.c:452 adapter_resume(): adapter_resume 0 0x20000000 1 1
+Debug: 1117 1293 target.c:2703 target_write_u32(): address: 0xe000edfc, value: 0x01000000
+Debug: 1118 1293 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe000edfc 4 1
+Debug: 1119 1294 armv7m.c:185 armv7m_restore_context():  
+Debug: 1120 1294 armv7m.c:449 armv7m_write_core_reg(): write xPSR value 0x01000000
+Debug: 1121 1295 armv7m.c:449 armv7m_write_core_reg(): write pc value 0x20000000
+Debug: 1122 1296 armv7m.c:449 armv7m_write_core_reg(): write r5 value 0x52002000
+Debug: 1123 1297 armv7m.c:449 armv7m_write_core_reg(): write r4 value 0x00000020
+Debug: 1124 1298 armv7m.c:449 armv7m_write_core_reg(): write r3 value 0x00000a47
+Debug: 1125 1298 armv7m.c:449 armv7m_write_core_reg(): write r2 value 0x08000000
+Debug: 1126 1299 armv7m.c:449 armv7m_write_core_reg(): write r1 value 0x20004074
+Debug: 1127 1300 armv7m.c:449 armv7m_write_core_reg(): write r0 value 0x2000006c
+Debug: 1128 1300 target.c:2703 target_write_u32(): address: 0xe000edf8, value: 0x00000000
+Debug: 1129 1300 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0xe000edf8 4 1
+Debug: 1130 1301 target.c:1836 target_call_event_callbacks(): target event 18 (debug-resumed) for core stm32h7x.cpu0
+Debug: 1131 1301 target.c:1836 target_call_event_callbacks(): target event 4 (resume-end) for core stm32h7x.cpu0
+Debug: 1132 1301 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1133 1301 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20000074
+Debug: 1134 1301 target.c:1048 target_run_flash_async_algorithm(): offs 0x0 count 0xa47 wp 0x20000074 rp 0x20000074
+Debug: 1135 1301 target.c:2401 target_write_buffer(): writing buffer of 16352 byte at 0x20000074
+Debug: 1136 1301 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 4088
+Debug: 1137 1491 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20004054
+Debug: 1138 1491 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1139 1493 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1140 1494 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200000d4
+Debug: 1141 1494 target.c:1048 target_run_flash_async_algorithm(): offs 0x3fe0 count 0x848 wp 0x20004054 rp 0x200000d4
+Debug: 1142 1494 target.c:2401 target_write_buffer(): writing buffer of 32 byte at 0x20004054
+Debug: 1143 1494 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20004054 4 8
+Debug: 1144 1495 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1145 1495 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1146 1496 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1147 1497 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20000294
+Debug: 1148 1497 target.c:1048 target_run_flash_async_algorithm(): offs 0x4000 count 0x847 wp 0x20000074 rp 0x20000294
+Debug: 1149 1497 target.c:2401 target_write_buffer(): writing buffer of 512 byte at 0x20000074
+Debug: 1150 1497 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 128
+Debug: 1151 1503 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000274
+Debug: 1152 1503 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1153 1504 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1154 1504 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20000634
+Debug: 1155 1504 target.c:1048 target_run_flash_async_algorithm(): offs 0x4200 count 0x837 wp 0x20000274 rp 0x20000634
+Debug: 1156 1504 target.c:2401 target_write_buffer(): writing buffer of 928 byte at 0x20000274
+Debug: 1157 1504 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000274 4 232
+Debug: 1158 1515 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000614
+Debug: 1159 1515 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1160 1516 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1161 1517 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20000c74
+Debug: 1162 1517 target.c:1048 target_run_flash_async_algorithm(): offs 0x45a0 count 0x81a wp 0x20000614 rp 0x20000c74
+Debug: 1163 1517 target.c:2401 target_write_buffer(): writing buffer of 1600 byte at 0x20000614
+Debug: 1164 1517 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000614 4 400
+Debug: 1165 1536 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000c54
+Debug: 1166 1536 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1168 1537 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1169 1537 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200016b4
+Debug: 1170 1537 target.c:1048 target_run_flash_async_algorithm(): offs 0x4be0 count 0x7e8 wp 0x20000c54 rp 0x200016b4
+Debug: 1171 1537 target.c:2401 target_write_buffer(): writing buffer of 2624 byte at 0x20000c54
+Debug: 1172 1537 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000c54 4 656
+Debug: 1173 1567 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20001694
+Debug: 1174 1567 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1175 1569 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1176 1570 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20002674
+Debug: 1177 1570 target.c:1048 target_run_flash_async_algorithm(): offs 0x5620 count 0x796 wp 0x20001694 rp 0x20002674
+Debug: 1178 1570 target.c:2401 target_write_buffer(): writing buffer of 4032 byte at 0x20001694
+Debug: 1179 1570 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20001694 4 1008
+Debug: 1180 1617 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20002654
+Debug: 1181 1617 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1182 1619 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1183 1620 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20003eb4
+Debug: 1184 1620 target.c:1048 target_run_flash_async_algorithm(): offs 0x65e0 count 0x718 wp 0x20002654 rp 0x20003eb4
+Debug: 1185 1620 target.c:2401 target_write_buffer(): writing buffer of 6208 byte at 0x20002654
+Debug: 1186 1620 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20002654 4 1552
+Debug: 1187 1694 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20003e94
+Debug: 1188 1694 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1189 1695 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1190 1697 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20002494
+Debug: 1191 1697 target.c:1048 target_run_flash_async_algorithm(): offs 0x7e20 count 0x656 wp 0x20003e94 rp 0x20002494
+Debug: 1192 1697 target.c:2401 target_write_buffer(): writing buffer of 480 byte at 0x20003e94
+Debug: 1193 1697 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20003e94 4 120
+Debug: 1194 1704 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1195 1704 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1196 1706 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1197 1707 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20002994
+Debug: 1198 1707 target.c:1048 target_run_flash_async_algorithm(): offs 0x8000 count 0x647 wp 0x20000074 rp 0x20002994
+Debug: 1199 1707 target.c:2401 target_write_buffer(): writing buffer of 10496 byte at 0x20000074
+Debug: 1200 1707 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 2624
+Debug: 1201 1827 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20002974
+Debug: 1202 1827 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1203 1828 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1204 1829 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200000d4
+Debug: 1205 1829 target.c:1048 target_run_flash_async_algorithm(): offs 0xa900 count 0x4ff wp 0x20002974 rp 0x200000d4
+Debug: 1206 1829 target.c:2401 target_write_buffer(): writing buffer of 5888 byte at 0x20002974
+Debug: 1207 1829 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20002974 4 1472
+Debug: 1208 1898 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1209 1898 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1210 1900 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1211 1901 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200023d4
+Debug: 1212 1901 target.c:1048 target_run_flash_async_algorithm(): offs 0xc000 count 0x447 wp 0x20000074 rp 0x200023d4
+Debug: 1213 1901 target.c:2401 target_write_buffer(): writing buffer of 9024 byte at 0x20000074
+Debug: 1214 1901 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 2256
+Debug: 1215 2005 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x200023b4
+Debug: 1216 2005 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1217 2006 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1218 2007 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200000f4
+Debug: 1219 2007 target.c:1048 target_run_flash_async_algorithm(): offs 0xe340 count 0x32d wp 0x200023b4 rp 0x200000f4
+Debug: 1220 2007 target.c:2401 target_write_buffer(): writing buffer of 7360 byte at 0x200023b4
+Debug: 1221 2007 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x200023b4 4 1840
+Debug: 1222 2095 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1223 2095 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1225 2096 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1226 2097 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20002434
+Debug: 1227 2097 target.c:1048 target_run_flash_async_algorithm(): offs 0x10000 count 0x247 wp 0x20000074 rp 0x20002434
+Debug: 1228 2097 target.c:2401 target_write_buffer(): writing buffer of 9120 byte at 0x20000074
+Debug: 1229 2097 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 2280
+Debug: 1230 2203 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20002414
+Debug: 1231 2203 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1232 2204 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1233 2206 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x200000f4
+Debug: 1234 2206 target.c:1048 target_run_flash_async_algorithm(): offs 0x123a0 count 0x12a wp 0x20002414 rp 0x200000f4
+Debug: 1235 2206 target.c:2401 target_write_buffer(): writing buffer of 7264 byte at 0x20002414
+Debug: 1236 2206 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20002414 4 1816
+Debug: 1237 2288 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000074
+Debug: 1238 2288 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1239 2290 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1240 2291 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20002494
+Debug: 1241 2291 target.c:1048 target_run_flash_async_algorithm(): offs 0x14000 count 0x47 wp 0x20000074 rp 0x20002494
+Debug: 1242 2291 target.c:2401 target_write_buffer(): writing buffer of 2272 byte at 0x20000074
+Debug: 1243 2291 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x20000074 4 568
+Debug: 1244 2318 target.c:2703 target_write_u32(): address: 0x2000006c, value: 0x20000954
+Debug: 1245 2318 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x2000006c 4 1
+Debug: 1246 2320 target.c:3273 target_wait_state(): waiting for target halted...
+Debug: 1247 2365 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0xe000edf8 4 1
+Debug: 1248 2366 target.c:2615 target_read_u32(): address: 0xe000edf8, value: 0x00000000
+Debug: 1249 2366 armv7m.c:379 armv7m_read_core_reg(): read r0 value 0x00010000
+Debug: 1250 2367 armv7m.c:379 armv7m_read_core_reg(): read r1 value 0x20004074
+Debug: 1251 2368 armv7m.c:379 armv7m_read_core_reg(): read r2 value 0x080148e0
+Debug: 1252 2368 armv7m.c:379 armv7m_read_core_reg(): read r3 value 0x00000000
+Debug: 1253 2369 armv7m.c:379 armv7m_read_core_reg(): read r4 value 0x00000020
+Debug: 1254 2369 armv7m.c:379 armv7m_read_core_reg(): read r5 value 0x52002000
+Debug: 1255 2370 armv7m.c:379 armv7m_read_core_reg(): read r6 value 0x20000954
+Debug: 1256 2370 armv7m.c:379 armv7m_read_core_reg(): read r7 value 0x00010000
+Debug: 1257 2371 armv7m.c:379 armv7m_read_core_reg(): read r8 value 0x07ee0000
+Debug: 1258 2372 armv7m.c:379 armv7m_read_core_reg(): read r9 value 0x00000000
+Debug: 1259 2372 armv7m.c:379 armv7m_read_core_reg(): read r10 value 0x00000000
+Debug: 1260 2373 armv7m.c:379 armv7m_read_core_reg(): read r11 value 0x00000000
+Debug: 1261 2373 armv7m.c:379 armv7m_read_core_reg(): read r12 value 0x00000000
+Debug: 1262 2374 armv7m.c:379 armv7m_read_core_reg(): read sp value 0x20020000
+Debug: 1263 2374 armv7m.c:379 armv7m_read_core_reg(): read lr value 0xffffffff
+Debug: 1264 2375 armv7m.c:379 armv7m_read_core_reg(): read pc value 0x20000064
+Debug: 1265 2375 armv7m.c:379 armv7m_read_core_reg(): read xPSR value 0x61000000
+Debug: 1266 2376 armv7m.c:379 armv7m_read_core_reg(): read msp value 0x20020000
+Debug: 1267 2377 armv7m.c:379 armv7m_read_core_reg(): read psp value 0x00000000
+Debug: 1268 2377 armv7m.c:379 armv7m_read_core_reg(): read pmsk_bpri_fltmsk_ctrl value 0x00000000
+Debug: 1269 2378 armv7m.c:377 armv7m_read_core_reg(): read d0 value 0x0000000000000000
+Debug: 1270 2379 armv7m.c:377 armv7m_read_core_reg(): read d1 value 0x0000000000000000
+Debug: 1271 2381 armv7m.c:377 armv7m_read_core_reg(): read d2 value 0x0000000000000000
+Debug: 1272 2382 armv7m.c:377 armv7m_read_core_reg(): read d3 value 0x0000000000000000
+Debug: 1273 2383 armv7m.c:377 armv7m_read_core_reg(): read d4 value 0x0000000000000000
+Debug: 1274 2384 armv7m.c:377 armv7m_read_core_reg(): read d5 value 0x0000000000000000
+Debug: 1275 2385 armv7m.c:377 armv7m_read_core_reg(): read d6 value 0x0000000000000000
+Debug: 1276 2386 armv7m.c:377 armv7m_read_core_reg(): read d7 value 0xffffffff00000000
+Debug: 1277 2387 armv7m.c:377 armv7m_read_core_reg(): read d8 value 0x0000000000000000
+Debug: 1278 2388 armv7m.c:377 armv7m_read_core_reg(): read d9 value 0x0000000000000000
+Debug: 1279 2389 armv7m.c:377 armv7m_read_core_reg(): read d10 value 0x0000000000000000
+Debug: 1280 2391 armv7m.c:377 armv7m_read_core_reg(): read d11 value 0x0000000000000000
+Debug: 1281 2392 armv7m.c:377 armv7m_read_core_reg(): read d12 value 0x0000000000000000
+Debug: 1282 2393 armv7m.c:377 armv7m_read_core_reg(): read d13 value 0x0000000000000000
+Debug: 1283 2394 armv7m.c:377 armv7m_read_core_reg(): read d14 value 0x0000000000000000
+Debug: 1284 2395 armv7m.c:377 armv7m_read_core_reg(): read d15 value 0xffffffff00000000
+Debug: 1285 2396 armv7m.c:379 armv7m_read_core_reg(): read fpscr value 0x00000000
+Debug: 1286 2396 hla_target.c:289 adapter_debug_entry(): entered debug state in core mode: Thread at PC 0x20000064, target->state: halted
+Debug: 1287 2396 target.c:1836 target_call_event_callbacks(): target event 17 (debug-halted) for core stm32h7x.cpu0
+Debug: 1288 2396 hla_target.c:334 adapter_poll(): halted: PC: 0x20000064
+Debug: 1289 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register xPSR with value 0x01000000
+Debug: 1290 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register pc with value 0x08000790
+Debug: 1291 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r8 with value 0x00000000
+Debug: 1292 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r7 with value 0x00000000
+Debug: 1293 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r6 with value 0x00000000
+Debug: 1294 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r5 with value 0x00000000
+Debug: 1295 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r4 with value 0x00000000
+Debug: 1296 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r2 with value 0x00000000
+Debug: 1297 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r1 with value 0x00000000
+Debug: 1298 2396 armv7m.c:702 armv7m_wait_algorithm(): restoring register r0 with value 0x00000000
+Debug: 1299 2396 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x20000070 4 1
+Debug: 1300 2397 target.c:2615 target_read_u32(): address: 0x20000070, value: 0x20000954
+Debug: 1301 2397 target.c:2165 target_free_working_area_restore(): freed 16392 bytes of working area at address 0x2000006c
+Debug: 1302 2397 target.c:1962 print_wa_layout():  * 0x20000000-0x2000006b (108 bytes)
+Debug: 1303 2397 target.c:1962 print_wa_layout():    0x2000006c-0x2000ffff (65428 bytes)
+Debug: 1304 2397 target.c:2165 target_free_working_area_restore(): freed 108 bytes of working area at address 0x20000000
+Debug: 1305 2397 target.c:1962 print_wa_layout():    0x20000000-0x2000ffff (65536 bytes)
+Debug: 1306 2397 target.c:2703 target_write_u32(): address: 0x5200200c, value: 0x00000001
+Debug: 1307 2397 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200200c 4 1
+Debug: 1308 2397 core.c:933 flash_write_unlock_verify(): image_read_section: section = 5, t_section_num = 5, section_offset = 0, buffer_idx = 0, size_read = 1064964
+Debug: 1309 2397 image.c:670 image_elf32_read_section(): load segment 5 at 0x0 (sz = 0x104004)
+Debug: 1310 2397 image.c:676 image_elf32_read_section(): read elf: size = 0x104004 at 0x50000
+Warn : 1311 2398 core.c:552 flash_iterate_address_range_inner(): Adding extra erase range, 0x90104004 .. 0x90104fff
+Debug: 1312 2398 stmqspi.c:1019 stmqspi_erase(): stmqspi_erase: from sector 0 to sector 260
+Debug: 1313 2398 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 1314 2398 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 1315 2398 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 1316 2398 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 1317 2399 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1318 2399 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000000
+Debug: 1319 2399 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1320 2399 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1321 2400 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x00003306
+Debug: 1322 2400 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 1323 2400 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1324 2401 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000006
+Debug: 1325 2401 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1326 2401 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1327 2401 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 1328 2402 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 1329 2402 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 1330 2402 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 1331 2402 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1332 2403 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000004
+Debug: 1333 2403 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1334 2403 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1335 2403 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x00000001
+Debug: 1336 2403 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 1337 2404 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07003305
+Debug: 1338 2404 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 1339 2404 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1340 2405 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000226
+Debug: 1341 2405 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 1342 2405 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x52
+Debug: 1343 2405 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 1344 2406 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x42
+Debug: 1345 2406 stmqspi.c:399 read_status_reg(): flash status regs: 0x0052
+Debug: 1346 2406 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x00003f20
+Debug: 1347 2406 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 1348 2407 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000000
+Debug: 1349 2407 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 1350 2407 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1351 2408 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000006
+Debug: 1352 2408 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1353 2408 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1354 2408 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 1355 2409 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 1356 2409 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 1357 2409 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 1358 2409 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1359 2410 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000004
+Debug: 1360 2410 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1361 2410 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1362 2410 target.c:2703 target_write_u32(): address: 0x52005010, value: 0x00000001
+Debug: 1363 2410 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005010 4 1
+Debug: 1364 2411 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x07003305
+Debug: 1365 2411 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Debug: 1366 2411 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1367 2412 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000226
+Debug: 1368 2412 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 1369 2412 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x52
+Debug: 1370 2412 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005020 1 1
+Debug: 1371 2413 target.c:2661 target_read_u8(): address: 0x52005020, value: 0x42
+Debug: 1372 2413 stmqspi.c:399 read_status_reg(): flash status regs: 0x0052
+Debug: 1373 2413 stmqspi.c:977 qspi_erase_sector(): erase status regs: 0x0052
+Error: 1374 2413 stmqspi.c:984 qspi_erase_sector(): Sector erase command not accepted by flash1. Status=0x52
+Error: 1375 2413 stmqspi.c:1057 stmqspi_erase(): Flash sector_erase failed on sector 0
+Debug: 1376 2413 target.c:2703 target_write_u32(): address: 0x52005018, value: 0x00000000
+Debug: 1377 2413 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005018 4 1
+Debug: 1378 2413 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005000 4 1
+Debug: 1379 2414 target.c:2615 target_read_u32(): address: 0x52005000, value: 0x01000001
+Debug: 1380 2414 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000003
+Debug: 1381 2414 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 1382 2414 hla_target.c:605 adapter_read_memory(): adapter_read_memory 0x52005008 4 1
+Debug: 1383 2415 target.c:2615 target_read_u32(): address: 0x52005008, value: 0x00000002
+Debug: 1384 2415 target.c:2703 target_write_u32(): address: 0x5200500c, value: 0x00000002
+Debug: 1385 2415 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x5200500c 4 1
+Debug: 1386 2415 target.c:2703 target_write_u32(): address: 0x52005000, value: 0x01000001
+Debug: 1387 2415 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005000 4 1
+Debug: 1388 2416 target.c:2703 target_write_u32(): address: 0x52005014, value: 0x0f283fec
+Debug: 1389 2416 hla_target.c:620 adapter_write_memory(): adapter_write_memory 0x52005014 4 1
+Error: 1390 2416 core.c:47 flash_driver_erase(): failed erasing sectors 0 to 260
+Debug: 1391 2416 command.c:555 run_command(): Command 'flash write_image' failed with error code -902
+User : 1392 2416 command.c:619 command_run_line(): auto erase enabled
+Debug: 1393 2416 target.c:2194 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 1394 2416 target.c:1962 print_wa_layout():    0x20000000-0x2000ffff (65536 bytes)
+Debug: 1395 2417 hla_interface.c:131 hl_interface_quit(): hl_interface_quit
+Debug: 1396 2417 stlink_usb.c:1653 stlink_usb_exit_mode(): MODE: 0x02
