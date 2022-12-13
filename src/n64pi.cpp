@@ -714,18 +714,12 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
     //HAL_NVIC_SystemReset();
 }
 
+uint32_t Temp;
 extern "C"
 ITCM_FUNCTION
 void EXTI1_IRQHandler(void)
 {
     EXTI->PR1 = READ_LINE;
-#if PI_ENABLE_LOGGING
-    if ((ReadOffset & 2) == 0) {
-        LogBuffer[IntCount] = ADInputAddress + (ReadOffset & 511);
-    } else {
-        LogBuffer[IntCount] = PrefetchRead;
-    }
-#endif
 
     // TODO: Value can be DMA-ed directly from ram.
     // PortB upper bits can be used as 0xF0 and port B lower 2 bits can be used as 0x300
@@ -746,8 +740,16 @@ void EXTI1_IRQHandler(void)
     // TODO: Can this be done through DMA entirely?
     if (ReadOffset == 0) {
         SET_PI_OUTPUT_MODE
-        ReadOffset += 2;
     }
+#if PI_ENABLE_LOGGING
+    if ((ReadOffset & 2) == 0) {
+        LogBuffer[IntCount] = (uint32_t)(ADInputAddress + ReadOffset);
+        Temp = (ValueA | (ValueB & 0xC000) | ((ValueB << 4) & 0x3F00)) << 16;
+    } else {
+        LogBuffer[IntCount] = Temp | (*ReadPtr);
+    }
+#endif
+    ReadOffset += 2;
 
 #endif
 #if (PI_PRECALCULATE_OUT_VALUE == 0)
@@ -834,10 +836,12 @@ inline void ConstructAddress(void)
         ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = (uint16_t*)&NullMem;
+        //ReadPtr = (uint16_t*)&NullMem;
+        ReadPtr = (uint16_t*)(ADInputAddress);
     } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = (uint16_t*)&NullMem;
+        //ReadPtr = (uint16_t*)&NullMem;
+        ReadPtr = (uint16_t*)(ADInputAddress);
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_MENU_OFFSET));
@@ -847,7 +851,7 @@ inline void ConstructAddress(void)
         }
 
     } else {
-        ReadPtr = (uint16_t*)&NullMem;
+        ReadPtr = (uint16_t*)(ADInputAddress);
     }
 
 #if (PI_PRECALCULATE_OUT_VALUE != 0)

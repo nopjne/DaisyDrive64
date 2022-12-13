@@ -41,16 +41,16 @@ const RomSetting RomSettings[] = {
     //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
     //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
     //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    {"savetestv.z64", 0x12, SAVE_FLASH_1M},
-    {"savetestv.z64", 0x12, EEPROM_16K},
-    {"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_SRAM},
-    {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM},
-    {"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
-    {"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
-    {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
+    //{"savetestv.z64", 0x12, SAVE_FLASH_1M},
+    //{"savetestv.z64", 0x12, EEPROM_16K},
+    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_SRAM},
+    //{"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM},
+    //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
+    //{"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
+    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
     
     
-    //{"OS64P.z64", 0x12, SAVE_SRAM},
+    {"OS64P.z64", 0x12, EEPROM_4K},
     //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
     //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
