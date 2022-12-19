@@ -15,6 +15,7 @@
 #endif
 
 #define MENU_ROM_FILE_NAME "menu.n64"
+#define N64_MIN_PRELOAD 0x200000
 
 uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
@@ -102,6 +103,8 @@ uint32_t RomMaxSize = 0;
 SdmmcHandler   sd;
 FatFSInterface fsi;
 FIL            SDFile;
+FILINFO        gFileInfo;
+bool           gByteSwap = false;
 
 static DaisySeed hw;
 
@@ -157,7 +160,10 @@ void SaveEEPRom(const char* Name)
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
     sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
-    {
+
+    int retry = 5;
+    while (retry != 0) {
+        retry -= 1;
         sd.Init(sd_cfg);
 
         // Links libdaisy i/o to fatfs driver.
@@ -177,13 +183,15 @@ void SaveEEPRom(const char* Name)
             f_close(&SDFile);
 
             if (byteswritten != sizeof(EEPROMStore)) {
-                // Let the user know something went wrong.
-                BlinkAndDie(1000, 500);
+                continue;
             }
-        } else {
-            BlinkAndDie(2000, 500);
+
+            return;
         }
     }
+
+    // Let the user know something went wrong.
+    BlinkAndDie(1000, 500);
 }
 
 void SaveFlashRam(const char* Name)
@@ -191,7 +199,10 @@ void SaveFlashRam(const char* Name)
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
     sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
-    {
+
+    int retry = 5;
+    while (retry != 0) {
+        retry -= 1;
         sd.Init(sd_cfg);
 
         // Links libdaisy i/o to fatfs driver.
@@ -202,7 +213,7 @@ void SaveFlashRam(const char* Name)
             BlinkAndDie(500, 100);
         }
 
-        // Open the eeprom save file for the requested rom.
+        // Open the flash/sram save file for the requested rom.
         char SaveName[265];
         sprintf(SaveName, "%s.fla", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
@@ -211,13 +222,15 @@ void SaveFlashRam(const char* Name)
             f_close(&SDFile);
 
             if (byteswritten != sizeof(FlashRamStorage)) {
-                // Let the user know something went wrong.
-                BlinkAndDie(1000, 500);
+                continue;
             }
-        } else {
-            BlinkAndDie(2000, 500);
+
+            return;
         }
     }
+
+    // Let the user know something went wrong.
+    BlinkAndDie(2000, 500);
 }
 
 void LoadRom(const char* Name)
@@ -239,97 +252,23 @@ void LoadRom(const char* Name)
             BlinkAndDie(500, 100);
         }
 
-        // Open the eeprom save file for the requested rom.
-        if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
-            char SaveName[265];
-            sprintf(SaveName, "%s.eep", Name);
-            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                    memset(EEPROMStore, 0, sizeof(EEPROMStore));
-                    UINT byteswritten;
-                    f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
-                    f_close(&SDFile);
-
-                    if (byteswritten != sizeof(EEPROMStore)) {
-                        // Let the user know something went wrong.
-                        BlinkAndDie(1000, 500);
-                    }
-                }
-
-            } else {
-                FILINFO FileInfo;
-                volatile FRESULT result = f_stat(SaveName, &FileInfo);
-                if (FileInfo.fsize != sizeof(EEPROMStore)) {
-                    BlinkAndDie(200, 300);
-                }
-
-                result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
-                if (result != FR_OK) {
-                    BlinkAndDie(200, 300);
-                }
-
-                f_close(&SDFile);
-            }
-        } else {
-            // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
-            char SaveName[265];
-            sprintf(SaveName, "%s.fla", Name);
-            if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-                if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                    memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
-                    UINT byteswritten;
-                    f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
-                    f_close(&SDFile);
-
-                    if (byteswritten != sizeof(FlashRamStorage)) {
-                        f_unlink(SaveName);
-                        // Let the user know something went wrong.
-                        BlinkAndDie(1000, 500);
-                    }
-                }
-
-            } else {
-                FILINFO FileInfo;
-                FRESULT result = f_stat(SaveName, &FileInfo);
-                if ((FileInfo.fsize != (sizeof(FlashRamStorage) - 8)) &&
-                    (FileInfo.fsize != sizeof(FlashRamStorage))) {
-                    f_close(&SDFile);
-                    f_unlink(SaveName);
-                    BlinkAndDie(200, 300);
-                }
-
-                result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
-                if (result != FR_OK) {
-                    BlinkAndDie(200, 300);
-                }
-
-                if (CurrentRomSaveType == SAVE_FLASH_1M) {
-                    ((uint32_t*)FlashRamStorage)[0] = 0x1111800F;
-                    ((uint32_t*)FlashRamStorage)[1] = 0x000000C2;
-                    
-                }
-
-                f_close(&SDFile);
-            }
-        }
-
         // Read requested rom from the SD Card.
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
-            FILINFO FileInfo;
-            FRESULT result = f_stat(Name, &FileInfo);
+            FRESULT result = f_stat(Name, &gFileInfo);
             if (result != FR_OK) {
                 BlinkAndDie(100, 500);
             }
 
-            result = f_read(&SDFile, ram, FileInfo.fsize, &bytesread);
+            uint32_t IntroReadSize = std::min<size_t>(N64_MIN_PRELOAD, gFileInfo.fsize);
+            result = f_read(&SDFile, ram, IntroReadSize, &bytesread);
             if (result != FR_OK) {
                 BlinkAndDie(200, 200);
             }
 
-            f_close(&SDFile);
+            //f_close(&SDFile);
 
             // Blink led on error.
-            if (bytesread != FileInfo.fsize) {
+            if (bytesread != IntroReadSize) {
                 BlinkAndDie(500, 500);
             }
 
@@ -338,7 +277,9 @@ void LoadRom(const char* Name)
             // If extension is z64, byte swap.
             // TODO: Setup DMA to do this, could use FIFO to speed things up.
             uint32_t NameLength = strlen(Name);
+            gByteSwap = false;
             if (Name[NameLength - 3] == 'z') {
+                gByteSwap = true;
                 for (uint32_t i = 0; i < RomMaxSize; i += 2) {
                     *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
                 }
@@ -356,9 +297,6 @@ void LoadRom(const char* Name)
     *(ram + 3) = RomSettings[WRAP_ROM_INDEX(RomIndex)].BusSpeedOverride;
 #endif
 
-    uint16_t pre = *((uint16_t*) ram);
-    uint8_t valA = pre;
-    uint8_t valB = pre >> 8;
     // Patch speed.
 #if (READ_DELAY_NS == 4000)
     *(ram + 3) =  0xFF;
@@ -373,6 +311,98 @@ void LoadRom(const char* Name)
 #elif (READ_DELAY_NS == 400)
     *(ram + 3) =  0x19;
 #endif
+}
+
+void ContinueRomLoad(void)
+{
+    size_t bytesread = 0;
+    size_t ReadSize =  (gFileInfo.fsize - N64_MIN_PRELOAD);
+    if (ReadSize < gFileInfo.fsize)
+    {
+        FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
+        if ((bytesread != ReadSize) || (result != F_OK)) {
+            BlinkAndDie(500, 500);
+        }
+
+        RomMaxSize += ReadSize;
+    }
+
+    f_close(&SDFile);
+
+    // If extension is z64, byte swap.
+    if (gByteSwap != false) {
+        for (uint32_t i = N64_MIN_PRELOAD; i < RomMaxSize; i += 2) {
+            *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
+        }
+    }
+
+    // Open the eeprom save file for the requested rom.
+    const char* Name = RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName;
+    if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
+        char SaveName[265];
+        sprintf(SaveName, "%s.eep", Name);
+        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                memset(EEPROMStore, 0, sizeof(EEPROMStore));
+                UINT byteswritten;
+                f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
+                f_close(&SDFile);
+
+                if (byteswritten != sizeof(EEPROMStore)) {
+                    // Let the user know something went wrong.
+                    BlinkAndDie(1000, 500);
+                }
+            }
+
+        } else {
+            FILINFO FileInfo;
+            volatile FRESULT result = f_stat(SaveName, &FileInfo);
+            if (FileInfo.fsize != sizeof(EEPROMStore)) {
+                BlinkAndDie(200, 300);
+            }
+
+            result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
+            if (result != FR_OK) {
+                BlinkAndDie(200, 300);
+            }
+
+            f_close(&SDFile);
+        }
+    } else {
+        // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
+        char SaveName[265];
+        sprintf(SaveName, "%s.fla", Name);
+        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+                memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
+                UINT byteswritten;
+                f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+                f_close(&SDFile);
+
+                if (byteswritten != sizeof(FlashRamStorage)) {
+                    f_unlink(SaveName);
+                    // Let the user know something went wrong.
+                    BlinkAndDie(1000, 500);
+                }
+            }
+
+        } else {
+            FILINFO FileInfo;
+            FRESULT result = f_stat(SaveName, &FileInfo);
+            if (FileInfo.fsize != sizeof(FlashRamStorage)) {
+                f_close(&SDFile);
+                f_unlink(SaveName);
+                BlinkAndDie(200, 300);
+            }
+
+            result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
+            if (result != FR_OK) {
+                BlinkAndDie(200, 300);
+            }
+
+            f_close(&SDFile);
+        }
+    }
 }
 
 inline void DaisyDriveN64Reset(void)
@@ -405,24 +435,42 @@ extern void * g_pfnVectors;
 
 int main(void)
 {
-    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
-    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
-    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+    __HAL_RCC_GPIOG_CLK_ENABLE();
+    GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    GPIOG->BSRR = CIC_DAT;
 
-    // Init hardware
+    PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+// Init hardware
 #if OVERCLOCK
     hw.Init(true);
 #else
     hw.Init(false);
 #endif
 
+    GPIO_InitTypeDef PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOC, &PortCPins);
+
+    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    CICEmulatorInit();
+
+    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
+    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
+    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+
     TimerCtrl = SysTick->CTRL;
+    SysTick->CTRL = 0;
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOG_CLK_ENABLE();
+    
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
     // Preconfigure GPIO PortA and PortB, so the following directional changes can be faster.
@@ -446,30 +494,18 @@ int main(void)
     GPIOB->ODR = 0xC3F0;
 #endif
 
-    GPIO_InitTypeDef PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
+    PortCPins = {READ_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
     PortCPins = {S_DAT_LINE, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
     GPIOC->BSRR = S_DAT_LINE;
 
-    PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOC, &PortCPins);
-
     GPIO_InitTypeDef ResetLinePin = {RESET_LINE, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOD, &ResetLinePin);
 
     GPIO_InitTypeDef ALE_L_Pin = {ALE_L, GPIO_MODE_INPUT, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &ALE_L_Pin);
-
-    GPIO_InitTypeDef PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOG, &PortGPins);
-    NVIC_SetVector(EXTI9_5_IRQn, (uint32_t)&EXTI9_5_IRQHandler);
-    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
-    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-    PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOG, &PortGPins);
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_1;
@@ -479,24 +515,16 @@ int main(void)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    EEPROMType = RomSettings[RomIndex].EepRomType;
-    CurrentRomSaveType = EEPROMType;
-    //InitMenuFunctions();
-    LoadRom(RomSettings[RomIndex].RomName);
-    CICEmulatorInit();
-
     memset(Sram4Buffer, 0, 64 * 4);
     memset(SDataBuffer, 0, sizeof(SDataBuffer));
     SCB_CleanInvalidateDCache();
 
+    EEPROMType = RomSettings[RomIndex].EepRomType;
+
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
-    GPIOG->BSRR = CIC_DAT;
-    SysTick->CTRL = TimerCtrl;
-    //System::Delay(2);
     EXTI->PR1 = RESET_LINE;
     while (RESET_IS_LOW) { }
-    SysTick->CTRL = 0;
 
     InitializeInterrupts();
     InitializeTimersPI();
@@ -513,6 +541,7 @@ int main(void)
         Running = true;
         OverflowCounter = 0;
         StartCICEmulator();
+        ContinueRomLoad();
         while(Running != false) {
             //__WFE();
         }

@@ -592,6 +592,11 @@ int cic_init(unsigned int Region, unsigned int Type)
 #define CRC_iQue_3 0xE71C2766
 #define CRC_NUS_7101 0x12706049
 
+void CICEmulatorInitFast(void)
+{
+    cic_init(REGION_NTSC, CIC6102_TYPE);
+}
+
 void CICEmulatorInit(void)
 {
     volatile uint32_t crc = si_crc32(ram + 0x40, 0x1000 - 0x40);
