@@ -10,7 +10,7 @@
 #include "daisydrive64.h"
 #include "menu.h"
 
-#ifndef _FS_EXFAT
+#if !defined(_FS_EXFAT) && !defined(FF_FS_EXFAT)
 #error EXFAT FS NEEDS TO BE ENABLED
 #endif
 
@@ -49,17 +49,18 @@ const RomSetting RomSettings[] = {
     //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
     //{"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
     //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
-    
-    
+
     {"OS64P.z64", 0x12, EEPROM_4K},
+    {"portal.z64", 0x12, EEPROM_4K},
     //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
     //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
     //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
     //{"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
     //{"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
     //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
-#if 0
+#if 1
     //MENU_ROM_FILE_NAME,
+    {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
     {"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
@@ -433,8 +434,21 @@ extern "C" const unsigned char itcm_data;
 void SITest();
 extern void * g_pfnVectors;
 
+#include "diskio.h"
+
 int main(void)
 {
+    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
+    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
+    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+
+// Init hardware
+#if OVERCLOCK
+    hw.Init(true);
+#else
+    hw.Init(false);
+#endif
+
     __HAL_RCC_GPIOG_CLK_ENABLE();
     GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &PortGPins);
@@ -446,25 +460,14 @@ int main(void)
     HAL_NVIC_SetPriority(EXTI9_5_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-// Init hardware
-#if OVERCLOCK
-    hw.Init(true);
-#else
-    hw.Init(false);
-#endif
-
     GPIO_InitTypeDef PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
     LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
     CICEmulatorInit();
 
-    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
-    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
-    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
-
     TimerCtrl = SysTick->CTRL;
-    SysTick->CTRL = 0;
+    //SysTick->CTRL = 0;
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -520,12 +523,14 @@ int main(void)
     SCB_CleanInvalidateDCache();
 
     EEPROMType = RomSettings[RomIndex].EepRomType;
+    CurrentRomSaveType = EEPROMType;
 
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
     EXTI->PR1 = RESET_LINE;
     while (RESET_IS_LOW) { }
 
+    InitMenuFunctions();
     InitializeInterrupts();
     InitializeTimersPI();
     InitializeTimersSI();

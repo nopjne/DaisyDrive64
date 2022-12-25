@@ -654,6 +654,10 @@ void InitializeTimersPI(void)
     //MX_DMA_Init();
 }
 
+//volatile uint32_t xCount = 0;
+//volatile uint16_t xValueSave[40];
+//volatile uint32_t xAddrSave[40];
+
 extern "C"
 ITCM_FUNCTION
 void EXTI4_IRQHandler(void)
@@ -668,7 +672,15 @@ void EXTI4_IRQHandler(void)
 
     //*((uint32_t*)FlashRamStorage) = 0x80011111;
     *ReadPtr = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
+    //xValueSave[xCount] = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
+    //xAddrSave[xCount] = (uint32_t)ReadPtr;
     ReadPtr += 1;
+    //xCount += 1;
+
+    if ((uint32_t)ReadPtr == ((uint32_t)(&(MenuBase[REG_EXECUTE_FUNCTION]))) + 4) {
+        MenuBase[REG_STATUS] |= (DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
+        NVIC->STIR = 9;
+    }
 }
 
 extern "C"
@@ -836,22 +848,18 @@ inline void ConstructAddress(void)
         ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        //ReadPtr = (uint16_t*)&NullMem;
-        ReadPtr = (uint16_t*)(ADInputAddress);
+        ReadPtr = (uint16_t*)&NullMem;
+        //ReadPtr = (uint16_t*)(ADInputAddress);
     } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        //ReadPtr = (uint16_t*)&NullMem;
-        ReadPtr = (uint16_t*)(ADInputAddress);
+        ReadPtr = (uint16_t*)&NullMem;
+        //ReadPtr = (uint16_t*)(ADInputAddress);
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
-        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_MENU_OFFSET));
-        if (((uint32_t*)ReadPtr) == &(MenuBase[REG_EXECUTE_FUNCTION])) {
-            MenuBase[REG_STATUS] |= DAISY_STATUS_BIT_DMA_BUSY;
-            SCB->STIR = DAISY_MENU_INTERRUPT;
-        }
-
+        //NVIC_SetVector(EXTI19_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        ReadPtr = (uint16_t*)(((unsigned char*)MenuBase) + (ADInputAddress - CART_MENU_ADDR_START));
+        //ReadPtr =((uint16_t*)(ram + (ADInputAddress - CART_MENU_ADDR_START)));
     } else {
-        ReadPtr = (uint16_t*)(ADInputAddress);
+        ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
     }
 
 #if (PI_PRECALCULATE_OUT_VALUE != 0)

@@ -31,8 +31,8 @@
 #define CART_DOM2_ADDR2_END       0x0FFFFFFF
 
 // Menu address range
-#define CART_MENU_ADDR_START      0xA8040000
-#define CART_MENU_ADDR_END        0xA804FFFF
+#define CART_MENU_ADDR_START      0x18040000
+#define CART_MENU_ADDR_END        0x1804FFFF
 #define CART_MENU_OFFSET          (46 * 1024 * 1024)
 
 // Port B
