@@ -45,15 +45,15 @@ Things that are implemented:
     3. EEPROM emulation for game saves. Using LPTIM3 and DMA. The emulation runs in an interrupt routine.
     4. CIC emulation and detection. CIC is detected through a CRC, CIC_CLK is being monitored from an interrupt.
     5. Early rom endianness detection.
+    6. Menu through Altra64
+    7. Async SD load. (Only the first 1MB is needed to boot) The rest can be loaded over time during boot. This will enable instant boot.
 
 Things that need to be implemented:
     1. PI RD through DMA. (There is still a device that can kick off DMA, HRTIM_EEV4 on Pin 8)
     2. Flash Ram emulation (Domain2 reads + writes) This is tricky because there is only 92ns between the latch and wr/rd.
-    3. Implement a menu. (an N64 binary that will help select which rom to use)
-    4. 64DD support.
-    5. RTC, Animal Forest needs the RTC. The MCU has support for an RTC but has no way of keeping time.
-    6. Async SD load. (Only the first 1MB is needed to boot) The rest can be loaded over time during boot. This will enable instant boot.
-    7. N64 power, depends on Async SD load, because there will not be enough time to load a full rom. (May need to be fed from 5V)
+    3. 64DD support.
+    4. RTC, Animal Forest needs the RTC. The MCU has support for an RTC but has no way of keeping time.
+    5. N64 power, may need a boot rom that just waits until a new rom can be loaded to ram. Preferrably the menu can be stored in extrenal flash.
 	
 Things that would be nice to have:
     1. Patch support. Allow patches to be applied on the fly and save to a different save file.
@@ -68,4 +68,4 @@ Known issues:
     1. Flash ram games do not save.
     2. The DRAM has been tuned but it is unclear whether that is stable.
     3. Currently the MCU is overclocked to 540Mhz this may not be needed and generates more heat than necessary.
-    4. The DaisyDrive64 needs to be powered by USB.
+    4. The DaisyDrive64 needs to be powered by USB, just for init.

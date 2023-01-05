@@ -15,7 +15,9 @@ TARGET_ELF=$(TARGET).elf
 OCD=openocd
 OCD_DIR ?= /usr/local/share/openocd/scripts
 PGM_DEVICE ?= interface/stlink.cfg
-OCDFLAGS = -f $(PGM_DEVICE) -f target/$(CHIPSET).cfg
+#OCDFLAGS = -f $(PGM_DEVICE) -f target/$(CHIPSET).cfg
+OCDFLAGS = -f $(PGM_DEVICE) -f ./qspi_init2.cfg
+#OCDFLAGS = -f $(PGM_DEVICE) -f ./qspi_init.cfg
 
 GDB_FLAGS=
 

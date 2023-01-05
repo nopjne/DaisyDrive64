@@ -2,6 +2,7 @@
 #define DTCM_DATA  __attribute__((section(".dtcmram_bss")))
 #define ITCM_FUNCTION __attribute__((long_call, section(".itcm_text")))
 #define SRAM1_DATA __attribute__((section(".sram1_bss")))
+#define QSPI_FLASH __attribute__((section(".qspiflash_text")))
 
 // Only enable for ROM less than 16MB.
 #define PI_ENABLE_LOGGING 0
@@ -30,8 +31,8 @@
 #define CART_DOM2_ADDR2_END       0x0FFFFFFF
 
 // Menu address range
-#define CART_MENU_ADDR_START      0xB0000000
-#define CART_MENU_ADDR_END        0xB000FFFF
+#define CART_MENU_ADDR_START      0x18040000
+#define CART_MENU_ADDR_END        0x1804FFFF
 #define CART_MENU_OFFSET          (46 * 1024 * 1024)
 
 // Port B
@@ -61,6 +62,7 @@
 #define RESET_IS_LOW ((GPIOD->IDR & RESET_LINE) == 0)
 
 void CICEmulatorInit(void);
+void CICEmulatorInitFast(void);
 void StartCICEmulator(void);
 int RunCICEmulator(void);
 int InitializeDmaChannels(void);
@@ -74,10 +76,12 @@ extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
 void RunEEPROMEmulator(void);
 
+void BlinkAndDie(int wait1, int wait2);
+
 extern DTCM_DATA volatile bool Running;
 
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
-#define FLASHRAM_SIZE (128 * 1024)
+#define FLASHRAM_SIZE (128 * 1024 + 8)
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
@@ -85,7 +89,7 @@ extern BYTE FlashRamStorage[FLASHRAM_SIZE];
 extern unsigned char *ram;
 
 
-extern DTCM_DATA volatile uint32_t DMACount;
+extern DTCM_DATA uint32_t DMACount;
 extern DTCM_DATA volatile uint32_t IntCount;
 extern DTCM_DATA volatile uint32_t ALE_H_Count;
 extern DTCM_DATA uint32_t ADInputAddress;

@@ -1,0 +1,104 @@
+beta9
+
+rom loading function flow:
+
+main()
+
+//init n64, fs, controller
+	
+	//joypad loop
+	//button (A) -> select rom
+	
+	
+	loadrom(disp,name_file);
+		//readout rom header
+		//check if swapped
+		evd_mmcSetDmaSwap(1);
+		
+		//dma read file to 0xb0000000 cartspace
+		diskRead();
+		
+		//change key mapping
+		
+			//if (START)
+			bootRom();
+			
+				//save LAST.CRT for reboot cart-save
+				
+				//set fpga to eeprom, sram, flashram
+				evd_setSaveType(boot_save);
+				
+				//do pif simulation to boot the rom
+				simulate_boot(boot_cic, bios_cic);
+				
+
+
+cart-save overview:
+
+before pif simulation the cart_id and cart_savetype is stored in
+LAST.CRT [maybe it's a better solution to use rom filenames
+'cause the cart_id includes no game-version]
+-> bootRom();
+
+at every start of the menu a function is called that checks
+LAST.CRT, if there is something todo and disable it for next boot
+by setting a flag in that file
+-> backupSaveData(disp);
+
+if it's a warm boot (reset) the fpga savegame is still there
+-> save_cfg_stat = evd_readReg(REG_SAV_CFG);
+
+if it's a reset reboot to backup a savegame into a file
+saveTypeToSd(disp, cartID, save_t)
+is called
+
+it's only for some file operations and calls
+utils.c: getSaveFromCart(stype, cartsave_data)
+to store the savegame into a buffer, which could
+be saved into a file
+
+
+some notes:
+eeprom is connected directly to the pif (i2c?)
+and could be read out stable with the libdragon function
+
+sram/flashram is a serial device that is mapped into
+memory
+it has to be accessed with dma to rdram through the pif
+
+it's a domain2 device which needs other timing than the cart
+
+timings:
+
+PI_BSD_DOM2_XXX_REG
+
+sram/fram:
+
+val		XXX	desc
+05		LAT Latency 
+OC		PWD Pulse Width
+
+//sram - 0D
+//fram Animal Forest - 0F
+OD		PGS Page Size 
+
+02		RLS Release Duration
+
+
+carts/dev-carts:
+40    Latency 
+12    Pulse Width 
+07    Page Size 
+03    Release Duration
+
+IPL at 0xA6000000:
+40    Latency 
+07    Pulse Width 
+07    Page Size 
+02    Release Duration
+
+cartidge:
+PI_BSD_DOM1_XXX_REG
+
+is set with the first word in the header
+e.g. 0x[80]371240 -> 3.7.12.40 ~ 40,12,07,03

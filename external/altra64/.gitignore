@@ -1,0 +1,21 @@
+## Build folder
+/build/*
+## Build files
+*.v64
+*.elf
+*.o
+*.bin
+*.dfs
+
+## OSX junk
+.DS_Store
+.Trashes
+._*
+
+## Temporary files
+*.tmp
+*~
+*.VC.db*
+*properties.json
+/.vs
+/.vscode

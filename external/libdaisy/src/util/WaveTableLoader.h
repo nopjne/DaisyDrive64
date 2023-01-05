@@ -3,6 +3,7 @@
 #include "util/wav_format.h"
 namespace daisy
 {
+   typedef __SIZE_TYPE__ size_t;
 /** Loads a bank of wavetables into memory. 
  ** Pointers to the start of each waveform will be provided, 
  ** but the user can do whatever they want with the data once
