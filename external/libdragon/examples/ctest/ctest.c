@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <malloc.h>
+#include <string.h>
+#include <stdint.h>
+#include <time.h>
+#include <libdragon.h>
+
+char *format_type( int accessory )
+{
+    switch( accessory )
+    {
+        case ACCESSORY_RUMBLEPAK:
+            return "(rumble)";
+        case ACCESSORY_MEMPAK:
+            return "(memory)";
+        case ACCESSORY_VRU:
+            return "(vru)";
+        default:
+            return "(none)";
+    }
+}
+
+int main(void)
+{
+    /* Initialize peripherals */
+    console_init();
+    controller_init();
+    timer_init();
+    rtc_init();
+
+    console_set_render_mode(RENDER_MANUAL);
+
+    time_t current_time = -1;
+    int testv = 0;
+    int press = 0;
+    uint8_t data[32];
+    memset( data, 0, 32 );
+
+    /* Main loop test */
+    while(1) 
+    {
+        console_clear();
+
+        /* To do initialize routines */
+        controller_scan();
+
+        struct controller_data keys = get_keys_down();
+
+        for( int i = 0; i < 4; i++ )
+        {
+            if( keys.c[i].A )
+            {
+                rumble_start( i );
+            }
+
+            if( keys.c[i].B )
+            {
+                rumble_stop( i );
+            }
+
+            if( keys.c[i].Z )
+            {
+                press = read_mempak_address( i, 0x0000, data );
+            }
+        }
+
+        int controllers = get_controllers_present();
+
+        printf( "Controller 1 %spresent\n", (controllers & CONTROLLER_1_INSERTED) ? "" : "not " );
+        printf( "Controller 2 %spresent\n", (controllers & CONTROLLER_2_INSERTED) ? "" : "not " );
+        printf( "Controller 3 %spresent\n", (controllers & CONTROLLER_3_INSERTED) ? "" : "not " );
+        printf( "Controller 4 %spresent\n", (controllers & CONTROLLER_4_INSERTED) ? "" : "not " );
+
+        struct controller_data output;
+        int accessories = get_accessories_present( &output );
+
+        printf( "Accessory 1 %spresent %s\n", (accessories & CONTROLLER_1_INSERTED) ? "" : "not ", 
+                                              (accessories & CONTROLLER_1_INSERTED) ? format_type( identify_accessory( 0 ) ) : "" );
+        printf( "Accessory 2 %spresent %s\n", (accessories & CONTROLLER_2_INSERTED) ? "" : "not ",
+                                              (accessories & CONTROLLER_2_INSERTED) ? format_type( identify_accessory( 1 ) ) : "" );
+        printf( "Accessory 3 %spresent %s\n", (accessories & CONTROLLER_3_INSERTED) ? "" : "not ",
+                                              (accessories & CONTROLLER_3_INSERTED) ? format_type( identify_accessory( 2 ) ) : "" );
+        printf( "Accessory 4 %spresent %s\n", (accessories & CONTROLLER_4_INSERTED) ? "" : "not ",
+                                              (accessories & CONTROLLER_4_INSERTED) ? format_type( identify_accessory( 3 ) ) : "" );
+
+        printf("\n%d\n\n", testv++ );
+
+        current_time = time( NULL );
+        if( current_time != -1 )
+        {
+            printf("Current date/time: %s\n\n", ctime( &current_time ));
+        }
+
+        for( int i = 0; i < 32; i++ )
+        {
+            printf( "%02X", data[i] );
+        }
+
+        printf( "\n\n" );
+        printf( "Operation returned: %d\n", press );
+
+        console_render();
+    }
+}

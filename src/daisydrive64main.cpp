@@ -15,10 +15,12 @@
 #endif
 
 #define MENU_ROM_FILE_NAME "menu.n64"
-#define N64_MIN_PRELOAD 0x200000
+//#define N64_MIN_PRELOAD 0x1000000
+#define N64_MIN_PRELOAD (1024 * 1024 * 1)
 
-uint32_t CurrentRomSaveType = 0;
+volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
+char CurrentRomName[265];
 struct RomSetting {
     const char* RomName;
     const BYTE BusSpeedOverride;
@@ -33,32 +35,8 @@ const RomSetting RomSettings[] = {
 };
 #else
 const RomSetting RomSettings[] = {
-    //{"Star Fox 64 (USA) (Rev A).n64", 0x17, EEPROM_4K},
-    //{"Star Fox 64 (USA) (Rev A).n64", 0x18, EEPROM_4K},
-    //{"Killer Instinct Gold (USA).n64", 0x12, EEPROM_4K},
-    //{"Lylat Wars (Europe) (En,Fr,De).n64", 0x18, EEPROM_4K},
-    //{"Mario Kart 64 (Europe).n64", 0x20, EEPROM_4K},
-    //{"Mario Kart 64 (USA).n64", 0x18, EEPROM_4K},
-    //{"Conker's Bad Fur Day (USA).n64", 0x20, EEPROM_16K},
-    //{"Donkey Kong 64 (USA).n64", 0x12, EEPROM_16K}, // Boots but very unstable, crashes anywhere.
-    //{"Yoshi's Story (USA) (En,Ja).n64", 0x20, EEPROM_16K},
-    //{"savetestv.z64", 0x12, SAVE_FLASH_1M},
-    //{"savetestv.z64", 0x12, EEPROM_16K},
-    //{"Legend of Zelda, The - Ocarina of Time (USA).n64", 0x20, SAVE_SRAM},
-    //{"Legend of Zelda, The - Ocarina of Time - Master Quest (USA) (GameCube Edition).n64", 0x20, SAVE_SRAM},
-    //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
-    //{"Super Smash Bros. (USA).n64", 0x18, SAVE_SRAM},
-    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
-
     {"OS64P.z64", 0x12, EEPROM_4K},
-    {"portal.z64", 0x12, EEPROM_4K},
-    //{"Legend of Zelda, The - Majora's Mask (USA) (GameCube Edition).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
-    //{"Mario Golf (USA).n64", 0x17, SAVE_SRAM}, // Runs, does not save.
-    //{"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, does not save.
-    //{"Super Smash Bros. (USA).n64", 0x18, SAVE_FLASH_1M},
-    //{"Paper Mario (USA).n64", 0x40, SAVE_FLASH_1M}, // Runs, does not save.
-    //{"Resident Evil 2 (USA).n64", 0x17, SAVE_FLASH_1M}, // Runs does not save.
-#if 1
+#if 0
     //MENU_ROM_FILE_NAME,
     {"Mario Kart 64 (USA).n64", 0x12, EEPROM_4K},
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_SRAM}, // Runs, Needs flash ram support for saves.
@@ -104,6 +82,7 @@ uint32_t RomMaxSize = 0;
 SdmmcHandler   sd;
 FatFSInterface fsi;
 FIL            SDFile;
+FIL            SDSaveFile;
 FILINFO        gFileInfo;
 bool           gByteSwap = false;
 
@@ -176,7 +155,7 @@ void SaveEEPRom(const char* Name)
         }
 
         // Open the eeprom save file for the requested rom.
-        char SaveName[265];
+        char SaveName[265 + 4];
         sprintf(SaveName, "%s.eep", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
             UINT byteswritten;
@@ -215,7 +194,7 @@ void SaveFlashRam(const char* Name)
         }
 
         // Open the flash/sram save file for the requested rom.
-        char SaveName[265];
+        char SaveName[265 + 4];
         sprintf(SaveName, "%s.fla", Name);
         if (f_open(&SDFile, SaveName, (FA_WRITE)) == FR_OK) {
             UINT byteswritten;
@@ -286,10 +265,13 @@ void LoadRom(const char* Name)
                 }
             }
 
+            strcpy(CurrentRomName, Name);
+
         } else {
             BlinkAndDie(100, 100);
         }
     }
+
     // No led on on success.
     GPIOC->BSRR = USER_LED_PORTC << 16;
 
@@ -318,7 +300,7 @@ void ContinueRomLoad(void)
 {
     size_t bytesread = 0;
     size_t ReadSize =  (gFileInfo.fsize - N64_MIN_PRELOAD);
-    if (ReadSize < gFileInfo.fsize)
+    if ((ReadSize < gFileInfo.fsize) && (ReadSize != 0))
     {
         FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
         if ((bytesread != ReadSize) || (result != F_OK)) {
@@ -338,16 +320,15 @@ void ContinueRomLoad(void)
     }
 
     // Open the eeprom save file for the requested rom.
-    const char* Name = RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName;
-    if (RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_16K || RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType == EEPROM_4K) {
-        char SaveName[265];
-        sprintf(SaveName, "%s.eep", Name);
-        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+    if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
+        char SaveName[265 + 4];
+        sprintf(SaveName, "%s.eep", CurrentRomName);
+        if(f_open(&SDSaveFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDSaveFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
                 memset(EEPROMStore, 0, sizeof(EEPROMStore));
                 UINT byteswritten;
-                f_write(&SDFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
-                f_close(&SDFile);
+                f_write(&SDSaveFile, EEPROMStore, sizeof(EEPROMStore), &byteswritten);
+                f_close(&SDSaveFile);
 
                 if (byteswritten != sizeof(EEPROMStore)) {
                     // Let the user know something went wrong.
@@ -362,23 +343,23 @@ void ContinueRomLoad(void)
                 BlinkAndDie(200, 300);
             }
 
-            result = f_read(&SDFile, EEPROMStore, FileInfo.fsize, &bytesread);
+            result = f_read(&SDSaveFile, EEPROMStore, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
                 BlinkAndDie(200, 300);
             }
 
-            f_close(&SDFile);
+            f_close(&SDSaveFile);
         }
     } else {
         // Open the FLASH ram file for the requested rom. (Sram and Flash ram can live in RAM_D2 as those require only 128KB)
-        char SaveName[265];
-        sprintf(SaveName, "%s.fla", Name);
-        if(f_open(&SDFile, SaveName, FA_READ) != FR_OK) {
-            if (f_open(&SDFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
+        char SaveName[265 + 4];
+        sprintf(SaveName, "%s.fla", CurrentRomName);
+        if(f_open(&SDSaveFile, SaveName, FA_READ) != FR_OK) {
+            if (f_open(&SDSaveFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
                 memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
                 UINT byteswritten;
-                f_write(&SDFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
-                f_close(&SDFile);
+                f_write(&SDSaveFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
+                f_close(&SDSaveFile);
 
                 if (byteswritten != sizeof(FlashRamStorage)) {
                     f_unlink(SaveName);
@@ -391,17 +372,17 @@ void ContinueRomLoad(void)
             FILINFO FileInfo;
             FRESULT result = f_stat(SaveName, &FileInfo);
             if (FileInfo.fsize != sizeof(FlashRamStorage)) {
-                f_close(&SDFile);
+                f_close(&SDSaveFile);
                 f_unlink(SaveName);
                 BlinkAndDie(200, 300);
             }
 
-            result = f_read(&SDFile, FlashRamStorage, FileInfo.fsize, &bytesread);
+            result = f_read(&SDSaveFile, FlashRamStorage, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
                 BlinkAndDie(200, 300);
             }
 
-            f_close(&SDFile);
+            f_close(&SDSaveFile);
         }
     }
 }
@@ -448,6 +429,8 @@ int main(void)
 #else
     hw.Init(false);
 #endif
+
+    //UploadMenuRom();
 
     __HAL_RCC_GPIOG_CLK_ENABLE();
     GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
@@ -539,7 +522,7 @@ int main(void)
             DaisyDriveN64Reset();
         }
 
-        if (EEPROMType == EEPROM_16K || EEPROMType == EEPROM_4K) {
+        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
             SI_Enable();
         }
 
@@ -547,17 +530,19 @@ int main(void)
         OverflowCounter = 0;
         StartCICEmulator();
         ContinueRomLoad();
+
         while(Running != false) {
             //__WFE();
         }
 
+        RomIndex = 0;
         if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
-            SaveEEPRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+            SaveEEPRom(CurrentRomName);
         } else {
-            SaveFlashRam(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+            SaveFlashRam(CurrentRomName);
         }
 
-        RomIndex += 1;
+        RomIndex = 1;
         LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();
         EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;

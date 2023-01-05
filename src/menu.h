@@ -39,5 +39,6 @@ enum DAISY_REGISTERS {
 
 extern uint32_t *MenuBase;
 
+void UploadMenuRom(void);
 void InitMenuFunctions(void);
 extern "C" ITCM_FUNCTION void EXTI3_IRQHandler(void);
