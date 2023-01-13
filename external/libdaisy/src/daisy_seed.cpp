@@ -116,8 +116,8 @@ void DaisySeed::Init(bool boost)
 
     system.Init(syscfg);
 
-    //if(memory != System::MemoryRegion::QSPI)
-        //qspi.Init(qspi_config);
+    if(memory != System::MemoryRegion::QSPI)
+        qspi.Init(qspi_config);
 
     if(memory == System::MemoryRegion::INTERNAL_FLASH)
     {

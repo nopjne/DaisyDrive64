@@ -168,6 +168,12 @@ inline void HandleExecute(void)
     MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
 }
 
+// These functions and extern needs to be defined somewhere else.
+// The software menu interrupt doesn't make sense to be in here either as it has become a generic interrupt for 
+// non time critical operations.
+void SaveEEPRom(const char* Name);
+void SaveFlashRam(const char* Name);
+
 //volatile uint32_t xHandler = 0;
 //uint32_t xSave[20];
 extern "C"
@@ -177,6 +183,18 @@ void EXTI3_IRQHandler(void)
      EXTI->PR1 = DAISY_MENU_INTERRUPT;
      //xSave[xHandler] = MenuBase[REG_EXECUTE_FUNCTION];
      //xHandler += 1;
-     HandleExecute();
+    if (*((uint32_t*)CurrentRomName) == '46SO') {
+        HandleExecute();
+    }
+
+    if (SaveFileDirty != false) {
+        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
+            SaveEEPRom(CurrentRomName);
+        } else {
+            SaveFlashRam(CurrentRomName);
+        }
+
+        SaveFileDirty = false;
+    }
 }
 

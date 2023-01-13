@@ -31,6 +31,8 @@ void ITCM_FUNCTION RunEEPROMEmulator(void);
 //inline bool ITCM_FUNCTION SIGetBytes(BYTE *Out, uint32_t ExpectedBytes, bool Block);
 //inline BYTE ITCM_FUNCTION GetSingleByte(uint32_t Offset);
 
+DTCM_DATA bool SaveFileDirty = false;
+
 #if (SI_USE_DMA != 0)
 DTCM_DATA TIM_HandleTypeDef htim3;
 DTCM_DATA DMA_HandleTypeDef hdma_tim3_ch4;
@@ -857,6 +859,8 @@ void RunEEPROMEmulator(void)
         SIPutDeviceTerminator();
         SIState = SI_STATE_NONE;
         LogState(false);
+        SaveFileDirty = true;
+        NVIC->STIR = 9;
     }
 }
 

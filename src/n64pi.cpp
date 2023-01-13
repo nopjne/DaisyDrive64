@@ -399,7 +399,7 @@ int InitializeDmaChannels(void)
     return 0;
 }
 
-
+#if 0
 void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -647,6 +647,7 @@ static void MX_DMA_Init(void)
         Error_Handler();
     }
 }
+#endif
 
 void InitializeTimersPI(void)
 {

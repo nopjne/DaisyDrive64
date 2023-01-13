@@ -95,6 +95,8 @@ extern DTCM_DATA volatile uint32_t ALE_H_Count;
 extern DTCM_DATA uint32_t ADInputAddress;
 extern DTCM_DATA uint32_t EepLogIdx;
 extern DTCM_DATA uint32_t OverflowCounter;
+extern DTCM_DATA bool SaveFileDirty;
+extern char CurrentRomName[265];
 
 #define SET_PI_OUTPUT_MODE \
     GPIOA->MODER = 0xABFF5555; \

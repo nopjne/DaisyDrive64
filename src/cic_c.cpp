@@ -680,7 +680,9 @@ int RunCICEmulator(void)
         ((GPIOC->BSRR) = (USER_LED_PORTC));
         dir = -1;
     } else if (x == 0) {
-        ((GPIOC->BSRR) = (USER_LED_PORTC) << 16);
+        if (SaveFileDirty == false) {
+            ((GPIOC->BSRR) = (USER_LED_PORTC) << 16);
+        }
         dir = 1;
     }
 

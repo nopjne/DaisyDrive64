@@ -16,7 +16,7 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 //#define N64_MIN_PRELOAD 0x1000000
-#define N64_MIN_PRELOAD (1024 * 1024 * 1)
+#define N64_MIN_PRELOAD (1024 * 1024 * 16)
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
@@ -34,7 +34,8 @@ const RomSetting RomSettings[] = {
 };
 #else
 const RomSetting RomSettings[] = {
-    {"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
+    {"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
+    //{"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
 #if 0
     //MENU_ROM_FILE_NAME,
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
@@ -306,7 +307,7 @@ void ContinueRomLoad(void)
 {
     size_t bytesread = 0;
     size_t ReadSize =  (gFileInfo.fsize - N64_MIN_PRELOAD);
-    if ((ReadSize < gFileInfo.fsize) && (ReadSize != 0))
+    if ((gFileInfo.fsize > N64_MIN_PRELOAD) && (ReadSize < gFileInfo.fsize) && (ReadSize != 0))
     {
         FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
         if ((bytesread != ReadSize) || (result != F_OK)) {
@@ -425,23 +426,20 @@ extern void * g_pfnVectors;
 
 int main(void)
 {
-    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
-    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
-    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+    __HAL_RCC_GPIOG_CLK_ENABLE();
+    GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
+    HAL_GPIO_Init(GPIOG, &PortGPins);
+    GPIOG->BSRR = CIC_DAT << 16;
 
-// Init hardware
+    // Init hardware
 #if OVERCLOCK
     hw.Init(true);
 #else
     hw.Init(false);
 #endif
-
-    //UploadMenuRom();
-
-    __HAL_RCC_GPIOG_CLK_ENABLE();
-    GPIO_InitTypeDef PortGPins = {CIC_DAT, GPIO_MODE_OUTPUT_OD, GPIO_PULLUP, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOG, &PortGPins);
-    GPIOG->BSRR = CIC_DAT;
+    // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
+    memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
+    memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
 
     PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &PortGPins);
@@ -452,9 +450,23 @@ int main(void)
     GPIO_InitTypeDef PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
-    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
-    CICEmulatorInit();
+    CICEmulatorInitFast();
+    StartCICEmulator();
 
+    //UploadMenuRom();
+    // Hack to flash the menu rom to the qspi.
+//#define FLASH_THE_MENU_ROM 1
+#if FLASH_THE_MENU_ROM
+    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
+    hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
+#else
+    RomMaxSize = 1064960;
+    memcpy(ram, hw.qspi.GetData(), RomMaxSize);
+    strcpy(CurrentRomName, "OS64daisyboot.z64\0");
+#endif
+
+    Running = true;
     TimerCtrl = SysTick->CTRL;
     //SysTick->CTRL = 0;
 
@@ -534,21 +546,19 @@ int main(void)
 
         Running = true;
         OverflowCounter = 0;
-        StartCICEmulator();
-        ContinueRomLoad();
+        if (RomIndex != 0) {
+            StartCICEmulator();
+            ContinueRomLoad();
+        }
 
         while(Running != false) {
             //__WFE();
         }
 
-        RomIndex = 0;
-        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
-            SaveEEPRom(CurrentRomName);
-        } else {
-            SaveFlashRam(CurrentRomName);
+        while (SaveFileDirty != false) {
         }
 
-        RomIndex = 1;
+        RomIndex += 1;
         LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
         CICEmulatorInit();
         EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;
