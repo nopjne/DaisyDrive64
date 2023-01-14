@@ -678,12 +678,13 @@ void EXTI4_IRQHandler(void)
     ReadPtr += 1;
     //xCount += 1;
 
-    if ((uint32_t)ReadPtr == ((uint32_t)(&(MenuBase[REG_EXECUTE_FUNCTION]))) + 4) {
-        MenuBase[REG_STATUS] |= (DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
-        NVIC->STIR = 9;
-    }
+    if (*((uint32_t*)CurrentRomName) == '46SO') {
+        if ((uint32_t)ReadPtr == ((uint32_t)(&(MenuBase[REG_EXECUTE_FUNCTION]))) + 4) {
+            MenuBase[REG_STATUS] |= (DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
+            NVIC->STIR = 9;
+        }
 
-    if (*((uint32_t*)CurrentRomName) != '46SO') {
+    } else {
         gSaveFence += 1;
         SaveFileDirty = true;
         NVIC->STIR = 9;
