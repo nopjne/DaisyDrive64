@@ -180,19 +180,25 @@ extern "C"
 ITCM_FUNCTION
 void EXTI3_IRQHandler(void)
 {
-     EXTI->PR1 = DAISY_MENU_INTERRUPT;
-     //xSave[xHandler] = MenuBase[REG_EXECUTE_FUNCTION];
-     //xHandler += 1;
+    EXTI->PR1 = DAISY_MENU_INTERRUPT;
+    //xSave[xHandler] = MenuBase[REG_EXECUTE_FUNCTION];
+    //xHandler += 1;
+
+    // Only allow OS64* roms to have menu access.
+    // Menu roms are not allowed to have save functions.
     if (*((uint32_t*)CurrentRomName) == '46SO') {
         HandleExecute();
-    }
 
-    if (SaveFileDirty != false) {
-        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
-            SaveEEPRom(CurrentRomName);
-        } else {
-            SaveFlashRam(CurrentRomName);
-        }
+    } else if (SaveFileDirty != false) {
+        uint32_t SaveFence;
+        do {
+            SaveFence = gSaveFence;
+            if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
+                SaveEEPRom(CurrentRomName);
+            } else {
+                SaveFlashRam(CurrentRomName);
+            }
+        } while (SaveFence != gSaveFence);
 
         SaveFileDirty = false;
     }

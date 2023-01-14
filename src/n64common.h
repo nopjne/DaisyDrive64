@@ -96,6 +96,7 @@ extern DTCM_DATA uint32_t ADInputAddress;
 extern DTCM_DATA uint32_t EepLogIdx;
 extern DTCM_DATA uint32_t OverflowCounter;
 extern DTCM_DATA bool SaveFileDirty;
+extern DTCM_DATA uint32_t gSaveFence;
 extern char CurrentRomName[265];
 
 #define SET_PI_OUTPUT_MODE \

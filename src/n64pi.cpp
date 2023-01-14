@@ -682,6 +682,12 @@ void EXTI4_IRQHandler(void)
         MenuBase[REG_STATUS] |= (DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
         NVIC->STIR = 9;
     }
+
+    if (*((uint32_t*)CurrentRomName) != '46SO') {
+        gSaveFence += 1;
+        SaveFileDirty = true;
+        NVIC->STIR = 9;
+    }
 }
 
 extern "C"
@@ -823,7 +829,6 @@ void ReadISRNoPrefetchFirst(void)
 
 inline void ConstructAddress(void)
 {
-
     if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
             //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
             if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
@@ -837,7 +842,8 @@ inline void ConstructAddress(void)
             }
     } else if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));    } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+    } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
     } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
