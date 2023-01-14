@@ -462,7 +462,9 @@ int main(void)
     hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
 #else
     RomMaxSize = 1064960;
-    memcpy(ram, hw.qspi.GetData(), RomMaxSize);
+    const uint32_t ZeroSize = 1064960;//0x1D6FF;
+    memcpy(ram, hw.qspi.GetData(), ZeroSize);
+    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
     strcpy(CurrentRomName, "OS64daisyboot.z64\0");
 #endif
 
@@ -565,6 +567,15 @@ int main(void)
         CurrentRomSaveType = EEPROMType;
         if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
             SI_Reset();
+        }
+
+        // Write the boot rom to flash.
+        if ((RomIndex == 2) && (*((uint32_t*)CurrentRomName) == '46SO')) {
+            ContinueRomLoad();
+            GPIOC->BSRR = USER_LED_PORTC;
+            hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
+            hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
+            GPIOC->BSRR = USER_LED_PORTC << 16;
         }
     }
 }
