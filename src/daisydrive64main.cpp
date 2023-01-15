@@ -437,6 +437,7 @@ int main(void)
 #else
     hw.Init(false);
 #endif
+
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
     memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
     memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));

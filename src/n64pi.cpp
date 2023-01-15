@@ -43,7 +43,7 @@ uint32_t *const DMAOutBBuffer = (uint32_t*)(Sram4Buffer + 32 + 8);
 uint32_t *const MODERDMA = (uint32_t*)(DMAOutABuffer + (sizeof(uint32_t) * 512));
 
 // Storage for Flash ram.
-BYTE FlashRamStorage[FLASHRAM_SIZE];
+BYTE FlashRamStorage[FLASHRAM_SIZE] __attribute__((aligned(16)));
 
 #define PI_PRECALCULATE_OUT_VALUE 1
 #if (PI_PRECALCULATE_OUT_VALUE != 0)

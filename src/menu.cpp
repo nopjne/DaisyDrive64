@@ -52,9 +52,7 @@ void EnableMenu(void) {
 }
 
 #define SWAP_WORDS(x) ((((x) & 0xFFFF) << 16) | (((x) & 0xFFFF0000) >> 16))
-BYTE testTemp[512];
-uint32_t xSector[40];
-uint32_t xCount;
+BYTE testTemp[512] __attribute__((aligned(16)));
 inline void HandleExecute(void)
 {
     uint32_t operation = SWAP_WORDS(MenuBase[REG_EXECUTE_FUNCTION]);

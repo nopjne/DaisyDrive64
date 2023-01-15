@@ -85,7 +85,7 @@ extern DTCM_DATA volatile bool Running;
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
-extern BYTE FlashRamStorage[FLASHRAM_SIZE];
+extern BYTE FlashRamStorage[FLASHRAM_SIZE] __attribute__((aligned(16)));
 extern unsigned char *ram;
 
 
