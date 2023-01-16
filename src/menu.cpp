@@ -130,9 +130,8 @@ inline void HandleExecute(void)
                 SI_Reset();
             }
 
-            //MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
-            // TODO: split this up, and fix the save type.
-            //MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
+            // Allow the rom to continue loading in the background.
+            MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
             ContinueRomLoad();
         }
         break;

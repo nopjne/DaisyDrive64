@@ -16,7 +16,7 @@
 
 #define MENU_ROM_FILE_NAME "menu.n64"
 //#define N64_MIN_PRELOAD 0x1000000
-#define N64_MIN_PRELOAD (1024 * 1024 * 16)
+#define N64_MIN_PRELOAD (1024 * 1024 * 32)
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
