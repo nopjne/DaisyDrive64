@@ -74,14 +74,11 @@ inline void HandleExecute(void)
             uint32_t temp;
             MenuBase[REG_DMA_RAM_ADDR] = SWAP_WORDS(MenuBase[REG_DMA_RAM_ADDR]);
             DRESULT result = disk_read(0, testTemp, MenuBase[REG_DMA_RAM_ADDR], 1);
-            memcpy(&MenuBase[REG_DMA_DATA], testTemp, 512);
             uint32_t* Ptr = &MenuBase[REG_DMA_DATA];
             for (int i = 0; i < 128; i += 1) {
-                 temp = __bswap32(*Ptr);
-                 *Ptr = temp;
-                 temp = SWAP_WORDS(*Ptr);
-                 *Ptr = temp;
-                 Ptr += 1;
+                temp = __bswap32(((uint32_t*)testTemp)[i]);
+                *Ptr = SWAP_WORDS(temp);
+                Ptr += 1;
             }
 
             if (result != F_OK) {
