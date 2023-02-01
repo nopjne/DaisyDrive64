@@ -866,50 +866,11 @@ inline void ConstructAddress(void)
 
 extern "C"
 ITCM_FUNCTION
-void BDMA_Channel1_IRQHandler(void)
-{
-#if 1
-    if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
-        return;
-    }
-#endif
-
-#if HALT_ON_DMA_COMPLETE_UNKNOWN
-    if ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x70) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x77) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x75)) {
-        LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
-        volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
-        x += 1;
-    }
-#endif
-
-    ((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->IFCR = 1 << 4;
-        ADInputAddress = (ADInputAddress & 0xFFFF) | (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16);
-        ADInputAddress = (ADInputAddress & 0xFFFF0000) | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
-        ConstructAddress();
-    //}
-}
-
-extern "C"
-ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
-#if 0
-    if (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR == 0) {
-        return;
-    }
-#endif
-
-#if HALT_ON_DMA_COMPLETE_UNKNOWN
-    if ((((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x70) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x77) && (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR != 0x57)) {
-        LogBuffer[0] = (((BDMA_Base_Registers *)(DMA_Handle_Channel1.StreamBaseAddress))->ISR);
-        volatile uint32_t x = *((uint32_t*)0xD1ED1ED1);
-        x += 1;
-    }
-#endif
-
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
     ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
-                    | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
+                     | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
 
     ConstructAddress();
 }

@@ -453,6 +453,7 @@ int main(void)
 
     CICEmulatorInitFast();
     StartCICEmulator();
+    //SCB_DisableDCache();
 
     //UploadMenuRom();
     // Hack to flash the menu rom to the qspi.
