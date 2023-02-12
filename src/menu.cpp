@@ -8,6 +8,7 @@
 #include "daisydrive64.h"
 #include "flashram.h"
 #include "diskio.h"
+#include "ff_gen_drv.h"
 #include "menu.h"
 #include "menurom.h"
 
@@ -38,6 +39,8 @@ void InitMenuFunctions(void)
     
 }
 
+extern const Diskio_drvTypeDef SD_Driver;
+extern Disk_drvTypeDef disk;
 void EnableMenu(void) {
 
     sd_cfg.Defaults();
@@ -45,6 +48,7 @@ void EnableMenu(void) {
     sd.Init(sd_cfg);
 
     // Mount SD Card
+    disk.drv[0] = &SD_Driver;
     DSTATUS Status = disk_initialize(0);
     if (RES_OK != Status) {
         BlinkAndDie(500, 100);
