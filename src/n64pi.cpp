@@ -667,9 +667,9 @@ void EXTI4_IRQHandler(void)
     EXTI->PR1 = WRITE_LINE;
     const uint32_t ValueInB = GPIOB->IDR;
     const uint32_t ValueInA = GPIOA->IDR;
-    if ((ReadPtr < (uint16_t*)FlashRamStorage) || (ReadPtr >= (uint16_t*)(FlashRamStorage + sizeof(FlashRamStorage)))) {
-        ReadPtr = (uint16_t*)(FlashRamStorage + 1232);
-    }
+    //if ((ReadPtr < (uint16_t*)FlashRamStorage) || (ReadPtr >= (uint16_t*)(FlashRamStorage + sizeof(FlashRamStorage)))) {
+    //    ReadPtr = (uint16_t*)(FlashRamStorage + 1232);
+    //}
 
     //*((uint32_t*)FlashRamStorage) = 0x80011111;
     *ReadPtr = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
@@ -751,6 +751,9 @@ void EXTI1_IRQHandler(void)
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
 #else
+    if (ReadOffset == 0) {
+        SET_PI_OUTPUT_MODE
+    }
     GPIOA->ODR = ValueA;
     GPIOB->ODR = ValueB;
 #endif
@@ -758,9 +761,9 @@ void EXTI1_IRQHandler(void)
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
     // Switch to output.
     // TODO: Can this be done through DMA entirely?
-    if (ReadOffset == 0) {
-        SET_PI_OUTPUT_MODE
-    }
+    //if (ReadOffset == 0) {
+    //    SET_PI_OUTPUT_MODE
+    //}
 #if PI_ENABLE_LOGGING
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = (uint32_t)(ADInputAddress + ReadOffset);

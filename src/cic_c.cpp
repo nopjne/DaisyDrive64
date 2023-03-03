@@ -594,7 +594,7 @@ int cic_init(unsigned int Region, unsigned int Type)
 
 void CICEmulatorInitFast(void)
 {
-    cic_init(REGION_NTSC, CIC6102_TYPE);
+    cic_init(REGION_PAL, CIC6102_TYPE);
 }
 
 void CICEmulatorInit(void)
