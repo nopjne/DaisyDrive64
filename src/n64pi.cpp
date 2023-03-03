@@ -24,6 +24,7 @@ DTCM_DATA DMA_HandleTypeDef hdma_dma_generator1;
 
 LPTIM_HandleTypeDef LptimHandle = {0};
 DTCM_DATA uint32_t OverflowCounter = 0;
+DTCM_DATA uint32_t ADInputAddress = 0;
 BYTE *const Sram4Buffer = (BYTE*)0x38000000;
 uint32_t *const LogBuffer = (uint32_t*)(ram + (48 * 1024 * 1024));
 uint32_t *const PortABuffer = (uint32_t*)Sram4Buffer;
@@ -52,13 +53,14 @@ DTCM_DATA uint16_t ValueB = 0;
 #else
 DTCM_DATA uint16_t PrefetchRead = 0;
 #endif
-DTCM_DATA uint32_t ADInputAddress = 0;
 DTCM_DATA uint16_t* ReadPtr = 0;
 DTCM_DATA uint32_t ReadOffset = 0;
 DTCM_DATA uint32_t DMACount = 0;
 DTCM_DATA volatile uint32_t ALE_H_Count = 0;
 DTCM_DATA volatile uint32_t IntCount = 0;
 DTCM_DATA volatile bool Running = false;
+DTCM_DATA uint32_t SpeedTracking[5];
+DTCM_DATA uint32_t m_SpeedTracking[5];
 
 static void HAL_TransferError(DMA_HandleTypeDef *hdma);
 static void Error_Handler(void);
@@ -251,7 +253,7 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_HIGH;
-        DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
+        DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
         DMA_Handle_Channel0.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel0.Init.MemBurst            = DMA_MBURST_SINGLE;
         DMA_Handle_Channel0.Init.PeriphBurst         = DMA_PBURST_SINGLE;
@@ -276,6 +278,7 @@ int InitializeDmaChannels(void)
 
         // NVIC configuration for DMA transfer complete interrupt.
         HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 #ifndef HANDLE_ADDRESS_CONSTRUCTION_IN_ISR
         HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
 #endif
@@ -291,8 +294,8 @@ int InitializeDmaChannels(void)
         }
 
         // NVIC configuration for DMAMUX request generator overrun errors
-        HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
-        HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
+        //HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
+        //HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
 
         dmares = HAL_DMAEx_EnableMuxRequestGenerator (&DMA_Handle_Channel0);
         if (dmares != HAL_OK) {
@@ -315,7 +318,7 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_HIGH;
-        DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_ENABLE;
+        DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
         DMA_Handle_Channel1.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
         DMA_Handle_Channel1.Init.MemBurst            = DMA_MBURST_SINGLE;
         DMA_Handle_Channel1.Init.PeriphBurst         = DMA_PBURST_SINGLE;
@@ -355,7 +358,7 @@ int InitializeDmaChannels(void)
 
         // NVIC configuration for DMAMUX request generator overrun errors.
         HAL_NVIC_SetPriority(DMAMUX2_OVR_IRQn, 0, 0);
-        HAL_NVIC_EnableIRQ(DMAMUX2_OVR_IRQn);
+        HAL_NVIC_DisableIRQ(DMAMUX2_OVR_IRQn);
 
         dmares = HAL_DMAEx_EnableMuxRequestGenerator (&DMA_Handle_Channel1);
         if (dmares != HAL_OK) {
@@ -685,6 +688,12 @@ void EXTI4_IRQHandler(void)
         }
 
     } else {
+        //m_SpeedTracking[0] = SpeedTracking[0];
+        //m_SpeedTracking[1] = SpeedTracking[1];
+        //m_SpeedTracking[2] = SpeedTracking[2];
+        //m_SpeedTracking[3] = SpeedTracking[3];
+        //m_SpeedTracking[4] = SpeedTracking[4];
+
         gSaveFence += 1;
         SaveFileDirty = true;
         NVIC->STIR = 9;
@@ -725,10 +734,15 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
         IntCount = 0;
         ALE_H_Count = 0;
         ADInputAddress = 0;
+        if (Running != false) {
+            SetupBootloader();
+        }
+
         Running = false;
         SI_Reset();
         InitializeTimersSI();
         SI_Enable();
+        
     }
     // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
     //HAL_NVIC_SystemReset();
@@ -831,6 +845,7 @@ void ReadISRNoPrefetchFirst(void)
     NVIC_SetVector(EXTI1_IRQn, (uint32_t)&ReadISRNoPrefetch);
 }
 
+#if 0
 inline void ConstructAddress(void)
 {
     if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
@@ -866,16 +881,54 @@ inline void ConstructAddress(void)
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
 #endif
 }
+#endif
 
 extern "C"
 ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
+    SpeedTracking[1] = DWT->CYCCNT;
     ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
                      | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
 
-    ConstructAddress();
+    //ConstructAddress();
+    SpeedTracking[2] = DWT->CYCCNT;
+
+    if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
+        //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
+        if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
+            ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
+        } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (3 << 18))) {
+            ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (3 << 18)) + (sizeof(FlashRamStorage) / 4) * 3));
+        } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (2 << 18))) {
+            ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (2 << 18)) + (sizeof(FlashRamStorage) / 4) * 2));
+        } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (1 << 18))) {
+            ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (1 << 18)) + (sizeof(FlashRamStorage) / 4) * 1));
+        }
+    } else if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+    } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        ReadPtr = (uint16_t*)&NullMem;
+    } else if (ADInputAddress >= CART_DOM1_ADDR1_START && ADInputAddress <= CART_DOM1_ADDR1_END) {
+        //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        ReadPtr = (uint16_t*)&NullMem;
+    } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
+        //NVIC_SetVector(EXTI19_IRQn, (uint32_t)&EXTI1_IRQHandler);
+        ReadPtr = (uint16_t*)(((unsigned char*)MenuBase) + (ADInputAddress - CART_MENU_ADDR_START));
+    } else {
+        ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
+    }
+
+    SpeedTracking[3] = DWT->CYCCNT;
+#if (PI_PRECALCULATE_OUT_VALUE != 0)
+    const uint16_t PrefetchRead = *ReadPtr;
+    ValueA = PrefetchRead;
+    ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+#endif
+    SpeedTracking[4] = DWT->CYCCNT;
 }
 
 extern "C"
@@ -893,6 +946,7 @@ void EXTI0_IRQHandler(void)
     ConstructAddress();
 #endif
     ReadOffset = 0;
+    SpeedTracking[0] = DWT->CYCCNT;
 }
 
 extern "C"

@@ -20,7 +20,7 @@
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
-char CurrentRomName[265];
+DTCM_DATA char CurrentRomName[265];
 struct RomSetting {
     const char* RomName;
     const BYTE BusSpeedOverride;
@@ -132,7 +132,7 @@ void InitializeInterrupts(void)
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     // NMI Reset line setup
-    GPIO_InitStruct = {N64_NMI, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    GPIO_InitStruct = {N64_NMI, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
     GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
@@ -394,6 +394,15 @@ void ContinueRomLoad(void)
     }
 }
 
+void SetupBootloader(void)
+{
+    RomMaxSize = 1064960;
+    const uint32_t ZeroSize = 1064960;//0x1D6FF;
+    memcpy(ram, hw.qspi.GetData(), ZeroSize);
+    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
+    strcpy(CurrentRomName, "OS64daisyboot.z64\0");
+}
+
 inline void DaisyDriveN64Reset(void)
 {
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
@@ -463,14 +472,9 @@ int main(void)
     hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
     hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
 #else
-    RomMaxSize = 1064960;
-    const uint32_t ZeroSize = 1064960;//0x1D6FF;
-    memcpy(ram, hw.qspi.GetData(), ZeroSize);
-    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
-    strcpy(CurrentRomName, "OS64daisyboot.z64\0");
+    SetupBootloader();
 #endif
 
-    Running = true;
     TimerCtrl = SysTick->CTRL;
     //SysTick->CTRL = 0;
 
@@ -556,7 +560,6 @@ int main(void)
         }
 
         while(Running != false) {
-            //__WFE();
         }
 
         while (SaveFileDirty != false) {

@@ -21,7 +21,7 @@ D_FS_EXFAT=1
 D_LFN_UNICODE=1
 USE_FULL_LL_DRIVER=1
 #DDEBUG=1
-OPTIMIZE_FLAG = -ggdb3 -O3 -marm
+OPTIMIZE_FLAG = -ggdb3 -O3
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core

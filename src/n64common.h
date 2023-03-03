@@ -75,6 +75,7 @@ extern "C" ITCM_FUNCTION void EXTI15_10_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI1_IRQHandler(void);
 extern "C" ITCM_FUNCTION void EXTI0_IRQHandler(void);
 void RunEEPROMEmulator(void);
+void SetupBootloader(void);
 
 void BlinkAndDie(int wait1, int wait2);
 
