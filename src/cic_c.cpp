@@ -608,7 +608,7 @@ void CICEmulatorInit(void)
     break;
 
     case CRC_NUS_6102:
-        cic_init(REGION_NTSC, CIC6102_TYPE);
+        cic_init(REGION_PAL, CIC6102_TYPE);
     break;
 
     case CRC_NUS_6103:
@@ -633,7 +633,7 @@ void CICEmulatorInit(void)
 
     // TODO: do the PAL regions too.
     default:
-        cic_init(REGION_NTSC, CIC6102_TYPE);
+        cic_init(REGION_PAL, CIC6102_TYPE);
     }
 }
 

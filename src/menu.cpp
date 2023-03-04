@@ -179,6 +179,9 @@ ITCM_FUNCTION
 void EXTI3_IRQHandler(void)
 {
     EXTI->PR1 = DAISY_MENU_INTERRUPT;
+    if (Running == false) {
+        return;
+    }
     //xSave[xHandler] = MenuBase[REG_EXECUTE_FUNCTION];
     //xHandler += 1;
 

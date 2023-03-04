@@ -704,9 +704,17 @@ extern "C"
 ITCM_FUNCTION
 void EXTI15_10_IRQHandler(void) // Reset interrupt.
 {
+    EXTI->PR1 = N64_NMI;
+    if (RESET_IS_HIGH) {
+        gReloadBootLoader = true;
+    }
+#if 0
 #if 1
     if ((EXTI->PR1 & N64_NMI) != 0) {
         EXTI->PR1 = N64_NMI;
+        gReloadBootLoader = true;
+        return;
+
         SI_Reset();
         InitializeTimersSI();
         SI_Enable();
@@ -744,6 +752,7 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
         SI_Enable();
         
     }
+#endif
     // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
     //HAL_NVIC_SystemReset();
 }
@@ -927,6 +936,8 @@ void BDMA_Channel0_IRQHandler(void)
     const uint16_t PrefetchRead = *ReadPtr;
     ValueA = PrefetchRead;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    GPIOA->ODR = ValueA;
+    GPIOB->ODR = ValueB;
 #endif
     SpeedTracking[4] = DWT->CYCCNT;
 }

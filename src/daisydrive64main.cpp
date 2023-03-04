@@ -20,6 +20,7 @@
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
+volatile bool gReloadBootLoader = false;
 DTCM_DATA char CurrentRomName[265];
 struct RomSetting {
     const char* RomName;
@@ -132,11 +133,11 @@ void InitializeInterrupts(void)
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     // NMI Reset line setup
-    GPIO_InitStruct = {N64_NMI, GPIO_MODE_IT_RISING, GPIO_NOPULL, GP_SPEED, 0};
+    GPIO_InitStruct = {N64_NMI, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-    GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    //GPIO_InitStruct = {RESET_LINE, GPIO_MODE_IT_FALLING, GPIO_NOPULL, GP_SPEED, 0};
+    //HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
     NVIC_SetVector(EXTI15_10_IRQn, (uint32_t)&EXTI15_10_IRQHandler);
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -394,13 +395,16 @@ void ContinueRomLoad(void)
     }
 }
 
-void SetupBootloader(void)
+uint32_t gBootloadTime[2];
+ITCM_FUNCTION void SetupBootloader(void)
 {
+    gBootloadTime[0] = DWT->CYCCNT;
     RomMaxSize = 1064960;
     const uint32_t ZeroSize = 1064960;//0x1D6FF;
     memcpy(ram, hw.qspi.GetData(), ZeroSize);
-    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
+    //memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
     strcpy(CurrentRomName, "OS64daisyboot.z64\0");
+    gBootloadTime[1] = DWT->CYCCNT;
 }
 
 inline void DaisyDriveN64Reset(void)
@@ -469,8 +473,10 @@ int main(void)
 //#define FLASH_THE_MENU_ROM 1
 #if FLASH_THE_MENU_ROM
     LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    GPIOC->BSRR = USER_LED_PORTC;
     hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
     hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
+    GPIOC->BSRR = USER_LED_PORTC << 16;
 #else
     SetupBootloader();
 #endif
@@ -560,6 +566,16 @@ int main(void)
         }
 
         while(Running != false) {
+            if (RESET_IS_LOW) {
+                Running = false;
+                gReloadBootLoader = false;
+                break;
+            }
+
+            if (gReloadBootLoader != false) {
+                SetupBootloader();
+                gReloadBootLoader = false;
+            }
         }
 
         while (SaveFileDirty != false) {
