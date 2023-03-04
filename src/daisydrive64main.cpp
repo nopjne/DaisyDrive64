@@ -20,7 +20,7 @@
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
-volatile bool gReloadBootLoader = false;
+volatile bool gUseBootLoader = false;
 DTCM_DATA char CurrentRomName[265];
 struct RomSetting {
     const char* RomName;
@@ -302,6 +302,8 @@ void LoadRom(const char* Name)
 #elif (READ_DELAY_NS == 400)
     *(ram + 3) =  0x19;
 #endif
+
+    gUseBootLoader = false;
 }
 
 void ContinueRomLoad(void)
@@ -395,16 +397,13 @@ void ContinueRomLoad(void)
     }
 }
 
-uint32_t gBootloadTime[2];
-ITCM_FUNCTION void SetupBootloader(void)
+void SetupBootloader(void)
 {
-    gBootloadTime[0] = DWT->CYCCNT;
     RomMaxSize = 1064960;
     const uint32_t ZeroSize = 1064960;//0x1D6FF;
     memcpy(ram, hw.qspi.GetData(), ZeroSize);
-    //memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
+    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
     strcpy(CurrentRomName, "OS64daisyboot.z64\0");
-    gBootloadTime[1] = DWT->CYCCNT;
 }
 
 inline void DaisyDriveN64Reset(void)
@@ -566,16 +565,6 @@ int main(void)
         }
 
         while(Running != false) {
-            if (RESET_IS_LOW) {
-                Running = false;
-                gReloadBootLoader = false;
-                break;
-            }
-
-            if (gReloadBootLoader != false) {
-                SetupBootloader();
-                gReloadBootLoader = false;
-            }
         }
 
         while (SaveFileDirty != false) {

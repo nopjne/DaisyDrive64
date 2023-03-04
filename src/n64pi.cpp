@@ -706,14 +706,17 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
 {
     EXTI->PR1 = N64_NMI;
     if (RESET_IS_HIGH) {
-        gReloadBootLoader = true;
+        gUseBootLoader = true;
+        *((uint32_t*)CurrentRomName) = '46SO';
+
+    } else {
+        Running = false;
     }
+
 #if 0
 #if 1
     if ((EXTI->PR1 & N64_NMI) != 0) {
         EXTI->PR1 = N64_NMI;
-        gReloadBootLoader = true;
-        return;
 
         SI_Reset();
         InitializeTimersSI();
@@ -774,9 +777,6 @@ void EXTI1_IRQHandler(void)
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
 #else
-    if (ReadOffset == 0) {
-        SET_PI_OUTPUT_MODE
-    }
     GPIOA->ODR = ValueA;
     GPIOB->ODR = ValueB;
 #endif
@@ -784,9 +784,9 @@ void EXTI1_IRQHandler(void)
 #if (USE_OPEN_DRAIN_OUTPUT == 0)
     // Switch to output.
     // TODO: Can this be done through DMA entirely?
-    //if (ReadOffset == 0) {
-    //    SET_PI_OUTPUT_MODE
-    //}
+    if (ReadOffset == 0) {
+        SET_PI_OUTPUT_MODE
+    }
 #if PI_ENABLE_LOGGING
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = (uint32_t)(ADInputAddress + ReadOffset);
@@ -897,12 +897,12 @@ ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
-    SpeedTracking[1] = DWT->CYCCNT;
+    //SpeedTracking[1] = DWT->CYCCNT;
     ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
                      | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
 
     //ConstructAddress();
-    SpeedTracking[2] = DWT->CYCCNT;
+    //SpeedTracking[2] = DWT->CYCCNT;
 
     if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
         //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
@@ -917,7 +917,11 @@ void BDMA_Channel0_IRQHandler(void)
         }
     } else if ((ADInputAddress >= N64_ROM_BASE) && (ADInputAddress <= (N64_ROM_BASE + RomMaxSize))) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
-        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+        if (gUseBootLoader == false) {
+            ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
+        } else {
+            ReadPtr = (uint16_t*)(0x90000000 + ((ADInputAddress - N64_ROM_BASE) & 0x0fffffff));
+        }
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)&NullMem;
@@ -931,15 +935,13 @@ void BDMA_Channel0_IRQHandler(void)
         ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
     }
 
-    SpeedTracking[3] = DWT->CYCCNT;
+    //SpeedTracking[3] = DWT->CYCCNT;
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
     const uint16_t PrefetchRead = *ReadPtr;
     ValueA = PrefetchRead;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
-    GPIOA->ODR = ValueA;
-    GPIOB->ODR = ValueB;
 #endif
-    SpeedTracking[4] = DWT->CYCCNT;
+    //SpeedTracking[4] = DWT->CYCCNT;
 }
 
 extern "C"
@@ -957,7 +959,7 @@ void EXTI0_IRQHandler(void)
     ConstructAddress();
 #endif
     ReadOffset = 0;
-    SpeedTracking[0] = DWT->CYCCNT;
+    //SpeedTracking[0] = DWT->CYCCNT;
 }
 
 extern "C"

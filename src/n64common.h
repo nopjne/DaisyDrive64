@@ -88,7 +88,7 @@ extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 extern BYTE FlashRamStorage[FLASHRAM_SIZE] __attribute__((aligned(16)));
 extern unsigned char *ram;
-extern volatile bool gReloadBootLoader;
+extern volatile bool gUseBootLoader;
 
 
 extern DTCM_DATA uint32_t DMACount;
