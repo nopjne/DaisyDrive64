@@ -160,14 +160,13 @@ class DaisySeed
     /** Returns the BoardVersion detected during intiialization */
     BoardVersion CheckBoardVersion();
 
-
+    void ConfigureAudio();
   private:
     /** Local shorthand for debug log destination
     */
     using Log = Logger<LOGGER_INTERNAL>;
 
     void ConfigureQspi();
-    void ConfigureAudio();
     void ConfigureAdc();
     void ConfigureDac();
     //void     ConfigureI2c();

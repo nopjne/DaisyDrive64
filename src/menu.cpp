@@ -28,7 +28,7 @@ void UploadMenuRom(void)
 
 void InitMenuFunctions(void)
 {
-    // Setup interrupt priority, needs to be below the SysTick priority otherwise SD operations it will cause deadlocks.
+    // Setup menu interrupt priority, needs to be below the SysTick priority otherwise SD operations it will cause deadlocks.
     HAL_NVIC_SetPriority(EXTI3_IRQn, 15, 1);
     NVIC_SetVector(EXTI3_IRQn, (uint32_t)&EXTI3_IRQHandler);
     HAL_NVIC_EnableIRQ(EXTI3_IRQn);

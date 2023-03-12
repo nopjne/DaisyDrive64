@@ -95,7 +95,7 @@ FILINFO        gFileInfo;
 bool           gByteSwap = false;
 
 static DaisySeed hw;
-
+int PlayAudio(const char* name);
 volatile uint32_t TimerCtrl;
 void BlinkAndDie(int wait1, int wait2)
 {
@@ -105,7 +105,74 @@ void BlinkAndDie(int wait1, int wait2)
         System::Delay(wait1);
         GPIOC->BSRR = USER_LED_PORTC << 16;
         System::Delay(wait2);
+        PlayAudio(".");
     }
+}
+
+WavPlayer      *sampler = nullptr;
+void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
+                   AudioHandle::InterleavingOutputBuffer out,
+                   size_t                                size)
+{
+    //int32_t inc;
+
+    // Change file with encoder.
+    // inc = hw.encoder.Increment();
+    // if(inc > 0)
+    // {
+    //     size_t curfile;
+    //     curfile = sampler.GetCurrentFile();
+    //     if(curfile < sampler.GetNumberFiles() - 1)
+    //     {
+    //         sampler.Open(curfile + 1);
+    //     }
+    // }
+    // else if(inc < 0)
+    // {
+    //     size_t curfile;
+    //     curfile = sampler.GetCurrentFile();
+    //     if(curfile > 0)
+    //     {
+    //         sampler.Open(curfile - 1);
+    //     }
+    // }
+
+    for(size_t i = 0; i < size; i += 2)
+    {
+        out[i] = s162f(sampler->Stream()) * 0.5f;
+        out[i + 1] = s162f(sampler->Stream()) * 0.5f;
+    }
+}
+
+int PlayAudio(const char* FileName)
+{
+    if (sampler == nullptr) {
+        sampler = new WavPlayer();
+        // Init hardware
+        size_t blocksize = 4096;
+
+        SdmmcHandler::Config sd_cfg;
+        sd_cfg.Defaults();
+        sd.Init(sd_cfg);
+        fsi.Init(FatFSInterface::Config::MEDIA_SD);
+        f_mount(&fsi.GetSDFileSystem(), "/", 1);
+
+        sampler->Init(fsi.GetSDPath());
+        sampler->SetLooping(true);
+
+        // Init Audio
+        hw.SetAudioBlockSize(blocksize);
+        hw.StartAudio(AudioCallback);
+
+        sampler->Open(sampler->GetCurrentFile() + 1);
+    }
+
+    // Loop while running.
+    while (Running != false) {
+        // Prepare buffers for sampler as needed
+        sampler->Prepare();
+    }
+    return 0;
 }
 
 void InitializeInterrupts(void)
@@ -450,6 +517,12 @@ int main(void)
     hw.Init(false);
 #endif
 
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 15, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 1);
+    hw.ConfigureAudio();
+
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
     memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
     memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
@@ -565,6 +638,7 @@ int main(void)
         }
 
         while(Running != false) {
+            //PlayAudio("");
         }
 
         while (SaveFileDirty != false) {
