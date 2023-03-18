@@ -250,7 +250,7 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel0.Init.MemInc              = DMA_MINC_ENABLE;
         DMA_Handle_Channel0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-        DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+        DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -315,7 +315,7 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel1.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel1.Init.MemInc              = DMA_MINC_ENABLE;
         DMA_Handle_Channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-        DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+        DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -688,11 +688,11 @@ void EXTI4_IRQHandler(void)
         }
 
     } else {
-        //m_SpeedTracking[0] = SpeedTracking[0];
-        //m_SpeedTracking[1] = SpeedTracking[1];
-        //m_SpeedTracking[2] = SpeedTracking[2];
-        //m_SpeedTracking[3] = SpeedTracking[3];
-        //m_SpeedTracking[4] = SpeedTracking[4];
+        m_SpeedTracking[0] = SpeedTracking[0];
+        m_SpeedTracking[1] = SpeedTracking[1];
+        m_SpeedTracking[2] = SpeedTracking[2];
+        m_SpeedTracking[3] = SpeedTracking[3];
+        m_SpeedTracking[4] = SpeedTracking[4];
 
         gSaveFence += 1;
         SaveFileDirty = true;
@@ -777,6 +777,16 @@ void EXTI1_IRQHandler(void)
     GPIOA->ODR = Value;
     GPIOB->ODR = OutB;
 #else
+    // if ((ReadPtr >= FlashRamStorage) && (ReadPtr <= (FlashRamStorage + sizeof(FlashRamStorage)))) {
+    //     const uint16_t PrefetchRead = *ReadPtr;
+    //     const uint8_t ValueA = PrefetchRead;
+    //     const uint16_t ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
+    //     GPIOA->ODR = ValueA;
+    //     GPIOB->ODR = ValueB;
+    //     ReadPtr += 1;
+    //     return;
+    // }
+
     GPIOA->ODR = ValueA;
     GPIOB->ODR = ValueB;
 #endif
@@ -786,7 +796,9 @@ void EXTI1_IRQHandler(void)
     // TODO: Can this be done through DMA entirely?
     if (ReadOffset == 0) {
         SET_PI_OUTPUT_MODE
+        ReadOffset += 2;
     }
+
 #if PI_ENABLE_LOGGING
     if ((ReadOffset & 2) == 0) {
         LogBuffer[IntCount] = (uint32_t)(ADInputAddress + ReadOffset);
@@ -794,8 +806,8 @@ void EXTI1_IRQHandler(void)
     } else {
         LogBuffer[IntCount] = Temp | (*ReadPtr);
     }
-#endif
     ReadOffset += 2;
+#endif
 
 #endif
 #if (PI_PRECALCULATE_OUT_VALUE == 0)
@@ -897,17 +909,24 @@ ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
-    //SpeedTracking[1] = DWT->CYCCNT;
-    ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
-                     | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
+    //ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
+    //                 | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
+
+    ADInputAddress = (PortBBuffer[0] & 0x03F003F0) << 4 | (PortBBuffer[0] & 0xC000C000)
+                     | (PortABuffer[0] & 0x00FE00FF);
+
+    ADInputAddress = (ADInputAddress >> 16) | (ADInputAddress << 16);
+    SpeedTracking[1] = DWT->CYCCNT;
 
     //ConstructAddress();
-    //SpeedTracking[2] = DWT->CYCCNT;
+    SpeedTracking[2] = DWT->CYCCNT;
 
     if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
         //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
         if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
             ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - CART_DOM2_ADDR2_START));
+        //} else {
+        //    ReadPtr = (uint16_t*)(FlashRamStorage);
         } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (3 << 18))) {
             ReadPtr = (uint16_t*)(FlashRamStorage + (ADInputAddress - (CART_DOM2_ADDR2_START + (3 << 18)) + (sizeof(FlashRamStorage) / 4) * 3));
         } else if (ADInputAddress >= (CART_DOM2_ADDR2_START | (2 << 18))) {
@@ -935,13 +954,13 @@ void BDMA_Channel0_IRQHandler(void)
         ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
     }
 
-    //SpeedTracking[3] = DWT->CYCCNT;
+    SpeedTracking[3] = DWT->CYCCNT;
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
     const uint16_t PrefetchRead = *ReadPtr;
     ValueA = PrefetchRead;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
 #endif
-    //SpeedTracking[4] = DWT->CYCCNT;
+    SpeedTracking[4] = DWT->CYCCNT;
 }
 
 extern "C"

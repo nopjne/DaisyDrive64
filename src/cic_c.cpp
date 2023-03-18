@@ -19,7 +19,7 @@
 #define REGION_NTSC (0)
 #define REGION_PAL  (1)
 
-#define GET_REGION() (REGION_NTSC)
+#define GET_REGION() (REGION_PAL)
 #define CIC_USE_INTERRUPTS 1
 /* SEEDs */ 
 
@@ -594,7 +594,8 @@ int cic_init(unsigned int Region, unsigned int Type)
 
 void CICEmulatorInitFast(void)
 {
-    cic_init(REGION_PAL, CIC6102_TYPE);}
+    cic_init(GET_REGION(), CIC6102_TYPE);
+}
 
 void CICEmulatorInit(void)
 {
@@ -604,27 +605,27 @@ void CICEmulatorInit(void)
     case CRC_iQue_1:
     case CRC_iQue_2:
     case CRC_iQue_3:
-        cic_init(REGION_NTSC, CIC6101_TYPE);
+        cic_init(GET_REGION(), CIC6101_TYPE);
     break;
 
     case CRC_NUS_6102:
-        cic_init(REGION_PAL, CIC6102_TYPE);
+        cic_init(GET_REGION(), CIC6102_TYPE);
     break;
 
     case CRC_NUS_6103:
-        cic_init(REGION_NTSC, CIC6103_TYPE);
+        cic_init(GET_REGION(), CIC6103_TYPE);
     break;
 
     case CRC_NUS_6105:
-        cic_init(REGION_NTSC, CIC6105_TYPE);
+        cic_init(GET_REGION(), CIC6105_TYPE);
     break;
 
     case CRC_NUS_6106:
-        cic_init(REGION_NTSC, CIC6106_TYPE);
+        cic_init(GET_REGION(), CIC6106_TYPE);
     break;
 
     case CRC_NUS_8303:
-        cic_init(REGION_NTSC, CIC6102_TYPE);
+        cic_init(GET_REGION(), CIC6102_TYPE);
     break;
 
     case CRC_NUS_7101:
@@ -633,7 +634,7 @@ void CICEmulatorInit(void)
 
     // TODO: do the PAL regions too.
     default:
-        cic_init(REGION_PAL, CIC6102_TYPE);
+        cic_init(GET_REGION(), CIC6102_TYPE);
     }
 }
 

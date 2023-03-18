@@ -7,8 +7,8 @@
 // Only enable for ROM less than 16MB.
 #define PI_ENABLE_LOGGING 0
 
+#define SD_SPEED SdmmcHandler::Speed::VERY_FAST
 #define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
-//#define LOG_EEPROM_BYTES 1
 #define SI_USE_DMA 1
 
 // Set the read speed delay.

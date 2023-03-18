@@ -214,7 +214,7 @@ void SaveEEPRom(const char* Name)
 {
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
+    sd_cfg.speed = SD_SPEED;
 
     int retry = 5;
     while (retry != 0) {
@@ -253,7 +253,7 @@ void SaveFlashRam(const char* Name)
 {
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
+    sd_cfg.speed = SD_SPEED;
 
     int retry = 5;
     while (retry != 0) {
@@ -295,7 +295,7 @@ void LoadRom(const char* Name)
     size_t bytesread = 0;
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
+    sd_cfg.speed = SD_SPEED;
     {
         sd.Init(sd_cfg);
 
@@ -521,7 +521,7 @@ int main(void)
     HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 1);
     HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 1);
     HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 1);
-    hw.ConfigureAudio();
+    //hw.ConfigureAudio();
 
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
     memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));

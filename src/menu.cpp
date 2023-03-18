@@ -44,7 +44,7 @@ extern Disk_drvTypeDef disk;
 void EnableMenu(void) {
 
     sd_cfg.Defaults();
-    sd_cfg.speed = SdmmcHandler::Speed::VERY_FAST;
+    sd_cfg.speed = SD_SPEED;
     sd.Init(sd_cfg);
 
     // Mount SD Card
