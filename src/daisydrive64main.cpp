@@ -433,7 +433,7 @@ void ContinueRomLoad(void)
         sprintf(SaveName, "%s.fla", CurrentRomName);
         if(f_open(&SDSaveFile, SaveName, FA_READ) != FR_OK) {
             if (f_open(&SDSaveFile, SaveName, (FA_CREATE_ALWAYS) | (FA_WRITE)) == FR_OK) {
-                memset(FlashRamStorage, 0, sizeof(FlashRamStorage));
+                memset(FlashRamStorage, 0xFF, sizeof(FlashRamStorage));
                 UINT byteswritten;
                 f_write(&SDSaveFile, FlashRamStorage, sizeof(FlashRamStorage), &byteswritten);
                 f_close(&SDSaveFile);
