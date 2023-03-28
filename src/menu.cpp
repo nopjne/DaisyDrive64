@@ -10,7 +10,6 @@
 #include "diskio.h"
 #include "ff_gen_drv.h"
 #include "menu.h"
-#include "menurom.h"
 
 void LoadRom(const char* Name);
 void ContinueRomLoad(void);
@@ -20,11 +19,6 @@ using namespace daisy;
 SdmmcHandler::Config sd_cfg;
 extern SdmmcHandler   sd;
 extern uint32_t CurrentRomSaveType;
-
-void UploadMenuRom(void)
-{
-    memcpy(ram, menurom, sizeof(menurom));
-}
 
 void InitMenuFunctions(void)
 {
@@ -187,7 +181,7 @@ void EXTI3_IRQHandler(void)
 
     // Only allow OS64* roms to have menu access.
     // Menu roms are not allowed to have save functions.
-    if (*((uint32_t*)CurrentRomName) == '46SO') {
+    if (CURRENT_ROMNAME_STARTS_WITH_OS64) {
         HandleExecute();
 
     } else if (SaveFileDirty != false) {

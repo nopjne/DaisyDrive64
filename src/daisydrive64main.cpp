@@ -9,24 +9,29 @@
 #include "n64common.h"
 #include "daisydrive64.h"
 #include "menu.h"
+#define DR_MP3_IMPLEMENTATION
+#include "dr_mp3.h"
+#include "sounds.h"
 
 #if !defined(_FS_EXFAT) && !defined(FF_FS_EXFAT)
 #error EXFAT FS NEEDS TO BE ENABLED
 #endif
 
-#define MENU_ROM_FILE_NAME "menu.n64"
-//#define N64_MIN_PRELOAD 0x1000000
 #define N64_MIN_PRELOAD (1024 * 1024 * 64)
 
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
 volatile bool gUseBootLoader = false;
 DTCM_DATA char CurrentRomName[265];
+volatile bool gAleHAndResetFlip = false;
+volatile uint32_t gCicRegion = 0;
 struct RomSetting {
     const char* RomName;
     const BYTE BusSpeedOverride;
     const char EepRomType;
 };
+
+volatile daisy::SdmmcHandler::Speed gSDSpeed = daisy::SdmmcHandler::Speed::VERY_FAST;
 
 #define TESTROM 0
 #if TESTROM
@@ -94,7 +99,8 @@ FIL            SDSaveFile;
 FILINFO        gFileInfo;
 bool           gByteSwap = false;
 
-static DaisySeed hw;
+drmp3 *MP3Decoder;
+DaisySeed hw;
 int PlayAudio(const char* name);
 volatile uint32_t TimerCtrl;
 void BlinkAndDie(int wait1, int wait2)
@@ -109,7 +115,6 @@ void BlinkAndDie(int wait1, int wait2)
     }
 }
 
-WavPlayer      *sampler = nullptr;
 void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
                    AudioHandle::InterleavingOutputBuffer out,
                    size_t                                size)
@@ -137,41 +142,64 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
     //     }
     // }
 
-    for(size_t i = 0; i < size; i += 2)
-    {
-        out[i] = s162f(sampler->Stream()) * 0.5f;
-        out[i + 1] = s162f(sampler->Stream()) * 0.5f;
-    }
+    //for(size_t i = 0; i < size; i += 2)
+    //{
+    //    out[i] = s162f(sampler->Stream()) * 0.5f;
+    //    out[i + 1] = s162f(sampler->Stream()) * 0.5f;
+    //}
+    drmp3_read_pcm_frames_f32(MP3Decoder, 1, out);
 }
 
 int PlayAudio(const char* FileName)
 {
-    if (sampler == nullptr) {
-        sampler = new WavPlayer();
-        // Init hardware
-        size_t blocksize = 4096;
-
-        SdmmcHandler::Config sd_cfg;
-        sd_cfg.Defaults();
-        sd.Init(sd_cfg);
-        fsi.Init(FatFSInterface::Config::MEDIA_SD);
-        f_mount(&fsi.GetSDFileSystem(), "/", 1);
-
-        sampler->Init(fsi.GetSDPath());
-        sampler->SetLooping(true);
-
-        // Init Audio
-        hw.SetAudioBlockSize(blocksize);
-        hw.StartAudio(AudioCallback);
-
-        sampler->Open(sampler->GetCurrentFile() + 1);
+    SdmmcHandler::Config sd_cfg;
+    sd_cfg.Defaults();
+    sd_cfg.speed = SD_SPEED;
+    sd.Init(sd_cfg);
+    fsi.Init(FatFSInterface::Config::MEDIA_SD);
+    f_mount(&fsi.GetSDFileSystem(), "/", 1);
+    MP3Decoder = new drmp3();
+    if (drmp3_init_memory(MP3Decoder, nobootloadermp3, sizeof(nobootloadermp3), nullptr) == false) {
+        return 1;
     }
 
-    // Loop while running.
-    while (Running != false) {
-        // Prepare buffers for sampler as needed
-        sampler->Prepare();
-    }
+    uint32_t blocksize = 1152;
+    hw.SetAudioBlockSize(blocksize);
+    hw.StartAudio(AudioCallback);
+
+    //if (!drmp3_init_file(&mp3, "MySong.mp3", NULL)) {
+    //    // Failed to open file
+    //    return 1;
+    //}
+
+    //WavPlayer      *sampler = nullptr;
+    //if (sampler == nullptr) {
+    //    sampler = new WavPlayer();
+    //    // Init hardware
+    //    size_t blocksize = 4096;
+//
+    //    SdmmcHandler::Config sd_cfg;
+    //    sd_cfg.Defaults();
+    //    sd_cfg.speed = SD_SPEED;
+    //    sd.Init(sd_cfg);
+    //    fsi.Init(FatFSInterface::Config::MEDIA_SD);
+    //    f_mount(&fsi.GetSDFileSystem(), "/", 1);
+//
+    //    sampler->Init(fsi.GetSDPath());
+    //    sampler->SetLooping(true);
+//
+    //    // Init Audio
+    //    hw.SetAudioBlockSize(blocksize);
+    //    hw.StartAudio(AudioCallback);
+//
+    //    sampler->Open(sampler->GetCurrentFile() + 1);
+    //}
+//
+    //// Loop while running.
+    //while (Running != false) {
+    //    // Prepare buffers for sampler as needed
+    //    sampler->Prepare();
+    //}
     return 0;
 }
 
@@ -288,6 +316,7 @@ void SaveFlashRam(const char* Name)
     BlinkAndDie(2000, 500);
 }
 
+extern SD_HandleTypeDef hsd1;
 void LoadRom(const char* Name)
 {
     GPIOC->BSRR = USER_LED_PORTC;
@@ -295,8 +324,10 @@ void LoadRom(const char* Name)
     size_t bytesread = 0;
     SdmmcHandler::Config sd_cfg;
     sd_cfg.Defaults();
-    sd_cfg.speed = SD_SPEED;
+    uint32_t retry = 6;
+    while (retry--)
     {
+        sd_cfg.speed = SD_SPEED;
         sd.Init(sd_cfg);
 
         // Links libdaisy i/o to fatfs driver.
@@ -304,7 +335,21 @@ void LoadRom(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
-            BlinkAndDie(500, 100);
+            if (SD_SPEED == SdmmcHandler::Speed::VERY_FAST) {
+                SD_SPEED = SdmmcHandler::Speed::FAST;
+            } else if (SD_SPEED == SdmmcHandler::Speed::FAST) {
+                SD_SPEED = SdmmcHandler::Speed::STANDARD;
+            } else if (SD_SPEED == SdmmcHandler::Speed::STANDARD) {
+                SD_SPEED = SdmmcHandler::Speed::MEDIUM_SLOW;
+            } else if (SD_SPEED == SdmmcHandler::Speed::MEDIUM_SLOW) {
+                SD_SPEED = SdmmcHandler::Speed::SLOW;
+            } else {
+                BlinkAndDie(500, 100);
+            }
+
+            fsi.DeInit();
+            HAL_SD_DeInit(&hsd1);
+            continue;
         }
 
         // Read requested rom from the SD Card.
@@ -319,8 +364,6 @@ void LoadRom(const char* Name)
             if (result != FR_OK) {
                 BlinkAndDie(200, 200);
             }
-
-            //f_close(&SDFile);
 
             // Blink led on error.
             if (bytesread != IntroReadSize) {
@@ -345,6 +388,8 @@ void LoadRom(const char* Name)
         } else {
             BlinkAndDie(100, 100);
         }
+
+        break;
     }
 
     // No led on on success.
@@ -467,9 +512,7 @@ void ContinueRomLoad(void)
 void SetupBootloader(void)
 {
     RomMaxSize = 1064960;
-    const uint32_t ZeroSize = 1064960;//0x1D6FF;
-    memcpy(ram, hw.qspi.GetData(), ZeroSize);
-    memset(ram + ZeroSize, 0, RomMaxSize - ZeroSize);
+    gUseBootLoader = true;
     strcpy(CurrentRomName, "OS64daisyboot.z64\0");
 }
 
@@ -517,6 +560,7 @@ int main(void)
     hw.Init(false);
 #endif
 
+    // Override interrupt priority for SAI transfer.
     HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 15, 1);
     HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 1);
     HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 1);
@@ -540,7 +584,6 @@ int main(void)
     StartCICEmulator();
     //SCB_DisableDCache();
 
-    //UploadMenuRom();
     // Hack to flash the menu rom to the qspi.
 //#define FLASH_THE_MENU_ROM 1
 #if FLASH_THE_MENU_ROM
@@ -612,9 +655,17 @@ int main(void)
     EEPROMType = RomSettings[RomIndex].EepRomType;
     CurrentRomSaveType = EEPROMType;
 
+    // Read the ALE_H line and if it is high, it needs to switch with the RESET_LINE.
+    // When both the lines are low, the DaisyDrive64 is in a tethered boot scenario and the detection will need to happen later.
+    // First line to go Hi is RESET from now on.
+    while (RESET_IS_LOW && ALE_H_IS_LOW) { }
+    if (ALE_H_IS_HIGH) {
+        gAleHAndResetFlip = true;
+    }
+
     // Wait for reset line high.
     while (RESET_IS_LOW) { }
-    EXTI->PR1 = RESET_LINE;
+    EXTI->PR1 = (gAleHAndResetFlip != false) ? ALE_H : RESET_LINE;
     while (RESET_IS_LOW) { }
 
     InitMenuFunctions();
@@ -638,7 +689,6 @@ int main(void)
         }
 
         while(Running != false) {
-            //PlayAudio("");
         }
 
         while (SaveFileDirty != false) {
@@ -654,7 +704,7 @@ int main(void)
         }
 
         // Write the boot rom to flash.
-        if ((RomIndex == 2) && (*((uint32_t*)CurrentRomName) == '46SO')) {
+        if ((RomIndex == 2) && CURRENT_ROMNAME_STARTS_WITH_OS64) {
             ContinueRomLoad();
             GPIOC->BSRR = USER_LED_PORTC;
             hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);

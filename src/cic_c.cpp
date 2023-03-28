@@ -19,7 +19,8 @@
 #define REGION_NTSC (0)
 #define REGION_PAL  (1)
 
-#define GET_REGION() (REGION_PAL)
+// Read region from flash
+#define GET_REGION() (gCicRegion & 1)
 #define CIC_USE_INTERRUPTS 1
 /* SEEDs */ 
 
@@ -64,6 +65,8 @@
 void EncodeRound(unsigned char index);
 void CicRound(unsigned char *);
 void Cic6105Algo(void);
+void CicReadRegion(void);
+extern daisy::DaisySeed hw;
 
 /* Select SEED and CHECKSUM here */
 unsigned char _CicSeed = CIC6102_SEED;
@@ -594,6 +597,7 @@ int cic_init(unsigned int Region, unsigned int Type)
 
 void CICEmulatorInitFast(void)
 {
+    CicReadRegion();
     cic_init(GET_REGION(), CIC6102_TYPE);
 }
 
@@ -632,7 +636,6 @@ void CICEmulatorInit(void)
         cic_init(REGION_PAL, CIC7102_TYPE);
     break;
 
-    // TODO: do the PAL regions too.
     default:
         cic_init(GET_REGION(), CIC6102_TYPE);
     }
@@ -669,6 +672,59 @@ void StartCICEmulator()
     ReadNibble();
     ReadNibble();
     gCicState = CIC_SETUP_CIC_MEMORY;
+}
+
+void CicReadRegion(void)
+{
+    uint32_t LeadingZero = 0;
+    for (int i = 0; i < 0x1000; i += 4) {
+        uint32_t FlashValue = (*((uint32_t*)(CIC_CONFIG_PAGE + i)));
+        if (FlashValue == 0) {
+            continue;
+        }
+
+        LeadingZero = __CLZ(FlashValue);
+        break;
+    }
+
+    gCicRegion = LeadingZero & 1;
+}
+
+void CicWriteRegion(void)
+{
+    // Find the next available open spot to write.
+    for (int i = 0; i < 0x1000; i += 4) {
+        uint32_t FlashValue = (*((uint32_t*)(CIC_CONFIG_PAGE + i)));
+        if (FlashValue == 0) {
+            continue;
+        }
+
+        uint32_t Value = FlashValue >> 1;
+        daisy::QSPIHandle::Result WriteResult = hw.qspi.Write(CIC_CONFIG_PAGE + i, sizeof(Value), (uint8_t*)&Value);
+        if ((WriteResult != daisy::QSPIHandle::Result::OK) || ((*((uint32_t*)(CIC_CONFIG_PAGE + i))) != Value)) {
+            break;
+        }
+
+        return;
+    }
+
+    // Erase entire page, then write the value, only if PAL.
+    hw.qspi.Erase((uint32_t)CIC_CONFIG_PAGE, (uint32_t)(CIC_CONFIG_PAGE + 0x1000));
+    if ((gCicRegion & 1) != 0) {
+        uint32_t Value = 0x7FFFFFFF;
+        hw.qspi.Write(CIC_CONFIG_PAGE, sizeof(Value), (uint8_t*)&Value);
+    }
+}
+
+void CICProcessRegionSwap(void)
+{
+    // 4 Indiates 4 CIC cycles. If the communication stopped after 4 cycles, it means the PIF did not accept the Hello message from the CIC
+    // the Hello message also indicates what region is being used. Swap the region.
+    if (gCicReadPtr == 4) {
+        gCicReadPtr = 0;
+        gCicRegion = ~gCicRegion;
+        CicWriteRegion();
+    }
 }
 
 unsigned char cmd = 0;

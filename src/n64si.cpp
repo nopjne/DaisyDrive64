@@ -21,7 +21,7 @@
 BYTE *const EepromInputLog = (BYTE*)(LogBuffer - 1024 * 1024);
 BYTE *const EepromStateLog = (BYTE*)(LogBuffer - 1024 * 1024);
 DTCM_DATA uint32_t EepLogIdx = 0;
-BYTE EEPROMStore[2048]; // 16KiBit
+BYTE EEPROMStore[2048] __attribute__((aligned(16))); // 16KiBit
 volatile BYTE EEPROMType = 0x80;
 
 void ITCM_FUNCTION RunEEPROMEmulator(void);

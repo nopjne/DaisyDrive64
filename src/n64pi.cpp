@@ -8,6 +8,7 @@
 #include "daisydrive64.h"
 #include "flashram.h"
 #include "menu.h"
+#include "bootrom.h"
 
 extern uint32_t CurrentRomSaveType;
 
@@ -670,18 +671,14 @@ void EXTI4_IRQHandler(void)
     EXTI->PR1 = WRITE_LINE;
     const uint32_t ValueInB = GPIOB->IDR;
     const uint32_t ValueInA = GPIOA->IDR;
-    //if ((ReadPtr < (uint16_t*)FlashRamStorage) || (ReadPtr >= (uint16_t*)(FlashRamStorage + sizeof(FlashRamStorage)))) {
-    //    ReadPtr = (uint16_t*)(FlashRamStorage + 1232);
-    //}
 
     //*((uint32_t*)FlashRamStorage) = 0x80011111;
     *ReadPtr = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
     //xValueSave[xCount] = ((ValueInB & 0x03F0) << 4) | (ValueInB & 0xC000) | (ValueInA & 0xFF);
     //xAddrSave[xCount] = (uint32_t)ReadPtr;
     ReadPtr += 1;
-    //xCount += 1;
 
-    if (*((uint32_t*)CurrentRomName) == '46SO') {
+    if (CURRENT_ROMNAME_STARTS_WITH_OS64) {
         if ((uint32_t)ReadPtr == ((uint32_t)(&(MenuBase[REG_EXECUTE_FUNCTION]))) + 4) {
             MenuBase[REG_STATUS] |= (DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
             NVIC->STIR = 9;
@@ -707,55 +704,14 @@ void EXTI15_10_IRQHandler(void) // Reset interrupt.
     EXTI->PR1 = N64_NMI;
     if (RESET_IS_HIGH) {
         gUseBootLoader = true;
-        *((uint32_t*)CurrentRomName) = '46SO';
+        // Hack, this is faster than strcpy.
+        *((uint32_t*)CurrentRomName) = *((uint32_t*)"OS64");
 
     } else {
         Running = false;
     }
 
-#if 0
-#if 1
-    if ((EXTI->PR1 & N64_NMI) != 0) {
-        EXTI->PR1 = N64_NMI;
-
-        SI_Reset();
-        InitializeTimersSI();
-        SI_Enable();
-        //return;
-    }
-#endif
-    // Unset interrupt.
-    //if ((EXTI->PR1 & RESET_LINE) != 0) {
-    {
-        EXTI->PR1 = RESET_LINE;
-#if (USE_OPEN_DRAIN_OUTPUT == 0)
-        // Switch to output.
-        SET_PI_OUTPUT_MODE
-        GPIOA->ODR = 0;
-        GPIOB->ODR = 0;
-        // Switch to Input.
-        SET_PI_INPUT_MODE
-#else
-        // Switch to Input.
-        GPIOA->ODR = 0xFF;
-        GPIOB->ODR = 0xC3F0;
-#endif
-
-        DMACount = 0;
-        IntCount = 0;
-        ALE_H_Count = 0;
-        ADInputAddress = 0;
-        if (Running != false) {
-            SetupBootloader();
-        }
-
-        Running = false;
-        SI_Reset();
-        InitializeTimersSI();
-        SI_Enable();
-        
-    }
-#endif
+    CICProcessRegionSwap();
     // If a whole DaisyDrive64 system reset is necessary call: HAL_NVIC_SystemReset();
     //HAL_NVIC_SystemReset();
 }
@@ -939,7 +895,7 @@ void BDMA_Channel0_IRQHandler(void)
         if (gUseBootLoader == false) {
             ReadPtr = ((uint16_t*)(ram + (ADInputAddress - N64_ROM_BASE)));
         } else {
-            ReadPtr = (uint16_t*)(0x90000000 + ((ADInputAddress - N64_ROM_BASE) & 0x0fffffff));
+            ReadPtr = (uint16_t*)(bootrom + ((ADInputAddress - N64_ROM_BASE) & 0x0fffffff));
         }
     } else if (ADInputAddress >= CART_DOM2_ADDR1_START && ADInputAddress <= CART_DOM2_ADDR1_END) {
         //NVIC_SetVector(EXTI1_IRQn, (uint32_t)&EXTI1_IRQHandler);

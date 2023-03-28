@@ -7,9 +7,13 @@ LDSCRIPT ?= Linkerscript.ld
 
 # Generate the rom to be flashed.
 BINTOARRAY = ../tools/bintoarray
-ROMPARAMETERS = ../tools/menurom.z64 "__attribute__((section(\".qspiflash_text\"))) menurom"
+BOOTROM = ../tools/OS64daisyboot.z64 "__attribute__((section(\".qspiflash_text\"))) bootrom"
+NOBOOTLOADERMP3 = ../tools/nobootloader.mp3 "__attribute__((section(\".qspiflash_text\"))) nobootloadermp3"
+NOSDCARDMP3 = ../tools/sd_card_not_detected.mp3 "__attribute__((section(\".qspiflash_text\"))) nosdcardmp3"
+SDFAILEDMP3 = ../tools/sdfailed.mp3 "__attribute__((section(\".qspiflash_text\"))) sdfailedmp3"
+REGIONSWITCHMP3 = ../tools/regionswitch.mp3 "__attribute__((section(\".qspiflash_text\"))) regionswitchmp3"
 # TODO: Enable when qspi init for stm32 is working.
-#GENERATE := $(shell $(BINTOARRAY) $(ROMPARAMETERS) > menurom.h)
+
 
 # Sources
 CPP_SOURCES = daisydrive64main.cpp cic_c.cpp n64pi.cpp n64si.cpp flashram.cpp menu.cpp
@@ -27,7 +31,15 @@ OPTIMIZE_FLAG = -ggdb3 -O3
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-generate:
-	@echo $(GENERATE)
+generate_data:
+	$(shell $(BINTOARRAY) $(BOOTROM) > bootrom.h)
+	$(shell $(BINTOARRAY) $(NOBOOTLOADERMP3) > sounds.h)
+	$(shell $(BINTOARRAY) $(NOSDCARDMP3) >> sounds.h)
+	$(shell $(BINTOARRAY) $(SDFAILEDMP3) >> sounds.h)
+	$(shell $(BINTOARRAY) $(REGIONSWITCHMP3) >> sounds.h)
 
-.PHONY: all generate
+.PHONY: all generate_data
+
+$(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
+	$(BIN) --remove-section *qspifl* $< $@
+	$(BIN) --only-section *qspifl* $< $@

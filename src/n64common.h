@@ -7,8 +7,8 @@
 // Only enable for ROM less than 16MB.
 #define PI_ENABLE_LOGGING 0
 
-#define SD_SPEED SdmmcHandler::Speed::FAST
-#define GP_SPEED GPIO_SPEED_FREQ_LOW
+#define SD_SPEED gSDSpeed
+#define GP_SPEED GPIO_SPEED_FREQ_VERY_HIGH
 #define SI_USE_DMA 1
 
 // Set the read speed delay.
@@ -52,18 +52,19 @@
 #define CIC_DAT (1 << 10)
 #define N64_NMI (1 << 11)
 
-#define ALE_H_IS_HIGH ((GPIOB->IDR & ALE_H) != 0)
-#define ALE_H_IS_LOW ((GPIOB->IDR & ALE_H) == 0)
+#define ALE_H_IS_HIGH ((gAleHAndResetFlip != false) ? ((GPIOD->IDR & RESET_LINE) != 0) : ((GPIOB->IDR & ALE_H) != 0))
+#define ALE_H_IS_LOW ((gAleHAndResetFlip != false) ? ((GPIOD->IDR & RESET_LINE) == 0) : ((GPIOB->IDR & ALE_H) == 0))
 #define ALE_L_IS_HIGH ((GPIOC->IDR & ALE_L) != 0)
 #define ALE_L_IS_LOW ((GPIOC->IDR & ALE_L) == 0)
 #define READ_IS_HIGH ((GPIOC->IDR & READ_LINE) != 0)
 #define READ_IS_LOW ((GPIOC->IDR & READ_LINE) == 0)
-#define RESET_IS_HIGH ((GPIOD->IDR & RESET_LINE) != 0)
-#define RESET_IS_LOW ((GPIOD->IDR & RESET_LINE) == 0)
+#define RESET_IS_HIGH ((gAleHAndResetFlip != false) ? ((GPIOB->IDR & ALE_H) != 0) : ((GPIOD->IDR & RESET_LINE) != 0))
+#define RESET_IS_LOW ((gAleHAndResetFlip != false) ? ((GPIOB->IDR & ALE_H) == 0) : ((GPIOD->IDR & RESET_LINE) == 0))
 
 void CICEmulatorInit(void);
 void CICEmulatorInitFast(void);
 void StartCICEmulator(void);
+void CICProcessRegionSwap(void);
 int RunCICEmulator(void);
 int InitializeDmaChannels(void);
 void InitializeTimersPI(void);
@@ -81,15 +82,21 @@ void BlinkAndDie(int wait1, int wait2);
 
 extern DTCM_DATA volatile bool Running;
 
+#define CURRENT_ROMNAME_STARTS_WITH_OS64 (*((uint32_t*)CurrentRomName) == *((uint32_t*)("OS64")))
+
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
 #define FLASHRAM_SIZE (128 * 1024 + 8)
+#define EXTERNAL_FLASH 0x90000000
+#define CIC_CONFIG_PAGE (EXTERNAL_FLASH + (0x1000 * 0x200))
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 extern BYTE FlashRamStorage[FLASHRAM_SIZE] __attribute__((aligned(16)));
 extern unsigned char *ram;
+extern volatile bool gAleHAndResetFlip;
 extern volatile bool gUseBootLoader;
-
+extern volatile daisy::SdmmcHandler::Speed gSDSpeed;
+extern volatile uint32_t gCicRegion;
 
 extern DTCM_DATA uint32_t DMACount;
 extern DTCM_DATA volatile uint32_t IntCount;
