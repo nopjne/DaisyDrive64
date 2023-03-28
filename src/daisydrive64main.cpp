@@ -40,7 +40,8 @@ const RomSetting RomSettings[] = {
 };
 #else
 const RomSetting RomSettings[] = {
-    {"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
+    {"DaisyDrive64_data.bin", 0x12, SAVE_FLASH_1M},
+    //{"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
     //{"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
 #if 0
     //MENU_ROM_FILE_NAME,
@@ -707,8 +708,8 @@ int main(void)
         if ((RomIndex == 2) && CURRENT_ROMNAME_STARTS_WITH_OS64) {
             ContinueRomLoad();
             GPIOC->BSRR = USER_LED_PORTC;
-            hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
-            hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
+            hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
+            hw.qspi.Write((uint32_t)hw.qspi.GetData(0x40000), RomMaxSize, (uint8_t*)ram);
             GPIOC->BSRR = USER_LED_PORTC << 16;
         }
     }
