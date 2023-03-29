@@ -16,6 +16,8 @@
 #include "daisy_seed.h"
 #include "daisydrive64.h"
 #include "n64common.h"
+#include "sounds.h"
+
 #define REGION_NTSC (0)
 #define REGION_PAL  (1)
 
@@ -724,6 +726,7 @@ void CICProcessRegionSwap(void)
         gCicReadPtr = 0;
         gCicRegion = ~gCicRegion;
         CicWriteRegion();
+        PlayInternalAudio(regionswitchmp3, sizeof(regionswitchmp3));
     }
 }
 

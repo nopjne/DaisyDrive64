@@ -79,6 +79,7 @@ void RunEEPROMEmulator(void);
 void SetupBootloader(void);
 
 void BlinkAndDie(int wait1, int wait2);
+int PlayInternalAudio(const BYTE* Memory, size_t Size);
 
 extern DTCM_DATA volatile bool Running;
 
@@ -107,6 +108,7 @@ extern DTCM_DATA uint32_t OverflowCounter;
 extern DTCM_DATA bool SaveFileDirty;
 extern DTCM_DATA uint32_t gSaveFence;
 extern char CurrentRomName[265];
+#define SD_CARD_CMD (1 << 2)
 
 #define SET_PI_OUTPUT_MODE \
     GPIOA->MODER = 0xABFF5555; \

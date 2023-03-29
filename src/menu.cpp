@@ -10,6 +10,7 @@
 #include "diskio.h"
 #include "ff_gen_drv.h"
 #include "menu.h"
+#include "sounds.h"
 
 void LoadRom(const char* Name);
 void ContinueRomLoad(void);
@@ -30,7 +31,6 @@ void InitMenuFunctions(void)
     // Enable software interrupts.
     EXTI->IMR1 |= DAISY_MENU_INTERRUPT;
     EXTI->EMR1 |= DAISY_MENU_INTERRUPT;
-    
 }
 
 extern const Diskio_drvTypeDef SD_Driver;
@@ -45,6 +45,7 @@ void EnableMenu(void) {
     disk.drv[0] = &SD_Driver;
     DSTATUS Status = disk_initialize(0);
     if (RES_OK != Status) {
+        PlayInternalAudio(sdfailedmp3, sizeof(sdfailedmp3));
         BlinkAndDie(500, 100);
     }
 }

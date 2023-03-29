@@ -868,8 +868,9 @@ void BDMA_Channel0_IRQHandler(void)
     //ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
     //                 | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
 
-    ADInputAddress = (PortBBuffer[0] & 0x03F003F0) << 4 | (PortBBuffer[0] & 0xC000C000)
-                     | (PortABuffer[0] & 0x00FE00FF);
+    ADInputAddress = ((PortBBuffer[0] & 0x03F003F0) << 4) |
+                     (PortBBuffer[0] & 0xC000C000) |
+                     (PortABuffer[0] & 0x00FE00FF);
 
     ADInputAddress = (ADInputAddress >> 16) | (ADInputAddress << 16);
     SpeedTracking[1] = DWT->CYCCNT;

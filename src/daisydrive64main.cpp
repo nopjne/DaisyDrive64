@@ -19,6 +19,7 @@
 
 #define N64_MIN_PRELOAD (1024 * 1024 * 64)
 
+extern SD_HandleTypeDef hsd1;
 volatile uint32_t CurrentRomSaveType = 0;
 uint32_t RomIndex = 0;
 volatile bool gUseBootLoader = false;
@@ -103,6 +104,7 @@ bool           gByteSwap = false;
 drmp3 *MP3Decoder;
 DaisySeed hw;
 int PlayAudio(const char* name);
+int PlayInternalAudio(const BYTE* Memory, size_t Size);
 volatile uint32_t TimerCtrl;
 void BlinkAndDie(int wait1, int wait2)
 {
@@ -112,7 +114,6 @@ void BlinkAndDie(int wait1, int wait2)
         System::Delay(wait1);
         GPIOC->BSRR = USER_LED_PORTC << 16;
         System::Delay(wait2);
-        PlayAudio(".");
     }
 }
 
@@ -120,35 +121,23 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
                    AudioHandle::InterleavingOutputBuffer out,
                    size_t                                size)
 {
-    //int32_t inc;
-
-    // Change file with encoder.
-    // inc = hw.encoder.Increment();
-    // if(inc > 0)
-    // {
-    //     size_t curfile;
-    //     curfile = sampler.GetCurrentFile();
-    //     if(curfile < sampler.GetNumberFiles() - 1)
-    //     {
-    //         sampler.Open(curfile + 1);
-    //     }
-    // }
-    // else if(inc < 0)
-    // {
-    //     size_t curfile;
-    //     curfile = sampler.GetCurrentFile();
-    //     if(curfile > 0)
-    //     {
-    //         sampler.Open(curfile - 1);
-    //     }
-    // }
-
-    //for(size_t i = 0; i < size; i += 2)
-    //{
-    //    out[i] = s162f(sampler->Stream()) * 0.5f;
-    //    out[i + 1] = s162f(sampler->Stream()) * 0.5f;
-    //}
     drmp3_read_pcm_frames_f32(MP3Decoder, 1, out);
+}
+
+int PlayInternalAudio(const BYTE* Memory, size_t Size)
+{
+    if (MP3Decoder == nullptr) {
+        MP3Decoder = new drmp3();
+    }
+
+    if (drmp3_init_memory(MP3Decoder, (const char*)Memory, Size, nullptr) == false) {
+        return 1;
+    }
+
+    uint32_t blocksize = 1152;
+    hw.SetAudioBlockSize(blocksize);
+    hw.StartAudio(AudioCallback);
+    return 0;
 }
 
 int PlayAudio(const char* FileName)
@@ -160,7 +149,7 @@ int PlayAudio(const char* FileName)
     fsi.Init(FatFSInterface::Config::MEDIA_SD);
     f_mount(&fsi.GetSDFileSystem(), "/", 1);
     MP3Decoder = new drmp3();
-    if (drmp3_init_memory(MP3Decoder, nobootloadermp3, sizeof(nobootloadermp3), nullptr) == false) {
+    if (drmp3_init_file(MP3Decoder, FileName, nullptr) == false) {
         return 1;
     }
 
@@ -255,7 +244,9 @@ void SaveEEPRom(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
-            BlinkAndDie(500, 100);
+            fsi.DeInit();
+            HAL_SD_DeInit(&hsd1);
+            continue;
         }
 
         // Open the eeprom save file for the requested rom.
@@ -275,6 +266,7 @@ void SaveEEPRom(const char* Name)
     }
 
     // Let the user know something went wrong.
+    PlayInternalAudio(sdfailedmp3, sizeof(sdfailedmp3));
     BlinkAndDie(1000, 500);
 }
 
@@ -294,7 +286,9 @@ void SaveFlashRam(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
-            BlinkAndDie(500, 100);
+            fsi.DeInit();
+            HAL_SD_DeInit(&hsd1);
+            continue;
         }
 
         // Open the flash/sram save file for the requested rom.
@@ -314,10 +308,10 @@ void SaveFlashRam(const char* Name)
     }
 
     // Let the user know something went wrong.
+    PlayInternalAudio(flashloadfailedmp3, sizeof(flashloadfailedmp3));
     BlinkAndDie(2000, 500);
 }
 
-extern SD_HandleTypeDef hsd1;
 void LoadRom(const char* Name)
 {
     GPIOC->BSRR = USER_LED_PORTC;
@@ -336,6 +330,12 @@ void LoadRom(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
+            // Read the CMD, if the line is not pulled low, the card is not connected.
+            if ((GPIOD->IDR & SD_CARD_CMD) != 0) {
+                PlayInternalAudio(nosdcardmp3, sizeof(nosdcardmp3));
+                BlinkAndDie(100, 200);
+            }
+
             if (SD_SPEED == SdmmcHandler::Speed::VERY_FAST) {
                 SD_SPEED = SdmmcHandler::Speed::FAST;
             } else if (SD_SPEED == SdmmcHandler::Speed::FAST) {
@@ -345,6 +345,7 @@ void LoadRom(const char* Name)
             } else if (SD_SPEED == SdmmcHandler::Speed::MEDIUM_SLOW) {
                 SD_SPEED = SdmmcHandler::Speed::SLOW;
             } else {
+                PlayInternalAudio(sdfailedmp3, sizeof(sdfailedmp3));
                 BlinkAndDie(500, 100);
             }
 
@@ -357,17 +358,20 @@ void LoadRom(const char* Name)
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
             FRESULT result = f_stat(Name, &gFileInfo);
             if (result != FR_OK) {
+                PlayInternalAudio(romfstatfailedmp3, sizeof(romfstatfailedmp3));
                 BlinkAndDie(100, 500);
             }
 
             uint32_t IntroReadSize = std::min<size_t>(N64_MIN_PRELOAD, gFileInfo.fsize);
             result = f_read(&SDFile, ram, IntroReadSize, &bytesread);
             if (result != FR_OK) {
+                PlayInternalAudio(romreadfailedmp3, sizeof(romreadfailedmp3));
                 BlinkAndDie(200, 200);
             }
 
             // Blink led on error.
             if (bytesread != IntroReadSize) {
+                PlayInternalAudio(romsizemismatchmp3, sizeof(romsizemismatchmp3));
                 BlinkAndDie(500, 500);
             }
 
@@ -387,6 +391,7 @@ void LoadRom(const char* Name)
             strcpy(CurrentRomName, Name);
 
         } else {
+            PlayInternalAudio(romfopenfailedmp3, sizeof(romfopenfailedmp3));
             BlinkAndDie(100, 100);
         }
 
@@ -427,6 +432,7 @@ void ContinueRomLoad(void)
     {
         FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
         if ((bytesread != ReadSize) || (result != F_OK)) {
+            PlayInternalAudio(romloadsizemismatchmp3, sizeof(romloadsizemismatchmp3));
             BlinkAndDie(500, 500);
         }
 
@@ -455,6 +461,7 @@ void ContinueRomLoad(void)
 
                 if (byteswritten != sizeof(EEPROMStore)) {
                     // Let the user know something went wrong.
+                    PlayInternalAudio(eepromcreatesizemismatchmp3, sizeof(eepromcreatesizemismatchmp3));
                     BlinkAndDie(1000, 500);
                 }
             }
@@ -463,11 +470,13 @@ void ContinueRomLoad(void)
             FILINFO FileInfo;
             volatile FRESULT result = f_stat(SaveName, &FileInfo);
             if (FileInfo.fsize != sizeof(EEPROMStore)) {
+                PlayInternalAudio(eepromstatsizemismatchmp3, sizeof(eepromstatsizemismatchmp3));
                 BlinkAndDie(200, 300);
             }
 
             result = f_read(&SDSaveFile, EEPROMStore, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
+                PlayInternalAudio(eepromloadfailedmp3, sizeof(eepromloadfailedmp3));
                 BlinkAndDie(200, 300);
             }
 
@@ -487,6 +496,7 @@ void ContinueRomLoad(void)
                 if (byteswritten != sizeof(FlashRamStorage)) {
                     f_unlink(SaveName);
                     // Let the user know something went wrong.
+                    PlayInternalAudio(flashcreatesizemismatchmp3, sizeof(flashcreatesizemismatchmp3));
                     BlinkAndDie(1000, 500);
                 }
             }
@@ -497,11 +507,13 @@ void ContinueRomLoad(void)
             if (FileInfo.fsize != sizeof(FlashRamStorage)) {
                 f_close(&SDSaveFile);
                 f_unlink(SaveName);
+                PlayInternalAudio(flashfstatsizemismatchmp3, sizeof(flashfstatsizemismatchmp3));
                 BlinkAndDie(200, 300);
             }
 
             result = f_read(&SDSaveFile, FlashRamStorage, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
+                PlayInternalAudio(flashloadfailedmp3, sizeof(flashloadfailedmp3));
                 BlinkAndDie(200, 300);
             }
 
