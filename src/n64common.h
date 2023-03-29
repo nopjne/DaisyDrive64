@@ -88,7 +88,8 @@ extern DTCM_DATA volatile bool Running;
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
 #define FLASHRAM_SIZE (128 * 1024 + 8)
 #define EXTERNAL_FLASH 0x90000000
-#define CIC_CONFIG_PAGE (EXTERNAL_FLASH + (0x1000 * 0x200))
+extern unsigned char __attribute__((section(".qspiflash_text"))) ConfigPage[4096];
+#define CIC_CONFIG_PAGE (EXTERNAL_FLASH)
 extern BYTE EEPROMStore[2048]; // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];

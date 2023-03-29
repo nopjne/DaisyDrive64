@@ -33,6 +33,7 @@ struct RomSetting {
 };
 
 volatile daisy::SdmmcHandler::Speed gSDSpeed = daisy::SdmmcHandler::Speed::VERY_FAST;
+unsigned char __attribute__((section(".qspiflash_text"))) ConfigPage[4096];
 
 #define TESTROM 0
 #if TESTROM
@@ -41,8 +42,8 @@ const RomSetting RomSettings[] = {
 };
 #else
 const RomSetting RomSettings[] = {
-    {"DaisyDrive64_data.bin", 0x12, SAVE_FLASH_1M},
-    //{"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
+    //{"DaisyDrive64_data.bin", 0x12, SAVE_FLASH_1M},
+    {"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
     //{"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
 #if 0
     //MENU_ROM_FILE_NAME,
@@ -331,11 +332,12 @@ void LoadRom(const char* Name)
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
             // Read the CMD, if the line is not pulled low, the card is not connected.
+#if CHECK_FOR_SD_CARD_PRESENT
             if ((GPIOD->IDR & SD_CARD_CMD) != 0) {
                 PlayInternalAudio(nosdcardmp3, sizeof(nosdcardmp3));
                 BlinkAndDie(100, 200);
             }
-
+#endif
             if (SD_SPEED == SdmmcHandler::Speed::VERY_FAST) {
                 SD_SPEED = SdmmcHandler::Speed::FAST;
             } else if (SD_SPEED == SdmmcHandler::Speed::FAST) {
@@ -574,10 +576,10 @@ int main(void)
 #endif
 
     // Override interrupt priority for SAI transfer.
-    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 15, 1);
-    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 1);
-    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 1);
-    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 15, 11);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 11);
+    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 11);
+    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 11);
     //hw.ConfigureAudio();
 
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
@@ -602,8 +604,8 @@ int main(void)
 #if FLASH_THE_MENU_ROM
     LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
     GPIOC->BSRR = USER_LED_PORTC;
-    hw.qspi.Erase((uint32_t)hw.qspi.GetData(), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
-    hw.qspi.Write((uint32_t)hw.qspi.GetData(), RomMaxSize, (uint8_t*)ram);
+    hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData(0x40000)) + RomMaxSize);
+    hw.qspi.Write((uint32_t)hw.qspi.GetData(0x40000), RomMaxSize, (uint8_t*)ram);
     GPIOC->BSRR = USER_LED_PORTC << 16;
 #else
     SetupBootloader();
@@ -717,12 +719,16 @@ int main(void)
         }
 
         // Write the boot rom to flash.
-        if ((RomIndex == 2) && CURRENT_ROMNAME_STARTS_WITH_OS64) {
+        if (RomIndex == 2) {
+            LoadRom("DaisyDrive64_data.bin");
             ContinueRomLoad();
+
             GPIOC->BSRR = USER_LED_PORTC;
-            hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData()) + RomMaxSize);
+            hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData(0x40000)) + RomMaxSize);
             hw.qspi.Write((uint32_t)hw.qspi.GetData(0x40000), RomMaxSize, (uint8_t*)ram);
             GPIOC->BSRR = USER_LED_PORTC << 16;
+            LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+            ContinueRomLoad();
         }
     }
 }

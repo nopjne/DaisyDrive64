@@ -702,7 +702,7 @@ void CicWriteRegion(void)
         }
 
         uint32_t Value = FlashValue >> 1;
-        daisy::QSPIHandle::Result WriteResult = hw.qspi.Write(CIC_CONFIG_PAGE + i, sizeof(Value), (uint8_t*)&Value);
+        daisy::QSPIHandle::Result WriteResult = hw.qspi.Write((uint32_t)(CIC_CONFIG_PAGE + i), sizeof(Value), (uint8_t*)&Value);
         if ((WriteResult != daisy::QSPIHandle::Result::OK) || ((*((uint32_t*)(CIC_CONFIG_PAGE + i))) != Value)) {
             break;
         }
@@ -714,7 +714,7 @@ void CicWriteRegion(void)
     hw.qspi.Erase((uint32_t)CIC_CONFIG_PAGE, (uint32_t)(CIC_CONFIG_PAGE + 0x1000));
     if ((gCicRegion & 1) != 0) {
         uint32_t Value = 0x7FFFFFFF;
-        hw.qspi.Write(CIC_CONFIG_PAGE, sizeof(Value), (uint8_t*)&Value);
+        hw.qspi.Write((uint32_t)CIC_CONFIG_PAGE, sizeof(Value), (uint8_t*)&Value);
     }
 }
 
