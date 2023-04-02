@@ -245,8 +245,8 @@ void SaveEEPRom(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
-            fsi.DeInit();
-            HAL_SD_DeInit(&hsd1);
+            //fsi.DeInit();
+            //HAL_SD_DeInit(&hsd1);
             continue;
         }
 
@@ -287,8 +287,8 @@ void SaveFlashRam(const char* Name)
 
         // Mount SD Card
         if (f_mount(&fsi.GetSDFileSystem(), "/", 1) != FR_OK) {
-            fsi.DeInit();
-            HAL_SD_DeInit(&hsd1);
+            //fsi.DeInit();
+            //HAL_SD_DeInit(&hsd1);
             continue;
         }
 

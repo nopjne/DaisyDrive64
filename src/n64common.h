@@ -90,7 +90,7 @@ extern DTCM_DATA volatile bool Running;
 #define EXTERNAL_FLASH 0x90000000
 extern unsigned char __attribute__((section(".qspiflash_text"))) ConfigPage[4096];
 #define CIC_CONFIG_PAGE (EXTERNAL_FLASH)
-extern BYTE EEPROMStore[2048]; // 16KiBit
+extern BYTE EEPROMStore[2048] __attribute__((aligned(16))); // 16KiBit
 extern volatile BYTE EEPROMType;
 extern uint16_t SDataBuffer[SI_RINGBUFFER_LENGTH];
 extern BYTE FlashRamStorage[FLASHRAM_SIZE] __attribute__((aligned(16)));

@@ -685,12 +685,13 @@ void EXTI4_IRQHandler(void)
         }
 
     } else {
+#ifdef TRACK_SPEED
         m_SpeedTracking[0] = SpeedTracking[0];
         m_SpeedTracking[1] = SpeedTracking[1];
         m_SpeedTracking[2] = SpeedTracking[2];
         m_SpeedTracking[3] = SpeedTracking[3];
         m_SpeedTracking[4] = SpeedTracking[4];
-
+#endif
         gSaveFence += 1;
         SaveFileDirty = true;
         NVIC->STIR = 9;
@@ -873,11 +874,12 @@ void BDMA_Channel0_IRQHandler(void)
                      (PortABuffer[0] & 0x00FE00FF);
 
     ADInputAddress = (ADInputAddress >> 16) | (ADInputAddress << 16);
+#ifdef TRACK_SPEED
     SpeedTracking[1] = DWT->CYCCNT;
 
     //ConstructAddress();
     SpeedTracking[2] = DWT->CYCCNT;
-
+#endif
     if ((ADInputAddress >= CART_DOM2_ADDR2_START) && (ADInputAddress <= CART_DOM2_ADDR2_END)) {
         //lat=0x05 pwd=0x0c pgs=0xd rls=0x2
         if (ADInputAddress < (CART_DOM2_ADDR2_START | (1 << 18))) {
@@ -911,13 +913,19 @@ void BDMA_Channel0_IRQHandler(void)
         ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
     }
 
+#ifdef TRACK_SPEED
     SpeedTracking[3] = DWT->CYCCNT;
+#endif
+
 #if (PI_PRECALCULATE_OUT_VALUE != 0)
     const uint16_t PrefetchRead = *ReadPtr;
     ValueA = PrefetchRead;
     ValueB = (((PrefetchRead >> 4) & 0x03F0) | (PrefetchRead & 0xC000));
 #endif
+
+#ifdef TRACK_SPEED
     SpeedTracking[4] = DWT->CYCCNT;
+#endif
 }
 
 extern "C"
@@ -935,7 +943,10 @@ void EXTI0_IRQHandler(void)
     ConstructAddress();
 #endif
     ReadOffset = 0;
-    //SpeedTracking[0] = DWT->CYCCNT;
+
+#ifdef TRACK_SPEED
+    SpeedTracking[0] = DWT->CYCCNT;
+#endif
 }
 
 extern "C"
