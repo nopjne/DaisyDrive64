@@ -26,6 +26,10 @@ volatile bool gUseBootLoader = false;
 DTCM_DATA char CurrentRomName[265];
 volatile bool gAleHAndResetFlip = false;
 volatile uint32_t gCicRegion = 0;
+volatile bool QueuedAudio = false;
+const unsigned char* gInternalAudioBuffer;
+size_t gInternalAudioBufferSize;
+
 struct RomSetting {
     const char* RomName;
     const BYTE BusSpeedOverride;
@@ -109,6 +113,7 @@ int PlayInternalAudio(const BYTE* Memory, size_t Size);
 volatile uint32_t TimerCtrl;
 void BlinkAndDie(int wait1, int wait2)
 {
+    Running = false;
     SysTick->CTRL = TimerCtrl;
     while(1) {
         GPIOC->BSRR = USER_LED_PORTC;
@@ -122,7 +127,19 @@ void AudioCallback(AudioHandle::InterleavingInputBuffer  in,
                    AudioHandle::InterleavingOutputBuffer out,
                    size_t                                size)
 {
-    drmp3_read_pcm_frames_f32(MP3Decoder, 1, out);
+    if (drmp3_read_pcm_frames_f32(MP3Decoder, size, out) == 0) {
+        // Rewind.
+        MP3Decoder->memory.currentReadPos = 0;
+    }
+}
+
+int QueueInternalAudio(const BYTE* Memory, size_t Size)
+{
+    QueuedAudio = true;
+    gInternalAudioBuffer = Memory;
+    gInternalAudioBufferSize = Size;
+    Running = false;
+    return 0;
 }
 
 int PlayInternalAudio(const BYTE* Memory, size_t Size)
@@ -135,7 +152,14 @@ int PlayInternalAudio(const BYTE* Memory, size_t Size)
         return 1;
     }
 
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 5, 0);
+
+    hw.ConfigureAudio();
     uint32_t blocksize = 1152;
+    hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_11KHZ);
     hw.SetAudioBlockSize(blocksize);
     hw.StartAudio(AudioCallback);
     return 0;
@@ -580,7 +604,6 @@ int main(void)
     HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 11);
     HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 11);
     HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 11);
-    //hw.ConfigureAudio();
 
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
     memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
@@ -595,6 +618,7 @@ int main(void)
     GPIO_InitTypeDef PortCPins = {USER_LED_PORTC, GPIO_MODE_OUTPUT_PP, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOC, &PortCPins);
 
+    TimerCtrl = SysTick->CTRL;
     CICEmulatorInitFast();
     StartCICEmulator();
     //SCB_DisableDCache();
@@ -611,7 +635,6 @@ int main(void)
     SetupBootloader();
 #endif
 
-    TimerCtrl = SysTick->CTRL;
     //SysTick->CTRL = 0;
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -707,6 +730,10 @@ int main(void)
         }
 
         while (SaveFileDirty != false) {
+        }
+
+        if (QueuedAudio != false) {
+            PlayInternalAudio(gInternalAudioBuffer, gInternalAudioBufferSize);
         }
 
         RomIndex += 1;

@@ -382,6 +382,9 @@ namespace patch_sm
         switch(int(sr))
         {
             case 8000: sai_sr = SaiHandle::Config::SampleRate::SAI_8KHZ; break;
+            case 11000:
+                sai_sr = SaiHandle::Config::SampleRate::SAI_11KHZ;
+                break;
             case 16000:
                 sai_sr = SaiHandle::Config::SampleRate::SAI_16KHZ;
                 break;

@@ -718,6 +718,7 @@ void CicWriteRegion(void)
     }
 }
 
+int QueueInternalAudio(const BYTE* Memory, size_t Size);
 void CICProcessRegionSwap(void)
 {
     // 4 Indiates 4 CIC cycles. If the communication stopped after 4 cycles, it means the PIF did not accept the Hello message from the CIC
@@ -726,7 +727,7 @@ void CICProcessRegionSwap(void)
         gCicReadPtr = 0;
         gCicRegion = ~gCicRegion;
         CicWriteRegion();
-        PlayInternalAudio(regionswitchmp3, sizeof(regionswitchmp3));
+        QueueInternalAudio(regionswitchmp3, sizeof(regionswitchmp3));
     }
 }
 
