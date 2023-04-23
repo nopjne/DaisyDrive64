@@ -57,6 +57,7 @@ class SaiHandle
         {
             SAI_8KHZ,
             SAI_11KHZ,
+            SAI_12KHZ,
             SAI_16KHZ,
             SAI_32KHZ,
             SAI_48KHZ,

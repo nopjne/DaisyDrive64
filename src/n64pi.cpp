@@ -251,7 +251,11 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel0.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel0.Init.MemInc              = DMA_MINC_ENABLE;
         DMA_Handle_Channel0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+#if USE_SINGLE_DWORD_ADDRESS_DEMANGLE
         DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
+#else
+        DMA_Handle_Channel0.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+#endif
         DMA_Handle_Channel0.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel0.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel0.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -316,7 +320,11 @@ int InitializeDmaChannels(void)
         DMA_Handle_Channel1.Init.PeriphInc           = DMA_PINC_DISABLE;
         DMA_Handle_Channel1.Init.MemInc              = DMA_MINC_ENABLE;
         DMA_Handle_Channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+#if USE_SINGLE_DWORD_ADDRESS_DEMANGLE
         DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_HALFWORD;
+#else
+        DMA_Handle_Channel1.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+#endif
         DMA_Handle_Channel1.Init.Mode                = DMA_CIRCULAR;
         DMA_Handle_Channel1.Init.Priority            = DMA_PRIORITY_HIGH;
         DMA_Handle_Channel1.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
@@ -866,14 +874,18 @@ ITCM_FUNCTION
 void BDMA_Channel0_IRQHandler(void)
 {
     ((BDMA_Base_Registers *)(DMA_Handle_Channel0.StreamBaseAddress))->IFCR = 1;
-    //ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
-    //                 | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
 
+#if USE_SINGLE_DWORD_ADDRESS_DEMANGLE
     ADInputAddress = ((PortBBuffer[0] & 0x03F003F0) << 4) |
-                     (PortBBuffer[0] & 0xC000C000) |
-                     (PortABuffer[0] & 0x00FE00FF);
+                      (PortBBuffer[0] & 0xC000C000) |
+                      (PortABuffer[0] & 0x00FE00FF);
 
     ADInputAddress = (ADInputAddress >> 16) | (ADInputAddress << 16);
+#else
+    ADInputAddress = (((PortABuffer[0] & 0xFF) | ((PortBBuffer[0] & 0x03F0) << 4) | (PortBBuffer[0] & 0xC000)) << 16)
+                     | (PortABuffer[1] & 0xFE) | ((PortBBuffer[1] & 0x03F0) << 4) | (PortBBuffer[1] & 0xC000);
+#endif
+
 #ifdef TRACK_SPEED
     SpeedTracking[1] = DWT->CYCCNT;
 
@@ -909,6 +921,8 @@ void BDMA_Channel0_IRQHandler(void)
     } else if (ADInputAddress >= CART_MENU_ADDR_START && ADInputAddress <= CART_MENU_ADDR_END) {
         //NVIC_SetVector(EXTI19_IRQn, (uint32_t)&EXTI1_IRQHandler);
         ReadPtr = (uint16_t*)(((unsigned char*)MenuBase) + (ADInputAddress - CART_MENU_ADDR_START));
+    } else if (ADInputAddress >= MENU_RAM_ACCESS_BASE) {
+        ReadPtr = ((uint16_t*)(ram + (ADInputAddress - MENU_RAM_ACCESS_BASE)));
     } else {
         ReadPtr = (uint16_t*)NullMem;// (uint16_t*)(ADInputAddress);
     }

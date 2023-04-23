@@ -47,8 +47,8 @@ const RomSetting RomSettings[] = {
 #else
 const RomSetting RomSettings[] = {
     //{"DaisyDrive64_data.bin", 0x12, SAVE_FLASH_1M},
-    {"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
-    //{"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
+    //{"OS64daisyboot.z64", 0x12, SAVE_FLASH_1M},
+    {"OS64P.z64", 0x12, EEPROM_4K}, // This is the menu rom.
 #if 0
     //MENU_ROM_FILE_NAME,
     {"1080 TenEighty Snowboarding (Japan, USA) (En,Ja).n64", 0x20, SAVE_FLASH_1M}, // Runs, Needs flash ram support for saves.
@@ -98,6 +98,7 @@ const RomSetting RomSettings[] = {
 unsigned char *ram = (unsigned char *)0xC0000000;
 using namespace daisy;
 uint32_t RomMaxSize = 0;
+uint32_t gRomOffset = 0;
 
 SdmmcHandler   sd;
 FatFSInterface fsi;
@@ -106,14 +107,14 @@ FIL            SDSaveFile;
 FILINFO        gFileInfo;
 bool           gByteSwap = false;
 
-drmp3 *MP3Decoder;
+drmp3 *MP3Decoder = nullptr;
 DaisySeed hw;
-int PlayAudio(const char* name);
 int PlayInternalAudio(const BYTE* Memory, size_t Size);
 volatile uint32_t TimerCtrl;
 void BlinkAndDie(int wait1, int wait2)
 {
     Running = false;
+    HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
     SysTick->CTRL = TimerCtrl;
     while(1) {
         GPIOC->BSRR = USER_LED_PORTC;
@@ -145,76 +146,22 @@ int QueueInternalAudio(const BYTE* Memory, size_t Size)
 int PlayInternalAudio(const BYTE* Memory, size_t Size)
 {
     if (MP3Decoder == nullptr) {
-        MP3Decoder = new drmp3();
+        MP3Decoder = new drmp3;
+    } else {
+        hw.StopAudio();
     }
 
-    if (drmp3_init_memory(MP3Decoder, (const char*)Memory, Size, nullptr) == false) {
+    if (drmp3_init_memory(MP3Decoder, (const char*)Memory, Size, nullptr) == DRMP3_FALSE) {
         return 1;
     }
 
-    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
-    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
-    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
-    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 5, 0);
-
+    // TODO: Audio hardware does not init if done here.
     hw.ConfigureAudio();
-    uint32_t blocksize = 1152;
-    hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_11KHZ);
-    hw.SetAudioBlockSize(blocksize);
-    hw.StartAudio(AudioCallback);
-    return 0;
-}
-
-int PlayAudio(const char* FileName)
-{
-    SdmmcHandler::Config sd_cfg;
-    sd_cfg.Defaults();
-    sd_cfg.speed = SD_SPEED;
-    sd.Init(sd_cfg);
-    fsi.Init(FatFSInterface::Config::MEDIA_SD);
-    f_mount(&fsi.GetSDFileSystem(), "/", 1);
-    MP3Decoder = new drmp3();
-    if (drmp3_init_file(MP3Decoder, FileName, nullptr) == false) {
-        return 1;
-    }
 
     uint32_t blocksize = 1152;
+    hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_12KHZ);
     hw.SetAudioBlockSize(blocksize);
     hw.StartAudio(AudioCallback);
-
-    //if (!drmp3_init_file(&mp3, "MySong.mp3", NULL)) {
-    //    // Failed to open file
-    //    return 1;
-    //}
-
-    //WavPlayer      *sampler = nullptr;
-    //if (sampler == nullptr) {
-    //    sampler = new WavPlayer();
-    //    // Init hardware
-    //    size_t blocksize = 4096;
-//
-    //    SdmmcHandler::Config sd_cfg;
-    //    sd_cfg.Defaults();
-    //    sd_cfg.speed = SD_SPEED;
-    //    sd.Init(sd_cfg);
-    //    fsi.Init(FatFSInterface::Config::MEDIA_SD);
-    //    f_mount(&fsi.GetSDFileSystem(), "/", 1);
-//
-    //    sampler->Init(fsi.GetSDPath());
-    //    sampler->SetLooping(true);
-//
-    //    // Init Audio
-    //    hw.SetAudioBlockSize(blocksize);
-    //    hw.StartAudio(AudioCallback);
-//
-    //    sampler->Open(sampler->GetCurrentFile() + 1);
-    //}
-//
-    //// Loop while running.
-    //while (Running != false) {
-    //    // Prepare buffers for sampler as needed
-    //    sampler->Prepare();
-    //}
     return 0;
 }
 
@@ -291,6 +238,7 @@ void SaveEEPRom(const char* Name)
     }
 
     // Let the user know something went wrong.
+    Running = false;
     PlayInternalAudio(sdfailedmp3, sizeof(sdfailedmp3));
     BlinkAndDie(1000, 500);
 }
@@ -333,11 +281,12 @@ void SaveFlashRam(const char* Name)
     }
 
     // Let the user know something went wrong.
+    Running = false;
     PlayInternalAudio(flashloadfailedmp3, sizeof(flashloadfailedmp3));
     BlinkAndDie(2000, 500);
 }
 
-void LoadRom(const char* Name)
+void LoadRom(const char* Name, uint32_t Offset)
 {
     GPIOC->BSRR = USER_LED_PORTC;
 
@@ -358,6 +307,7 @@ void LoadRom(const char* Name)
             // Read the CMD, if the line is not pulled low, the card is not connected.
 #if CHECK_FOR_SD_CARD_PRESENT
             if ((GPIOD->IDR & SD_CARD_CMD) != 0) {
+                Running = false;
                 PlayInternalAudio(nosdcardmp3, sizeof(nosdcardmp3));
                 BlinkAndDie(100, 200);
             }
@@ -371,8 +321,10 @@ void LoadRom(const char* Name)
             } else if (SD_SPEED == SdmmcHandler::Speed::MEDIUM_SLOW) {
                 SD_SPEED = SdmmcHandler::Speed::SLOW;
             } else {
+                Running = false;
                 PlayInternalAudio(sdfailedmp3, sizeof(sdfailedmp3));
                 BlinkAndDie(500, 100);
+                return;
             }
 
             fsi.DeInit();
@@ -384,32 +336,35 @@ void LoadRom(const char* Name)
         if(f_open(&SDFile, Name, FA_READ) == FR_OK) {
             FRESULT result = f_stat(Name, &gFileInfo);
             if (result != FR_OK) {
+                Running = false;
                 PlayInternalAudio(romfstatfailedmp3, sizeof(romfstatfailedmp3));
                 BlinkAndDie(100, 500);
             }
 
             uint32_t IntroReadSize = std::min<size_t>(N64_MIN_PRELOAD, gFileInfo.fsize);
-            result = f_read(&SDFile, ram, IntroReadSize, &bytesread);
+            result = f_read(&SDFile, ram + Offset, IntroReadSize, &bytesread);
             if (result != FR_OK) {
+                Running = false;
                 PlayInternalAudio(romreadfailedmp3, sizeof(romreadfailedmp3));
                 BlinkAndDie(200, 200);
             }
 
             // Blink led on error.
             if (bytesread != IntroReadSize) {
+                Running = false;
                 PlayInternalAudio(romsizemismatchmp3, sizeof(romsizemismatchmp3));
                 BlinkAndDie(500, 500);
             }
 
-            RomMaxSize = bytesread;
+            RomMaxSize = Offset + bytesread;
+            gRomOffset = Offset;
 
             // If extension is z64, byte swap.
             // TODO: Setup DMA to do this, could use FIFO to speed things up.
-            uint32_t NameLength = strlen(Name);
             gByteSwap = false;
-            if (Name[NameLength - 3] == 'z') {
+            if ((ram[1] != 0x80) || (gRomOffset != 0)) {
                 gByteSwap = true;
-                for (uint32_t i = 0; i < RomMaxSize; i += 2) {
+                for (uint32_t i = gRomOffset; i < (gRomOffset + RomMaxSize); i += 2) {
                     *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
                 }
             }
@@ -417,6 +372,7 @@ void LoadRom(const char* Name)
             strcpy(CurrentRomName, Name);
 
         } else {
+            Running = false;
             PlayInternalAudio(romfopenfailedmp3, sizeof(romfopenfailedmp3));
             BlinkAndDie(100, 100);
         }
@@ -450,28 +406,33 @@ void LoadRom(const char* Name)
     gUseBootLoader = false;
 }
 
-void ContinueRomLoad(void)
+void ContinueRomLoad(bool LoadSave)
 {
     size_t bytesread = 0;
     size_t ReadSize =  (gFileInfo.fsize - N64_MIN_PRELOAD);
     if ((gFileInfo.fsize > N64_MIN_PRELOAD) && (ReadSize < gFileInfo.fsize) && (ReadSize != 0))
     {
-        FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD, ReadSize, &bytesread);
+        FRESULT result = f_read(&SDFile, ram + N64_MIN_PRELOAD + gRomOffset, ReadSize, &bytesread);
         if ((bytesread != ReadSize) || (result != F_OK)) {
+            Running = false;
             PlayInternalAudio(romloadsizemismatchmp3, sizeof(romloadsizemismatchmp3));
             BlinkAndDie(500, 500);
         }
 
         RomMaxSize += ReadSize;
+
+        // Byteswap if byteswapping is enabled.
+        if (gByteSwap != false) {
+            for (uint32_t i = (N64_MIN_PRELOAD + gRomOffset); i < (gRomOffset + RomMaxSize); i += 2) {
+                *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
+            }
+        }
     }
 
     f_close(&SDFile);
 
-    // If extension is z64, byte swap.
-    if (gByteSwap != false) {
-        for (uint32_t i = N64_MIN_PRELOAD; i < RomMaxSize; i += 2) {
-            *((uint16_t*)(ram + i)) = __bswap16(*((uint16_t*)(ram + i)));
-        }
+    if (LoadSave == false) {
+        return;
     }
 
     // Open the eeprom save file for the requested rom.
@@ -487,6 +448,7 @@ void ContinueRomLoad(void)
 
                 if (byteswritten != sizeof(EEPROMStore)) {
                     // Let the user know something went wrong.
+                    Running = false;
                     PlayInternalAudio(eepromcreatesizemismatchmp3, sizeof(eepromcreatesizemismatchmp3));
                     BlinkAndDie(1000, 500);
                 }
@@ -496,12 +458,14 @@ void ContinueRomLoad(void)
             FILINFO FileInfo;
             volatile FRESULT result = f_stat(SaveName, &FileInfo);
             if (FileInfo.fsize != sizeof(EEPROMStore)) {
+                Running = false;
                 PlayInternalAudio(eepromstatsizemismatchmp3, sizeof(eepromstatsizemismatchmp3));
                 BlinkAndDie(200, 300);
             }
 
             result = f_read(&SDSaveFile, EEPROMStore, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
+                Running = false;
                 PlayInternalAudio(eepromloadfailedmp3, sizeof(eepromloadfailedmp3));
                 BlinkAndDie(200, 300);
             }
@@ -522,6 +486,7 @@ void ContinueRomLoad(void)
                 if (byteswritten != sizeof(FlashRamStorage)) {
                     f_unlink(SaveName);
                     // Let the user know something went wrong.
+                    Running = false;
                     PlayInternalAudio(flashcreatesizemismatchmp3, sizeof(flashcreatesizemismatchmp3));
                     BlinkAndDie(1000, 500);
                 }
@@ -533,12 +498,14 @@ void ContinueRomLoad(void)
             if (FileInfo.fsize != sizeof(FlashRamStorage)) {
                 f_close(&SDSaveFile);
                 f_unlink(SaveName);
+                Running = false;
                 PlayInternalAudio(flashfstatsizemismatchmp3, sizeof(flashfstatsizemismatchmp3));
                 BlinkAndDie(200, 300);
             }
 
             result = f_read(&SDSaveFile, FlashRamStorage, FileInfo.fsize, &bytesread);
             if (result != FR_OK) {
+                Running = false;
                 PlayInternalAudio(flashloadfailedmp3, sizeof(flashloadfailedmp3));
                 BlinkAndDie(200, 300);
             }
@@ -600,14 +567,19 @@ int main(void)
 #endif
 
     // Override interrupt priority for SAI transfer.
-    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 15, 11);
-    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 15, 11);
-    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 15, 11);
-    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 15, 11);
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 14, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 14, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 14, 1);
+    HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 14, 1);
+    HAL_NVIC_SetPriority(SysTick_IRQn, 4, 0);
+    HAL_NVIC_SetPriority(I2C2_EV_IRQn, 14, 1);
+    HAL_NVIC_SetPriority(SAI1_IRQn, 14, 1);
+    //PlayInternalAudio(flashloadfailedmp3, sizeof(flashloadfailedmp3));
 
     // Relocate vector table to RAM as well as all interrupt functions and high usage variables.
     memcpy((void*)&itcm_text_start, &itcm_data, (int) (&itcm_text_end - &itcm_text_start));
     memcpy((void*)&__dtcmram_bss_start__, &dtcm_data, (int) (&__dtcmram_bss_end__ - &__dtcmram_bss_start__));
+
 
     PortGPins = {CIC_CLK, GPIO_MODE_IT_RISING_FALLING, GPIO_NOPULL, GP_SPEED, 0};
     HAL_GPIO_Init(GPIOG, &PortGPins);
@@ -626,7 +598,7 @@ int main(void)
     // Hack to flash the menu rom to the qspi.
 //#define FLASH_THE_MENU_ROM 1
 #if FLASH_THE_MENU_ROM
-    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+    LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName, 0);
     GPIOC->BSRR = USER_LED_PORTC;
     hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData(0x40000)) + RomMaxSize);
     hw.qspi.Write((uint32_t)hw.qspi.GetData(0x40000), RomMaxSize, (uint8_t*)ram);
@@ -723,7 +695,7 @@ int main(void)
         OverflowCounter = 0;
         if (RomIndex != 0) {
             StartCICEmulator();
-            ContinueRomLoad();
+            ContinueRomLoad(true);
         }
 
         while(Running != false) {
@@ -737,7 +709,7 @@ int main(void)
         }
 
         RomIndex += 1;
-        LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
+        LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName, 0);
         CICEmulatorInit();
         EEPROMType = RomSettings[WRAP_ROM_INDEX(RomIndex)].EepRomType;
         CurrentRomSaveType = EEPROMType;
@@ -747,15 +719,15 @@ int main(void)
 
         // Write the boot rom to flash.
         if (RomIndex == 2) {
-            LoadRom("DaisyDrive64_data.bin");
-            ContinueRomLoad();
+            LoadRom("DaisyDrive64_data.bin", 0);
+            ContinueRomLoad(false);
 
             GPIOC->BSRR = USER_LED_PORTC;
             hw.qspi.Erase((uint32_t)hw.qspi.GetData(0x40000), (uint32_t)(hw.qspi.GetData(0x40000)) + RomMaxSize);
             hw.qspi.Write((uint32_t)hw.qspi.GetData(0x40000), RomMaxSize, (uint8_t*)ram);
             GPIOC->BSRR = USER_LED_PORTC << 16;
-            LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName);
-            ContinueRomLoad();
+            LoadRom(RomSettings[WRAP_ROM_INDEX(RomIndex)].RomName, 0);
+            ContinueRomLoad(true);
         }
     }
 }

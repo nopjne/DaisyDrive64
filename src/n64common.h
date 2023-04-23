@@ -19,6 +19,7 @@
 //#define ALLOW_BUS_SPEED_OVERRIDE
 
 #define N64_ROM_BASE              0x10000000
+#define MENU_RAM_ACCESS_BASE      0xB0000000
 #define CART_DOM2_ADDR1_START     0x05000000
 #define CART_DOM2_ADDR1_END       0x05FFFFFF
 
@@ -85,6 +86,11 @@ extern DTCM_DATA volatile bool Running;
 
 #define CURRENT_ROMNAME_STARTS_WITH_OS64 (*((uint32_t*)CurrentRomName) == *((uint32_t*)("OS64")))
 
+// This is an optimization in the Peripheral Interface emulation, where only 1 DWORD is used to produce the address latch.
+// When enabled the DMA controller will put both the Hi Word and Lo Word in the same DWORD location and a few instructions are saved
+// during address translation. When disabled the Hi and Lo words end up in different DWORDs (which seems to be faster on the LA)
+#define USE_SINGLE_DWORD_ADDRESS_DEMANGLE 1
+
 #define SI_RINGBUFFER_LENGTH 180 // Space for 10 byte plus terminator (2 edges per bit). 10 * (16 + 2)
 #define FLASHRAM_SIZE (128 * 1024 + 8)
 #define EXTERNAL_FLASH 0x90000000
@@ -107,7 +113,7 @@ extern DTCM_DATA uint32_t ADInputAddress;
 extern DTCM_DATA uint32_t EepLogIdx;
 extern DTCM_DATA uint32_t OverflowCounter;
 extern DTCM_DATA bool SaveFileDirty;
-extern DTCM_DATA uint32_t gSaveFence;
+extern volatile DTCM_DATA uint32_t gSaveFence;
 extern char CurrentRomName[265];
 #define SD_CARD_CMD (1 << 2)
 

@@ -63,7 +63,8 @@
         "regex": "cpp",
         "shared_mutex": "cpp",
         "variant": "cpp",
-        "ff.h": "c"
+        "ff.h": "c",
+        "ranges": "cpp"
     },
     "editor.tokenColorCustomizations": {
         "textMateRules": [

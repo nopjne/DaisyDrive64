@@ -280,11 +280,17 @@ void DaisySeed::ConfigureAudio()
             i2c_config.pin_config.scl = {DSY_GPIOH, 4};
             i2c_config.pin_config.sda = {DSY_GPIOB, 11};
             I2CHandle i2c_handle;
-            i2c_handle.Init(i2c_config);
+            if (I2CHandle::Result::ERR == i2c_handle.Init(i2c_config)) {
+                while (1) {}
+            }
+
             Wm8731::Config codec_cfg;
             codec_cfg.Defaults();
             Wm8731 codec;
-            codec.Init(codec_cfg, i2c_handle);
+            while (codec.Init(codec_cfg, i2c_handle) == Wm8731::Result::ERR) {
+                i2c_handle.DeInit(i2c_config);
+                i2c_handle.Init(i2c_config);
+            }
         }
         break;
         case BoardVersion::DAISY_SEED:

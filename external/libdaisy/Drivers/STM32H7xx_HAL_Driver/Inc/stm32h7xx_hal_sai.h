@@ -355,6 +355,7 @@ typedef void (*pSAI_CallbackTypeDef)(SAI_HandleTypeDef *hsai);
 #define SAI_AUDIO_FREQUENCY_32K        32000U
 #define SAI_AUDIO_FREQUENCY_22K        22050U
 #define SAI_AUDIO_FREQUENCY_16K        16000U
+#define SAI_AUDIO_FREQUENCY_12K        12000U
 #define SAI_AUDIO_FREQUENCY_11K        11025U
 #define SAI_AUDIO_FREQUENCY_8K          8000U
 #define SAI_AUDIO_FREQUENCY_MCKDIV         0U

@@ -13,6 +13,7 @@ class I2CHandle::Impl
 {
   public:
     I2CHandle::Result        Init(const I2CHandle::Config& config);
+    I2CHandle::Result        DeInit(const I2CHandle::Config& config);
     const I2CHandle::Config& GetConfig() const { return config_; }
 
     I2CHandle::Result TransmitBlocking(uint16_t address,
@@ -282,6 +283,18 @@ I2CHandle::Result I2CHandle::Impl::Init(const I2CHandle::Config& config)
         return I2CHandle::Result::ERR;
     if(HAL_I2CEx_ConfigDigitalFilter(&i2c_hal_handle_, 0) != HAL_OK)
         return I2CHandle::Result::ERR;
+
+    return I2CHandle::Result::OK;
+}
+
+I2CHandle::Result I2CHandle::Impl::DeInit(const I2CHandle::Config& config)
+{
+    const int i2cIdx = int(config.periph);
+    config_ = config;
+    constexpr I2C_TypeDef* instances[4]
+        = {I2C1, I2C2, I2C3, I2C4}; // map HAL instances
+    i2c_hal_handle_.Instance = instances[i2cIdx];
+    HAL_I2C_DeInit(&i2c_hal_handle_);
 
     return I2CHandle::Result::OK;
 }
@@ -807,6 +820,14 @@ I2CHandle::Result I2CHandle::Init(const I2CHandle::Config& config)
     pimpl_ = &i2c_handles[int(config.periph)];
     return pimpl_->Init(config);
 }
+
+I2CHandle::Result I2CHandle::DeInit(const I2CHandle::Config& config)
+{
+    // set the pimpl pointer
+    pimpl_ = &i2c_handles[int(config.periph)];
+    return pimpl_->DeInit(config);
+}
+
 
 const I2CHandle::Config& I2CHandle::GetConfig() const
 {

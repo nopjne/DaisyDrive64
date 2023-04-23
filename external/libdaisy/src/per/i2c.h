@@ -86,6 +86,9 @@ class I2CHandle
     /** Initializes an I2C peripheral. */
     Result Init(const Config& config);
 
+    /** Initializes an I2C peripheral. */
+    Result DeInit(const Config& config);
+
     /** Returns the current config. */
     const Config& GetConfig() const;
 

@@ -12,8 +12,8 @@
 #include "menu.h"
 #include "sounds.h"
 
-void LoadRom(const char* Name);
-void ContinueRomLoad(void);
+void LoadRom(const char* Name, uint32_t Offset);
+void ContinueRomLoad(bool LoadSave);
 uint32_t *MenuBase = (uint32_t*)(FlashRamStorage + 32770);
 
 using namespace daisy;
@@ -115,7 +115,7 @@ inline void HandleExecute(void)
             }
 
             char *namePtr = (char*)&MenuBase[REG_DMA_DATA];
-            LoadRom((namePtr + 1));
+            LoadRom((namePtr + 1), 0);
             // Setup the save game.
             if ((CurrentRomSaveType == EEPROM_4K) || (CurrentRomSaveType == EEPROM_16K)) {
                 SI_Reset();
@@ -128,7 +128,61 @@ inline void HandleExecute(void)
 
             // Allow the rom to continue loading in the background.
             MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
-            ContinueRomLoad();
+            ContinueRomLoad(true);
+        }
+        break;
+        case UPLOAD_ROM_EX:
+        {
+            MenuBase[REG_STATUS] |= DAISY_STATUS_BIT_SD_BUSY;
+            // Read file count.
+            uint32_t FileCount = 0;
+            FileCount = SWAP_WORDS(MenuBase[REG_DMA_DATA]);
+            uint32_t ReadOffset = sizeof(FileCount);
+            for (uint32_t i = 0; i < FileCount; i += 1) {
+                // Read offset
+                uint32_t RomOffset = 0;
+                RomOffset = SWAP_WORDS(MenuBase[REG_DMA_DATA + (ReadOffset / 4)]);
+                ReadOffset += sizeof(RomOffset);
+                // Read string length.
+                uint32_t RomPathLength = 0;
+                RomPathLength = SWAP_WORDS(MenuBase[REG_DMA_DATA + (ReadOffset / 4)]);
+                ReadOffset += sizeof(RomPathLength);
+                if ((RomPathLength & 3) != 0) {
+                    BlinkAndDie(111, 222);
+                }
+
+                // Read string, all incoming strings need to be 4 byte aligned.
+                uint32_t* Ptr = &MenuBase[REG_DMA_DATA + (ReadOffset / 4)];
+
+                // Byteswap the incoming string.
+                // TODO: Why is this needed...?
+                for (uint32_t i = 0; i < (RomPathLength / 4); i += 1) {
+                    *Ptr = SWAP_WORDS(*Ptr);
+                    *Ptr = __bswap32(*Ptr);
+                    Ptr += 1;
+                }
+
+                char *namePtr = (((char*)&MenuBase[REG_DMA_DATA + (ReadOffset / 4)]));
+                ReadOffset += RomPathLength;
+                LoadRom((namePtr + 1), RomOffset);
+                if ((FileCount - 1) != i) {
+                    ContinueRomLoad(false);
+                }
+            }
+
+            // Setup the save game.
+            if ((CurrentRomSaveType == EEPROM_4K) || (CurrentRomSaveType == EEPROM_16K)) {
+                SI_Reset();
+                EEPROMType = CurrentRomSaveType;
+                SI_Enable();
+
+            } else {
+                SI_Reset();
+            }
+
+            // Allow the rom to continue loading in the background.
+            MenuBase[REG_STATUS] &= ~(DAISY_STATUS_BIT_DMA_BUSY | DAISY_STATUS_BIT_SD_BUSY);
+            ContinueRomLoad(true);
         }
         break;
         case SET_SAVE_TYPE:
@@ -186,15 +240,21 @@ void EXTI3_IRQHandler(void)
         HandleExecute();
 
     } else if (SaveFileDirty != false) {
-        uint32_t SaveFence;
+        uint32_t SaveFence = gSaveFence;
+
+        // Stall untill N64 finished the bulk of the write.
         do {
             SaveFence = gSaveFence;
-            if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
-                SaveEEPRom(CurrentRomName);
-            } else {
-                SaveFlashRam(CurrentRomName);
-            }
+            EXTI->PR1 = DAISY_MENU_INTERRUPT;
+            System::Delay(100);
         } while (SaveFence != gSaveFence);
+
+        // Commit changes to SD card.
+        if (CurrentRomSaveType == EEPROM_16K || CurrentRomSaveType == EEPROM_4K) {
+            SaveEEPRom(CurrentRomName);
+        } else {
+            SaveFlashRam(CurrentRomName);
+        }
 
         SaveFileDirty = false;
     }

@@ -32,7 +32,7 @@ void ITCM_FUNCTION RunEEPROMEmulator(void);
 //inline BYTE ITCM_FUNCTION GetSingleByte(uint32_t Offset);
 
 DTCM_DATA bool SaveFileDirty = false;
-DTCM_DATA uint32_t gSaveFence = 0;
+volatile DTCM_DATA uint32_t gSaveFence = 0;
 
 #if (SI_USE_DMA != 0)
 DTCM_DATA TIM_HandleTypeDef htim3;
