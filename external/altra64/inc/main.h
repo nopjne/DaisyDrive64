@@ -7,7 +7,7 @@
 #define MAIN_H
 
 //TODO: these should probably be static not protos in main
-void bootRom(display_context_t disp, int silent, char* filename);
+void bootRom(display_context_t disp, int silent, char* filename, char* parentFilePath, uint32_t offset1, uint32_t offset2);
 void loadrom(display_context_t disp, u8 *buff, int fast);
 
 void readSDcard(display_context_t disp, char *directory);

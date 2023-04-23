@@ -40,6 +40,7 @@ enum DAISY_FW_FUNCTION {
     SD_CARD_READ_SECTOR,
     SD_CARD_WRITE_SECTOR,
     UPLOAD_ROM,
+    UPLOAD_ROM_EX,
     SET_SAVE_TYPE,
 };
 
@@ -62,7 +63,7 @@ enum DAISY_REGISTERS {
 };
 #endif
 
-u8 daisyDrive_uploadRom(char *Path);
+u8 daisyDrive_uploadRom(char **Path, uint32_t *Offsets, uint32_t Count);
 
 #define REGS_BASE 0xA8040000
 #define REG_CFG 0

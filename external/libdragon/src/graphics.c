@@ -803,6 +803,10 @@ void graphics_draw_text( surface_t* disp, int x, int y, const char * const msg )
                 break;
         }
 
+        if (tx > 290) {
+            break;
+        }
+
         text++;
     }
 }

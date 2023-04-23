@@ -145,10 +145,31 @@ u8 evd_mmcReadToCart(u32 cart, u32 len) { return 0; }
 u8 evd_isSpiBusy() {return 0;}
 u8 evd_isSDMode() { return 0;}
 
-u8 daisyDrive_uploadRom(char *Path)
+u8 daisyDrive_uploadRom(char **Path, uint32_t *Offsets, uint32_t Count)
 {
-    dma_write_s(Path, (unsigned long)&(daisy_regs[REG_DMA_DATA]), strlen(Path) + 1);
+    uint32_t Offset = 0;
+    dma_write_s(&Count, (unsigned long)&(daisy_regs[REG_DMA_DATA]), sizeof(Count));
     dma_wait();
-    io_write((uint32_t)&(daisy_regs[REG_EXECUTE_FUNCTION]), UPLOAD_ROM);
+    Offset += sizeof(Count);
+    for (uint32_t i = 0; i < Count; i += 1) {
+        // Align size to 4byte.
+        uint32_t StringSize = (strlen(Path[i]) + 1);
+        if ((StringSize & 3) != 0) {
+            StringSize = (StringSize & ~3) + 4;
+        }
+
+        dma_write_s(&Offsets[i], ((unsigned long)&((daisy_regs[REG_DMA_DATA])) + Offset), sizeof(Offsets[0]));
+        dma_wait();
+        Offset += sizeof(Count);
+        dma_write_s(&StringSize, ((unsigned long)&((daisy_regs[REG_DMA_DATA])) + Offset), sizeof(StringSize));
+        dma_wait();
+        Offset += sizeof(StringSize);
+        dma_write_s(Path[i], ((unsigned long)&((daisy_regs[REG_DMA_DATA])) + Offset), StringSize);
+        dma_wait();
+        Offset += StringSize;
+    }
+
+    dma_wait();
+    io_write((uint32_t)&(daisy_regs[REG_EXECUTE_FUNCTION]), UPLOAD_ROM_EX);
     while (evd_isDmaBusy()) {}
 }
