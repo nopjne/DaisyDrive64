@@ -84,3 +84,9 @@ Known issues: \
     2. Games that use SRAM as savetype may or may not save depending on how leanient the game code is. OOT and SMB64 save, others do not. (refer here for other games: http://micro-64.com/database/gamesave.shtml) \
     3. The DRAM has been tuned but it is unclear whether that is stable. \
     4. Currently the MCU is overclocked to 540Mhz this may not be needed and generates more heat than necessary.
+
+Menu bugs: \
+  Start doesn’t show the right menu \
+  Mempak doesn’t show the right menu during format \
+  Mempak save causes displaylock error \
+  Enable checksum fix doesn’t do anything.
