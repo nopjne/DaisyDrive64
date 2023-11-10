@@ -7,9 +7,9 @@ DaisyDrive64 is a N64 Cartridge Emulator that uses a Daisy Seed MCU board utiliz
 Note: The white DaisyDrive64 - PCB boards are not yet public, please join the discord server mentioned below if you are comfortable bringing up these boards on your own.
 You will need basic to moderate soldering skills and it really helps to have an STM32 debugger. (stlinkv2 or v3)
 
-To interface with the N64 the DaisyDrive64 currently can use the PicoCart64 with breakout wires or can be wired to the Game Pak port directly. Please use the below connection diagram, while boards are being finalized.
+To interface with the N64, the DaisyDrive64 can use the PicoCart64 with breakout wires or can be wired to the Game Pak port directly. Please use the below connection diagram, while boards are being finalized. Note: Using wiring diminishes the signal integrity and may require the GP_SPEED to be reduced programmatically.
 
-The DaisySeed (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
+The DaisySeed (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed's configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/daisypinout.png?raw=true)
 
@@ -36,20 +36,18 @@ Flashing release firmware and data through web programmer: https://electro-smith
 	5. Put daisy in DFU mode again. \
 	6. Choose file: "DaisyDrive64_fw.bin", program it.
 
+Video of the DaisyDrive64 features: \
+[![Showcase](https://img.youtube.com/vi/9KxwnyBOTx4/0.jpg)](https://www.youtube.com/watch?v=9KxwnyBOTx4)
+
 Video of assembling the DaisyDrive64: (this video shows outdated flashing instructions, please follow the instructions above here) \
 [![Assembling the DaisyDrive64](https://img.youtube.com/vi/Yn7m13Sy0nY/1.jpg)](https://www.youtube.com/watch?v=Yn7m13Sy0nY)
-
-Video showing off emulator support: \
-[![Emulator inception](https://img.youtube.com/vi/nDgXXXI7Gs8/0.jpg)](https://www.youtube.com/watch?v=nDgXXXI7Gs8)
-
-Comparison video of loading roms on the DaisyDrive64 and the Everdrive64: \
-[![Game load](https://img.youtube.com/vi/WPcANSvD16U/0.jpg)](https://www.youtube.com/watch?v=WPcANSvD16U)
+Note: The video shows tinning the contacts, which is only necessary if signal issues arise, and may be reduced with ENIG, HardGold finishes.
 
 Background:
-This project started out with wanting to connect an SD card to the N64 directly. After playing with the SD protocol, it was quickly apparent that the SD access latency was too great to support the XIP access that the N64 needs. Originally I gave up on this project because it would require additional hardware to create a working cart emulator and there were already solutions on the market that have the expected hardware. I also was dreading to creating my own (first) PCB for the project. My interest in the project got reinvigorated when Konrad Beckmann sent me a PicoCart64 v2 PCB, but instead of focusing on a RPi Pico MCU, I wanted to use an MCU that had 64MB RAM and SD support. 
+This project started out with me wanting to connect an SD card to the N64 directly. After playing with the SD protocol, it was quickly apparent that the SD access latency was too great to support the XIP access that the N64 needs. Originally I gave up on this project because it would require additional hardware to create a working cart emulator and there were already solutions on the market that have the expected hardware. I also was dreading creating my own (first) PCB for the project. My interest in the project got reinvigorated when Konrad Beckmann sent me a PicoCart64 v1 PCB, but instead of focusing on a RPi Pico MCU, I wanted to use an MCU that had 64MB RAM and SD support. 
 
-I found an MCU board (Daisy Seed) that hit most of the requirements and seemed a lot faster than what I needed.
-Once I got the Daisy Seed board I learned the difference between the speed of the GPIO pins and the speed the CPU runs at. With an added bonus the Daisy Board is specifically designed with audio in mind and has an op-amp that can be connected to the N64 audio interface of the gamepak. 
+I found an MCU board (Daisy Seed) that hit most of the requirements and seemed a lot faster than what I needed. With an added bonus the Daisy Board is specifically designed with audio in mind and has an audio codec that can be connected to the N64 audio interface of the gamepak.
+Once I got the Daisy Seed board I learned the difference between the speed of the GPIO pins and the speed the CPU runs at. So unfortunately it still wasn't as easy as just writing some simple C code, I had to delve into the STM32H750 specification and optimize for the STM32H750 hardware specifically (and vigorously).
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/wires.jpg?raw=true)
 
@@ -74,10 +72,11 @@ Things that need to be implemented: \
 Things that would be nice to have: \
     1. Patch support. Allow patches to be applied on the fly and save to a different save file. \
     2. EEPROM revisions. Allow past eeprom state to be retrievable. 
-	
+
 Most commercial roms run and save without issues, however there are still issues due to the missing Flash RAM support. There are only ~30 titles that need Flash Ram support, these games will play but will not save.
 As a bootstrap this project relied on the RPI Pico to do CIC emulation and Flash Emulation thanks to PicoCart64 by Konrad Beckmann https://github.com/kbeckmann/PicoCart64
-Please join the following discord to participate in the DaisyDrive64 development: https://discord.gg/2Gb3jWqqja
+Please join the PicoCart64 discord to participate in the DaisyDrive64 development: [https://discord.gg/2Gb3jWqqja](https://discord.gg/CGTjxkVr7P)
+There is a DaisyDrive64 subchannel.
 
 Known issues: \
     1. Games that use FlashRam as savetype do not save. (Refer here: http://micro-64.com/database/gamesave.shtml) \
@@ -90,3 +89,5 @@ Menu bugs: \
   Mempak doesn’t show the right menu during format \
   Mempak save causes displaylock error \
   Enable checksum fix doesn’t do anything.
+
+Note: The open source code on github may lag behind development on discord. (link to join up above)
