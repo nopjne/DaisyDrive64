@@ -3,7 +3,7 @@ All rights reserved. Right now this project is in a development stage and not re
 DaisyDrive64 is a N64 Cartridge Emulator that uses a Daisy Seed MCU board utilizing an STM32H750 (ARM Cortex-M7).
 (These MCU boards can be found here: https://www.electro-smith.com/daisy/daisy)
 
-![alt text](https://github.com/MasonStooksbury/DaisyDrive64/blob/master/pictures/DaisyDrive64.jpg?raw=true) \
+![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/pictures/DaisyDrive64.jpg?raw=true) \
 Note: The white DaisyDrive64 - PCB boards are not yet public, please join the discord server mentioned below if you are comfortable bringing up these boards on your own.
 You will need basic to moderate soldering skills and it really helps to have an STM32 debugger. (stlinkv2 or v3)
 
@@ -11,9 +11,9 @@ To interface with the N64, the DaisyDrive64 can use the PicoCart64 with breakout
 
 The DaisySeed (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed's configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
 
-![alt text](https://github.com/MasonStooksbury/DaisyDrive64/blob/master/pictures/daisydrive64pinout.png?raw=true)
+![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/pictures/daisydrive64pinout.png?raw=true)
 
-![alt text](https://github.com/MasonStooksbury/DaisyDrive64/blob/master/pictures/n64pinout.JPG?raw=true)
+![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/pictures/n64pinout.JPG?raw=true)
 
 Setting up: \
 	1. Follow the setup instructions from Setting Up Your (Daisy) Development Environment: https://github.com/electro-smith/DaisyWiki/wiki/1.-Setting-Up-Your-Development-Environment \
@@ -49,7 +49,7 @@ This project started out with me wanting to connect an SD card to the N64 direct
 I found an MCU board (Daisy Seed) that hit most of the requirements and seemed a lot faster than what I needed. With an added bonus the Daisy Board is specifically designed with audio in mind and has an audio codec that can be connected to the N64 audio interface of the gamepak.
 Once I got the Daisy Seed board I learned the difference between the speed of the GPIO pins and the speed the CPU runs at. So unfortunately it still wasn't as easy as just writing some simple C code, I had to delve into the STM32H750 specification and optimize for the STM32H750 hardware specifically (and vigorously).
 
-![alt text](https://github.com/MasonStooksbury/DaisyDrive64/blob/master/pictures/wires.jpg?raw=true)
+![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/pictures/wires.jpg?raw=true)
 
 Things that are implemented: \
     1. SD card reading and writing. (Roms are to be stored on an SD card and are loaded by the FW) \
