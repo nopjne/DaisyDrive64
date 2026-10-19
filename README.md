@@ -1,49 +1,52 @@
-All rights reserved. Right now this project is in a development stage and not ready for any consumers.
+# DaisyDrive64
+**All rights reserved. \
+Right now this project is in a development stage and not ready for any consumers.**
 
-DaisyDrive64 is a N64 Cartridge Emulator that uses a Daisy Seed MCU board utilizing an STM32H750 (ARM Cortex-M7).
-(These MCU boards can be found here: https://www.electro-smith.com/daisy/daisy)
+The DaisyDrive64 is a N64 Cartridge Emulator that uses a [Daisy Seed](https://daisy.audio/) MCU board utilizing an STM32H750 (ARM Cortex-M7).
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/DaisyDrive64.jpg?raw=true) \
-Note: The white DaisyDrive64 - PCB boards are not yet public, please join the discord server mentioned below if you are comfortable bringing up these boards on your own.
+**Note:** The white DaisyDrive64 - PCB boards are not yet public, please join the discord server mentioned below if you are comfortable bringing up these boards on your own.
 You will need basic to moderate soldering skills and it really helps to have an STM32 debugger. (stlinkv2 or v3)
 
 To interface with the N64, the DaisyDrive64 can use the PicoCart64 with breakout wires or can be wired to the Game Pak port directly. Please use the below connection diagram, while boards are being finalized. Note: Using wiring diminishes the signal integrity and may require the GP_SPEED to be reduced programmatically.
 
-The DaisySeed (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed's configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
+The [Daisy Seed](https://daisy.audio/) (STM32 CM7) gpio-pins can be reconfigured through software. The currently used setup attempts to optimize for AD0-15 contiguity, so the amount of involvement from the CPU is less. Ideally it could be none and handled entirely through DMA, but the Daisy Seed's configuration prevents this, it would be possible if developing a board from scratch and wiring the stm32 directly.
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/daisypinout.png?raw=true)
 
 ![alt text](https://github.com/nopjne/DaisyDrive64/blob/master/n64pinout.JPG?raw=true)
 
-Setting up: \
-	1. Follow the setup instructions from Setting Up Your (Daisy) Development Environment: https://github.com/electro-smith/DaisyWiki/wiki/1.-Setting-Up-Your-Development-Environment \
-	2. Clone the DaisyDrive64 source somewhere.
+## Flashing Firmware
+### Development builds
+	Setting up:
+		1. Follow the setup instructions from Setting Up Your (Daisy) Development Environment: https://github.com/electro-smith/DaisyWiki/wiki/1.-Setting-Up-Your-Development-Environment \
+		2. Clone the DaisyDrive64 source somewhere.
+	
+	Building the project:
+		1. make -C external/libdaisy
+	        2. make -C src
+	
+	Executing debugger probe:
+		1. Build
+		2. Use visual studio to reference the correct openocd executable.
+		3. Use F5 to upload and start the DaisyDrive.
 
-Building the project: \
-	1. make -C external/libdaisy \
-        2. make -C src
-
-Executing debugger probe: \
-	1. Build \
-	2. Use visual studio to reference the correct openocd executable. \
-	3. Use F5 to upload and start the DaisyDrive.
-
-Flashing release firmware and data through web programmer: https://electro-smith.github.io/Programmer/ \
-	1. Put in DFU mode -- In web programmer use "advanced" and "flash bootloader" image. \
-	2. Reset the daisy by disconnecting it and plugging it back in. (DO NOT PUT IT IN DFU MODE) \
-	3. Click connect in web programmer and select "Daisy boot loader" \
-	4. Choose file: "DaisyDrive64_data.bin", program it. \
-	5. Put daisy in DFU mode again. \
+### Release firmware and data through [web programmer](https://flash.daisy.audio/):
+	1. Put in DFU mode -- In web programmer use "advanced" and "flash bootloader" image.
+	2. Reset the daisy by disconnecting it and plugging it back in. (DO NOT PUT IT IN DFU MODE)
+	3. Click connect in web programmer and select "Daisy boot loader"
+	4. Choose file: "DaisyDrive64_data.bin", program it.
+	5. Put daisy in DFU mode again.
 	6. Choose file: "DaisyDrive64_fw.bin", program it.
 
-Video of the DaisyDrive64 features: \
+Video of the DaisyDrive64 features:
 [![Showcase](https://img.youtube.com/vi/9KxwnyBOTx4/0.jpg)](https://www.youtube.com/watch?v=9KxwnyBOTx4)
 
 Video of assembling the DaisyDrive64: (this video shows outdated flashing instructions, please follow the instructions above here) \
 [![Assembling the DaisyDrive64](https://img.youtube.com/vi/Yn7m13Sy0nY/1.jpg)](https://www.youtube.com/watch?v=Yn7m13Sy0nY)
 Note: The video shows tinning the contacts, which is only necessary if signal issues arise, and may be reduced with ENIG, HardGold finishes.
 
-Background:
+## Background
 This project started out with me wanting to connect an SD card to the N64 directly. After playing with the SD protocol, it was quickly apparent that the SD access latency was too great to support the XIP access that the N64 needs. Originally I gave up on this project because it would require additional hardware to create a working cart emulator and there were already solutions on the market that have the expected hardware. I also was dreading creating my own (first) PCB for the project. My interest in the project got reinvigorated when Konrad Beckmann sent me a PicoCart64 v1 PCB, but instead of focusing on a RPi Pico MCU, I wanted to use an MCU that had 64MB RAM and SD support. 
 
 I found an MCU board (Daisy Seed) that hit most of the requirements and seemed a lot faster than what I needed. With an added bonus the Daisy Board is specifically designed with audio in mind and has an audio codec that can be connected to the N64 audio interface of the gamepak.
@@ -73,7 +76,7 @@ Things that would be nice to have: \
     1. Patch support. Allow patches to be applied on the fly and save to a different save file. \
     2. EEPROM revisions. Allow past eeprom state to be retrievable. 
 
-Most commercial roms run and save without issues, however there are still issues due to the missing Flash RAM support. There are only ~30 titles that need Flash Ram support, these games will play but will not save.
+Most commercial GamePaks run and save without issues, however there are still issues due to the missing Flash RAM support. There are only ~30 titles that need Flash Ram support, these games will play but will not save.
 As a bootstrap this project relied on the RPI Pico to do CIC emulation and Flash Emulation thanks to PicoCart64 by Konrad Beckmann https://github.com/kbeckmann/PicoCart64
 Please join the PicoCart64 discord to participate in the DaisyDrive64 development: [https://discord.gg/2Gb3jWqqja](https://discord.gg/CGTjxkVr7P)
 There is a DaisyDrive64 subchannel.
@@ -86,8 +89,8 @@ Known issues: \
 
 Menu bugs: \
   Start doesn’t show the right menu \
-  Mempak doesn’t show the right menu during format \
-  Mempak save causes displaylock error \
+  ControllerPak doesn’t show the right menu during format \
+  ControllerPak save causes displaylock error \
   Enable checksum fix doesn’t do anything.
 
-Note: The open source code on github may lag behind development on discord. (link to join up above)
+Note: The open source code on GitHub may lag behind development on discord. (link to join up above)
